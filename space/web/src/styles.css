@@ -103,6 +103,14 @@ button { font: inherit; color: inherit; }
 .results .rid b { font-weight: 700; }
 .results .rmeta { color: var(--muted); white-space: nowrap; font: 400 12px var(--font-mono); }
 .results li[aria-selected="true"] .rmeta { color: var(--ink-2); }
+.results { overflow-x: hidden; }
+.chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) {
+  .top .search .results { position: fixed; left: 12px; right: 12px; top: 70px; max-height: 70vh; }
+  .results li { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .results .rid { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+  .results .rmeta { font-size: 11px; }
+}
 
 /* ---------- common ---------- */
 .muted { color: var(--muted); }
