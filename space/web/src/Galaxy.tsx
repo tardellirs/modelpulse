@@ -493,13 +493,13 @@ async function shareImage(g: GalaxyData, L: Layout) {
     text(`${r.label}  ${fmtFull(counts[i])}`, 94, ly, "500 22px 'IBM Plex Mono'", STAR_TEXT);
     ly += 38;
   });
-  text("huggingface.co/spaces/tardellirs/model-pulse", 64, H - 44, "500 20px 'IBM Plex Mono'", "#a9a69e");
+  text("modelpulse.ifsp.dev", 64, H - 44, "500 20px 'IBM Plex Mono'", "#a9a69e");
   return new Promise<Blob>((res) => c.toBlob((b) => res(b!), "image/png"));
 }
 
 function Entry() {
   const [fams, setFams] = useState<{ id: string; fam_members: number; fam_dl30: number | null }[]>([]);
-  useEffect(() => { document.title = "Model Pulse Galaxy"; get<typeof fams>("/api/galaxies").then((r) => setFams(r.slice(0, 16))).catch(() => {}); }, []);
+  useEffect(() => { document.title = "Model galaxies: every model built on Llama, Qwen, FLUX and more · Model Pulse"; get<typeof fams>("/api/galaxies").then((r) => setFams(r.slice(0, 16))).catch(() => {}); }, []);
   return (
     <>
       <div class="wrap w-entry g-entry">
@@ -539,9 +539,9 @@ export function Galaxy({ model }: { model?: string }) {
 
   useEffect(() => {
     if (!model) return;
-    document.title = `${model} galaxy · Model Pulse`;
+    document.title = `${model} galaxy: every model built on it · Model Pulse`;
     setG(null); setErr(null); setSel(-1); setQ("");
-    get<GalaxyData>(`/api/galaxy/${model}`).then(setG).catch((e) => setErr(e.message));
+    get<GalaxyData>(`/api/galaxy/${model}`).then((d) => { setG(d); document.title = `${d.root.id} galaxy: ${d.total.toLocaleString("en")} models built on it · Model Pulse`; }).catch((e) => setErr(e.message));
   }, [model]);
 
   const L = useMemo(() => (g ? layout(g) : null), [g]);

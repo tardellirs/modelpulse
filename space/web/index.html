@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+    <!-- the server sends a plain-HTML version of each page for search engines; with JavaScript the app replaces it -->
+    <script>document.documentElement.classList.add("js")</script>
+    <style>.js #app > .ssr { display: none }</style>
   </head>
   <body>
     <div id="app"></div>

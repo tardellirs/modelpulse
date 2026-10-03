@@ -37,15 +37,52 @@ def fit(d, text, name, size, width, min_size=30):
     return text, f
 
 
-def model_card(m: dict, series: dict) -> bytes:
-    img = Image.new("RGB", (W, H), PAPER)
-    d = ImageDraw.Draw(img)
-    # logo and wordmark
+def header(d: ImageDraw.ImageDraw, right: str):
     d.rounded_rectangle((60, 50, 124, 114), 16, fill=INK)
     d.rounded_rectangle((54, 44, 118, 108), 16, fill=MARK, outline=INK, width=5)
     d.line([(66, 78), (78, 78), (85, 60), (96, 96), (103, 78), (108, 78)], fill=INK, width=5, joint="curve")
     d.text((140, 54), "Model Pulse", font=font("fredoka-600.ttf", 40), fill=INK)
-    d.text((W - 60, 66), "download history", font=font("ibm-plex-mono-500.ttf", 22), fill=MUTED, anchor="ra")
+    d.text((W - 60, 66), right, font=font("ibm-plex-mono-500.ttf", 22), fill=MUTED, anchor="ra")
+
+
+def png(img) -> bytes:
+    out = io.BytesIO()
+    img.save(out, "PNG", optimize=True)
+    return out.getvalue()
+
+
+def author_card(author: str, summary: dict, models: list) -> bytes:
+    img = Image.new("RGB", (W, H), PAPER)
+    d = ImageDraw.Draw(img)
+    header(d, "on Hugging Face")
+    text, f = fit(d, author, "fredoka-600.ttf", 84, W - 140)
+    tw = d.textlength(text, font=f)
+    d.rounded_rectangle((52, 160, 52 + tw + 32, 160 + f.size + 26), 14, fill=MARK)
+    d.text((68, 168), text, font=f, fill=INK)
+    stats = [(compact(summary.get("dl30")), "downloads, last 30 days"), (compact(summary.get("dl_all")), "downloads all time"),
+             (f"{summary.get('models', 0):,}", "tracked models")]
+    x, y, w = 60, 300, 330
+    for i, (v, label) in enumerate(stats):
+        card(d, (x, y, x + w, y + 128), SURF if i else "#3B6FF5")
+        d.text((x + 24, y + 12), v, font=font("fredoka-600.ttf", 60), fill="#FFFFFF" if i == 0 else INK)
+        d.text((x + 26, y + 90), label, font=font("ibm-plex-mono-400.ttf", 19), fill="#E8EEFF" if i == 0 else MUTED)
+        x += w + 35
+    y = 458
+    for k, m in enumerate(models[:3]):
+        name = m["id"].split("/", 1)[-1]
+        name, f2 = fit(d, name, "source-sans-3-600.ttf", 28, 760, 20)
+        d.text((60, y), f"{k + 1}.", font=font("ibm-plex-mono-500.ttf", 24), fill=MUTED)
+        d.text((100, y - 3), name, font=f2, fill=INK)
+        d.text((W - 60, y), f"{compact(m.get('dl30'))}/mo", font=font("ibm-plex-mono-500.ttf", 24), fill=INK, anchor="ra")
+        y += 37
+    d.text((60, H - 40), "modelpulse.ifsp.dev", font=font("ibm-plex-mono-500.ttf", 20), fill=MUTED)
+    return png(img)
+
+
+def model_card(m: dict, series: dict) -> bytes:
+    img = Image.new("RGB", (W, H), PAPER)
+    d = ImageDraw.Draw(img)
+    header(d, "download history")
 
     mid = m["id"]
     org, name = mid.split("/", 1) if "/" in mid else ("", mid)
@@ -82,6 +119,4 @@ def model_card(m: dict, series: dict) -> bytes:
 
     d.text((60, H - 46), "modelpulse.ifsp.dev", font=font("ibm-plex-mono-500.ttf", 20), fill=MUTED)
     d.text((W - 60, H - 46), "30-day downloads, last 6 months", font=font("ibm-plex-mono-400.ttf", 18), fill=MUTED, anchor="ra")
-    out = io.BytesIO()
-    img.save(out, "PNG", optimize=True)
-    return out.getvalue()
+    return png(img)

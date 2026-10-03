@@ -44,6 +44,8 @@ def reload_store():
     _galaxy.cache_clear()
     _galaxies.cache_clear()
     _og_model.cache_clear()
+    _og_author.cache_clear()
+    threading.Thread(target=jobs.indexnow, args=(changed_urls(),), daemon=True).start()
     threading.Thread(target=warm_galaxies, daemon=True).start()
 
 
@@ -265,6 +267,19 @@ def badge(mid: str, metric: str = "month", theme: str = "light"):
 
 # ---------- pages, previews and sitemap ----------
 
+def changed_urls():
+    """Pages worth recrawling after a data update: the home page, rankings and the models they list."""
+    from urllib.parse import quote
+    urls = [seo.SITE + "/", seo.SITE + "/galaxy"]
+    for rows in store.leaderboards.values():
+        for r in rows if isinstance(rows, list) else []:
+            if r.get("id"):
+                urls.append(f"{seo.SITE}/model/{seo.seg(r['id'])}")
+            elif r.get("author"):
+                urls.append(f"{seo.SITE}/author/{quote(r['author'], safe='')}")
+    return list(dict.fromkeys(urls))
+
+
 pages = seo.Pages(STATIC, os.path.join(os.path.dirname(__file__), "report.md"))
 
 
@@ -280,6 +295,25 @@ def og_model(mid: str):
     if png is None:
         raise HTTPException(404, "Not tracked")
     return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@lru_cache(maxsize=1024)
+def _og_author(name: str):
+    author = store.find_author(name)
+    return og.author_card(author, store.author_summary(author), store.author_models(author, 3)) if author else None
+
+
+@app.get("/og/author/{name}.png")
+def og_author(name: str):
+    png = _og_author(name)
+    if png is None:
+        raise HTTPException(404, "Not tracked")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/llms.txt")
+def llms_txt():
+    return Response(pages.llms_txt(store), media_type="text/plain; charset=utf-8", headers={"Cache-Control": "public, max-age=21600"})
 
 
 @app.get("/robots.txt")

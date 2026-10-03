@@ -22,7 +22,7 @@ configs:
 
 # Model Pulse data
 
-Daily download and like history for every actively used model on the Hugging Face Hub, from 2024-07-29 onward, updated every day. It powers [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse).
+Daily download and like history for every actively used model on the Hugging Face Hub, from 2024-07-29 onward, updated every day. It powers [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse), also at [modelpulse.ifsp.dev](https://modelpulse.ifsp.dev) with a page for every model.
 
 Built from the daily snapshots of [cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats) (Apache 2.0), reading each historical revision of `models.parquet`.
 

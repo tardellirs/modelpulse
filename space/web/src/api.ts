@@ -189,9 +189,8 @@ export function readRoute(): Route {
 
 const seg = (id: string) => id.split("/").map(encodeURIComponent).join("/");
 
-/** The link for a route: a path on the app's own domain, a query string inside the Space. */
-export function hrefOf(r: Route) {
-  if (!PATH_MODE) return "?" + routeToQuery(r);
+/** A route as a real path, as used on the app's own domain. */
+export function pathOf(r: Route) {
   let path = "/";
   if (r.view === "galaxy") path = r.model ? `/galaxy/${seg(r.model)}` : "/galaxy";
   else if (r.view === "wrapped") path = r.author ? `/wrapped/${encodeURIComponent(r.author)}` : "/wrapped";
@@ -199,6 +198,11 @@ export function hrefOf(r: Route) {
   else if (r.model) path = `/model/${seg(r.model)}`;
   else if (r.author) path = `/author/${encodeURIComponent(r.author)}`;
   return path + (r.compare?.length ? `?compare=${r.compare.join(",")}` : "");
+}
+
+/** The link for a route: a path on the app's own domain, a query string inside the Space. */
+export function hrefOf(r: Route) {
+  return PATH_MODE ? pathOf(r) : "?" + routeToQuery(r);
 }
 
 export function routeToQuery(r: Route) {
@@ -212,9 +216,11 @@ export function routeToQuery(r: Route) {
 
 export const SPACE_URL = "https://huggingface.co/spaces/tardellirs/model-pulse";
 
+export const SITE_URL = "https://modelpulse.ifsp.dev";
+
+/** Shared links go to the app's own domain, where each page has its own preview card. */
 export function shareUrl(r: Route) {
-  const q = routeToQuery(r);
-  return SPACE_URL + (q ? `?${q}` : "");
+  return SITE_URL + pathOf(r);
 }
 
 export function navigate(r: Route, replace = false) {

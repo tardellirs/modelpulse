@@ -48,7 +48,7 @@ export function ModelPage({ route }: { route: Route }) {
     api.model(id).then((d) => {
       setData(d);
       if (d.model.id !== id) navigate({ ...route, model: d.model.id }, true);
-      document.title = `${d.model.id} downloads · Model Pulse`;
+      document.title = `${d.model.id} downloads: daily history and stats · Model Pulse`;
     }).catch((e) => setErr(e.message));
   }, [id]);
 
@@ -252,8 +252,47 @@ export function ModelPage({ route }: { route: Route }) {
 
       {(m.fam_members > 0 || data.children.length > 0) && <Family data={data} />}
 
+      <About data={data} />
+
       <Share model={m} url={shareUrl({ model: m.id, compare: compare.length ? compare : undefined })} />
     </>
+  );
+}
+
+const RELATION: Record<string, string> = { quantized: "a quantization", finetune: "a fine-tune", adapter: "an adapter", merge: "a merge" };
+
+/** The page in plain sentences: easy to skim, and the text search engines quote. */
+function About({ data }: { data: ModelResponse }) {
+  const m = data.model as ModelResponse["model"] & Record<string, any>;
+  const [author] = m.id.includes("/") ? m.id.split("/") : [""];
+  const name = m.id.split("/").pop();
+  const task = m.pipeline_tag ? taskLabel(m.pipeline_tag) : "";
+  const size = !m.params ? "" : m.params >= 1e9 ? `${(m.params / 1e9).toFixed(1)}B` : `${Math.round(m.params / 1e6)}M`;
+  const kind = `${size ? `${size}-parameter ` : ""}${task}`.trim();
+  const base = m.base_ids?.[0];
+  const link = (r: Route, text: string) => <a href={hrefOf(r)} onClick={(e) => { e.preventDefault(); navigate(r); }}>{text}</a>;
+  return (
+    <section class="section">
+      <div class="wrap about">
+        <h2>About {name}</h2>
+        <p>
+          <b>{m.id}</b> is {/^[aeio8]|^1[18]/i.test(kind) ? "an" : "a"} {kind ? `${kind} model` : "model"}{author && <> by {link({ author }, author)}</>}.
+          {" "}In the last 30 days it was downloaded <b>{fmtFull(m.dl30)}</b> times ({fmtFull(m.dl_7d)} in the last 7 days)
+          {m.dl_all ? <>, and <b>{fmtFull(m.dl_all)}</b> times in total</> : null}.
+          {m.rank_dl30 ? <> It ranks #{fmtFull(m.rank_dl30)} on the Hub by monthly downloads{m.rank_task && m.pipeline_tag ? <> and #{fmtFull(m.rank_task)} among {task} models</> : null}.</> : null}
+          {m.likes != null ? <> It has {fmtFull(m.likes)} likes{m.likes_7d ? `, ${fmtFull(m.likes_7d)} of them in the last week` : ""}.</> : null}
+        </p>
+        {base && <p>It is {RELATION[m.base_relation ?? ""] ?? "a derivative"} of {link({ model: base }, base)}.</p>}
+        {m.fam_members > 0 && (
+          <p>
+            {fmtFull(m.fam_members)} models build on {name}: {fmtFull(m.n_quantized)} quantized, {fmtFull(m.n_finetune)} fine-tuned, {fmtFull(m.n_adapter)} adapters
+            and {fmtFull(m.n_merge)} merges. Together with the original they were downloaded {fmtFull(m.fam_dl30)} times in the last 30 days.
+            {" "}{link({ view: "galaxy", model: m.id }, `See the ${name} galaxy`)}.
+          </p>
+        )}
+        <p class="muted">Figures come from daily snapshots of the Hugging Face Hub and update every day.</p>
+      </div>
+    </section>
   );
 }
 

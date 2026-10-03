@@ -1,6 +1,6 @@
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { API_BASE, api, fmt, fmtDate, fmtFull, navigate, SPACE_URL, type Leaderboards, hrefOf } from "./api";
+import { API_BASE, api, fmt, fmtDate, fmtFull, navigate, shareUrl, type Leaderboards, hrefOf } from "./api";
 import { LikeCta } from "./Like";
 import { Logo } from "./Logo";
 
@@ -243,7 +243,7 @@ async function shareImage(d: WrappedData) {
     x.fillStyle = k === ms.indexOf(mx) ? MARK : SURF; x.beginPath(); x.roundRect(xx, by + bh - h, w1, h, 4); x.fill();
     x.lineWidth = 3; x.strokeStyle = INK; x.stroke();
   });
-  text("huggingface.co/spaces/tardellirs/model-pulse", 62, H - 40, "500 24px 'IBM Plex Mono'", "#6E6C66");
+  text("modelpulse.ifsp.dev", 62, H - 40, "500 24px 'IBM Plex Mono'", "#6E6C66");
   return new Promise<Blob>((res) => c.toBlob((b) => res(b!), "image/png"));
 }
 
@@ -282,7 +282,7 @@ export function Wrapped({ author }: { author?: string }) {
   const stage = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = author ? `${author} · Model Pulse Wrapped` : "Model Pulse Wrapped";
+    document.title = author ? `${author}'s last 12 months on Hugging Face · Model Pulse Wrapped` : "Model Pulse Wrapped: your last 12 months on Hugging Face";
     setD(null); setErr(null); setI(0);
     if (!author) return;
     fetch(`${API_BASE}/api/wrapped/${encodeURIComponent(author)}`)
@@ -317,7 +317,7 @@ export function Wrapped({ author }: { author?: string }) {
   );
 
   const list = slides(d, i);
-  const url = `${SPACE_URL}?view=wrapped&author=${encodeURIComponent(d.author)}`;
+  const url = shareUrl({ view: "wrapped", author: d.author });
   const post = `My last 12 months on the Hugging Face Hub: ${fmt(d.downloads)} downloads${standing(d) && (d.rank <= 1000 || (d.top_pct ?? 100) <= 10) ? `, ${standing(d)} of publishers` : ""}. Get your Model Pulse Wrapped:`;
   const isSummary = i === list.length;
 

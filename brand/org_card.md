@@ -14,6 +14,7 @@ pinned: false
 **Model Pulse** shows how every model on the Hugging Face Hub is doing over time: daily downloads, likes, and the reach of its quantizations, fine-tunes, adapters and merges, going back to July 2024.
 
 - **[Open Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse)** and search any model, or go straight to one with `?model=org/name`
+- **[modelpulse.ifsp.dev](https://modelpulse.ifsp.dev)**: the same site with a page for every model, like [modelpulse.ifsp.dev/model/Qwen/Qwen3-8B](https://modelpulse.ifsp.dev/model/Qwen/Qwen3-8B)
 - **Compare** up to five models on one chart
 - **[Galaxy](https://huggingface.co/spaces/tardellirs/model-pulse?view=galaxy)**: every model built on Llama, Qwen, FLUX and more, drawn as a galaxy
 - **[Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?view=wrapped)**: any author's last 12 months on the Hub in six cards

@@ -31,7 +31,7 @@ async function makeCard(model: Model) {
   x.beginPath(); x.moveTo(62, 66); x.lineTo(68, 66); x.lineTo(72, 57); x.lineTo(78, 75); x.lineTo(81, 67); x.lineTo(85, 67); x.stroke();
   x.fillStyle = css("--ink"); x.font = `700 20px ${css("--font")}`; x.fillText("Model Pulse", 102, 72);
   x.fillStyle = css("--muted"); x.font = `400 18px ${css("--font")}`;
-  x.textAlign = "right"; x.fillText("huggingface.co/spaces/tardellirs/model-pulse", W - 56, 72); x.textAlign = "left";
+  x.textAlign = "right"; x.fillText("modelpulse.ifsp.dev", W - 56, 72); x.textAlign = "left";
   // title + figures
   x.fillStyle = css("--ink"); x.font = `600 36px ${css("--font")}`;
   x.fillText(model.id.length > 48 ? model.id.slice(0, 47) + "…" : model.id, 56, 148);

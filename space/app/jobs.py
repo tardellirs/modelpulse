@@ -114,3 +114,22 @@ def updater(work_dir: str, check_every: int = 3600):
         except Exception:
             log.exception("daily update failed")
         time.sleep(check_every)
+
+
+INDEXNOW_KEY = os.environ.get("INDEXNOW_KEY", "c72eb45891620dc99ed7f5774930994b")
+
+
+def indexnow(urls: list[str], site: str = "https://modelpulse.ifsp.dev"):
+    """Tell Bing and other IndexNow engines which pages changed (up to 10,000 per call)."""
+    import json
+    import urllib.request
+    for i in range(0, len(urls), 10_000):
+        body = json.dumps({"host": site.split("//", 1)[1], "key": INDEXNOW_KEY, "keyLocation": f"{site}/{INDEXNOW_KEY}.txt",
+                           "urlList": urls[i:i + 10_000]}).encode()
+        req = urllib.request.Request("https://api.indexnow.org/indexnow", data=body, headers={"Content-Type": "application/json; charset=utf-8"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                log.info("indexnow: %d urls, HTTP %s", len(urls[i:i + 10_000]), r.status)
+        except Exception as e:
+            log.warning("indexnow failed: %s", e)
+

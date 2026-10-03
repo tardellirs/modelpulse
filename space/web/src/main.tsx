@@ -1,15 +1,30 @@
 import { render } from "preact";
+import type { ComponentType } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { PATH_MODE, hrefOf, navigate, readRoute, type Route } from "./api";
 import { AuthorPage } from "./AuthorPage";
-import { Galaxy } from "./Galaxy";
 import { Home } from "./Home";
 import { Logo } from "./Logo";
 import { ModelPage } from "./ModelPage";
-import { Report } from "./Report";
-import { Wrapped } from "./Wrapped";
 import { Search } from "./Search";
 import "./styles.css";
+
+/** Load a page's code the first time it is shown, so model pages ship less JavaScript. */
+function lazy<P>(load: () => Promise<ComponentType<P>>) {
+  let Loaded: ComponentType<P> | null = null;
+  let pending: Promise<ComponentType<P>> | null = null;
+  return (props: P) => {
+    const [, ready] = useState(0);
+    useEffect(() => {
+      if (!Loaded) (pending ??= load()).then((C) => { Loaded = C; ready((n) => n + 1); });
+    }, []);
+    return Loaded ? <Loaded {...(props as any)} /> : <div class="wrap" style={{ minHeight: "70vh" }} />;
+  };
+}
+
+const Galaxy = lazy(() => import("./Galaxy").then((m) => m.Galaxy));
+const Wrapped = lazy(() => import("./Wrapped").then((m) => m.Wrapped));
+const Report = lazy(() => import("./Report").then((m) => m.Report));
 
 function App() {
   const [route, setRoute] = useState<Route>(readRoute());

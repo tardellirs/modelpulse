@@ -13,7 +13,7 @@ export function AuthorPage({ route }: { route: Route }) {
 
   useEffect(() => {
     setD(null); setErr(null);
-    api.author(a).then((r) => { setD(r); document.title = `${a} downloads · Model Pulse`; }).catch((e) => setErr(e.message));
+    api.author(a).then((r) => { setD(r); document.title = `${a} on Hugging Face: model downloads and rankings · Model Pulse`; }).catch((e) => setErr(e.message));
   }, [a]);
 
   const lines: Line[] = useMemo(() => {

@@ -492,3 +492,8 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
   .g-hint { display: none; }
   .g-find { max-width: none; }
 }
+
+/* ---------- about (plain-language summary) ---------- */
+.about h2 { font: 600 var(--step-2) var(--font-display); margin-bottom: 12px; }
+.about p { max-width: 72ch; color: var(--ink-2); margin: 0 0 10px; }
+.about p.muted { font-size: var(--step--1); color: var(--muted); }

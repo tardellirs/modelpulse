@@ -255,7 +255,7 @@ class Pages:
                     f"<li>{a('/model/' + seg(m['id']), m['id'])} {compact(m['dl30'])} downloads, {e(task(m.get('pipeline_tag')))}</li>" for m in models) + "</ol>")
         return Page(f"{author} on Hugging Face: model downloads and rankings · Model Pulse",
                     f"Download history for {full(s['models'])} models by {author} on the Hugging Face Hub, with {compact(s['dl30'])} downloads in the last 30 days. Top models: {top}.",
-                    path, body, ld=[crumbs(("Model Pulse", "/"), (author, path))])
+                    path, body, image=f"{SITE}/og/author/{quote(author, safe='')}.png", ld=[crumbs(("Model Pulse", "/"), (author, path))])
 
     def galaxies(self, store) -> Page:
         gs = store.galaxies(40)
@@ -295,7 +295,7 @@ class Pages:
                         f"{author}'s year on the Hugging Face Hub in six cards: downloads, the #1 model, the biggest week, the models built on theirs, and their rank.",
                         path, f'<nav>{a("/wrapped", "Model Pulse Wrapped")}</nav><h1>{e(author)} Wrapped</h1>'
                               f"<p>{e(author)}'s last 12 months on the Hugging Face Hub. {a('/author/' + quote(author, safe=''), 'See all models by ' + author)}.</p>",
-                        noindex=True)
+                        image=f"{SITE}/og/author/{quote(author, safe='')}.png", noindex=True)
         return Page("Model Pulse Wrapped: your last 12 months on Hugging Face",
                     "Your last 12 months on the Hugging Face Hub in six cards: total downloads, your #1 model, your biggest week, the models built on yours, and where you rank.",
                     "/wrapped", f'<nav>{a("/", "Model Pulse")}</nav><h1>Model Pulse Wrapped</h1>'
@@ -315,6 +315,31 @@ class Pages:
                "image": SITE + "/report/01-hub.png", "datePublished": "2026-10-03", "publisher": CREATOR}]
         return Page(f"{title} · Model Pulse", first[:300], "/report", f'<article class="report">{h}</article>',
                     image=SITE + "/report/01-hub.png", ld=ld)
+
+    # ---------- for AI search tools ----------
+
+    def llms_txt(self, store) -> str:
+        first, last = span(store)
+        return f"""# Model Pulse
+
+> Daily download history, likes and derivative families for {full(store.meta['models'])} models on the Hugging Face Hub, from {first} to {last}, updated every day. Made by Tardelli Stekel (huggingface.co/tardellirs).
+
+Every page states its figures in plain text: downloads in the last 30 days, the last 7 days and all time, likes, the model's rank on the Hub and within its task, and how many quantizations, fine-tunes, adapters and merges build on it.
+
+## Pages
+
+- [Any model]({SITE}/model/Qwen/Qwen3-8B): {SITE}/model/{{org}}/{{name}}, download history and stats for one model
+- [Any author or organization]({SITE}/author/Qwen): {SITE}/author/{{name}}, all of its models ranked by downloads
+- [Model galaxies]({SITE}/galaxy): every model built on a base model, e.g. {SITE}/galaxy/meta-llama/Llama-3.1-8B
+- [Report]({SITE}/report): what 19 months of daily downloads say about the Hub
+- [Rankings]({SITE}/): most downloaded, fastest growing, biggest families and top organizations
+
+## Data
+
+- [Open dataset](https://huggingface.co/datasets/modelpulse/model-pulse-data): one row per model per day
+- [JSON API]({SITE}/api/model/Qwen/Qwen3-8B): /api/model/{{org}}/{{name}}, /api/author/{{name}}, /api/leaderboards
+- [Hugging Face Space]({SPACE})
+"""
 
     # ---------- sitemap ----------
 
