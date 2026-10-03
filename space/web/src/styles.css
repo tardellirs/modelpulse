@@ -342,8 +342,11 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 .err h1 { overflow-wrap: anywhere; }
 
 /* ---------- home callouts ---------- */
-.callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; margin-top: 30px; }
-.callouts .report-callout { margin-top: 0; }
+.callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 26px; }
+.callouts .report-callout { margin-top: 0; gap: 2px; padding: 12px 18px; box-shadow: var(--shadow-sm); }
+.callouts .report-callout:hover { box-shadow: 4px 4px 0 var(--ink); }
+.callouts .report-callout .t { font-size: var(--step-1); }
+.callouts .report-callout .d { font-size: var(--step--1); }
 .wrapped-callout { background: #3b6ff5; color: #fff; }
 .wrapped-callout .d { color: rgba(255,255,255,.9); }
 .wrapped-callout .tag { background: var(--mark); color: var(--ink); }
@@ -429,11 +432,12 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 
 /* ---------- galaxy ---------- */
 .galaxy-callout { background-color: #16161a; color: var(--paper);
-  background-image: radial-gradient(circle at 82% 28%, rgba(255,210,30,.55) 0 5px, rgba(255,210,30,.14) 6px 26px, transparent 46px),
-    radial-gradient(circle at 70% 18%, #7d9dff 0 1.6px, transparent 2.4px), radial-gradient(circle at 92% 46%, #ff9d4a 0 1.8px, transparent 2.6px),
-    radial-gradient(circle at 76% 44%, #4ccb8a 0 1.4px, transparent 2.2px), radial-gradient(circle at 88% 12%, #c38dff 0 1.4px, transparent 2.2px),
-    radial-gradient(circle at 64% 34%, #fff 0 1px, transparent 1.8px); }
+  background-image: radial-gradient(circle at 90% 50%, rgba(255,210,30,.55) 0 4px, rgba(255,210,30,.14) 5px 18px, transparent 30px),
+    radial-gradient(circle at 84% 22%, #7d9dff 0 1.6px, transparent 2.4px), radial-gradient(circle at 96% 78%, #ff9d4a 0 1.8px, transparent 2.6px),
+    radial-gradient(circle at 82% 74%, #4ccb8a 0 1.4px, transparent 2.2px), radial-gradient(circle at 97% 20%, #c38dff 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 78% 46%, #fff 0 1px, transparent 1.8px); }
 .galaxy-callout .d { color: rgba(236,233,226,.82); }
+.callouts .galaxy-callout { padding-right: 64px; }
 .galaxy-callout .tag { background: var(--mark); color: var(--ink); }
 .g-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; flex: none; background: var(--mark);
   box-shadow: 0 0 0 2px var(--ink), 9px -5px 0 -4px #3b6ff5, -8px 6px 0 -4.5px #ff8a1f, 7px 8px 0 -5px #2f8f5b; }

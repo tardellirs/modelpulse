@@ -73,22 +73,16 @@ export function Home() {
 
       <div class="wrap callouts">
         <a class="card report-callout wrapped-callout" href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>
-          <span class="tag">Wrapped</span>
           <span class="t">Model Pulse Wrapped</span>
-          <span class="d">Your last 12 months on the Hub in six cards: downloads, your #1 model, your biggest week, the models built on yours, and your rank.</span>
-          <span class="go">Get your Wrapped</span>
+          <span class="d">Your last 12 months on the Hub in six cards.</span>
         </a>
         <a class="card report-callout galaxy-callout" href="?view=galaxy" onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>
-          <span class="tag">New</span>
           <span class="t">Model Pulse Galaxy</span>
-          <span class="d">Every model built on Llama, Qwen, FLUX and more, drawn as a galaxy of quantizations, fine-tunes, adapters and merges.</span>
-          <span class="go">Explore the galaxies</span>
+          <span class="d">Every model built on Llama, Qwen, FLUX and more.</span>
         </a>
         <a class="card report-callout" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>
-          <span class="tag">Report</span>
-          <span class="t">What 19 months of daily downloads say about the Hub</span>
-          <span class="d">Qwen's rise, the derivative economy, the quantizers, bigger models, and why likes don't measure use.</span>
-          <span class="go">Read the report</span>
+          <span class="t">The 19-month report</span>
+          <span class="d">What daily downloads say about the Hub.</span>
         </a>
       </div>
 
