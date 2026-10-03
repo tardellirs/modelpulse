@@ -62,6 +62,9 @@ class Store:
         return self._rows("SELECT id, pipeline_tag, params, dl30, dl_all, dl_7d, growth_7d, likes FROM models "
                           "WHERE author = ? ORDER BY dl30 DESC NULLS LAST LIMIT ?", [author, limit])
 
+    def top_ids(self, n: int):
+        return [r[0] for r in self.con().execute("SELECT id FROM models ORDER BY dl30 DESC NULLS LAST LIMIT ?", [n]).fetchall()]
+
     def search(self, q: str, limit: int = 12):
         q = q.strip().lower()
         if not q:

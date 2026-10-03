@@ -20,8 +20,15 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 logging.basicConfig(level=logging.INFO)
 store = Store()
+def link_candidates():
+    ranked = {r["id"] for rows in store.leaderboards.values() if isinstance(rows, list) for r in rows if r.get("id")}
+    trending = set(jobs.trending_models())
+    return store.top_ids(20_000) + sorted(ranked | trending), ranked | trending
+
+
 linker = jobs.Linker(lambda mid: store.model(mid) is not None,
-                     lambda mid: (store.model(mid) or {}).get("dl30"))
+                     lambda mid: (store.model(mid) or {}).get("dl30"),
+                     link_candidates)
 
 
 def reload_store():
