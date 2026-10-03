@@ -23,5 +23,5 @@ jobs:
           curl -sSf --max-time 30 https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg | grep -q '<svg' || { echo "::error::Badge endpoint broken"; exit 1; }
       - name: Site is up
         run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 https://modelpulse-model-pulse.static.hf.space/)
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 https://tardellirs-model-pulse.static.hf.space/)
           echo "site HTTP $code"; [ "$code" = "200" ] || { echo "::error::Static Space returned $code"; exit 1; }

@@ -7,6 +7,6 @@ I went through the full download history in Model Pulse. A few findings:
 - Rerankers grew almost 10x in a year, and BERT-style fill-mask models are the only big category that shrank
 - Successful launches spike for two weeks, then plateau: 43% had their best week after month three
 
-Full report, with charts, tables and methodology: https://huggingface.co/spaces/modelpulse/model-pulse?view=report
+Full report, with charts, tables and methodology: https://huggingface.co/spaces/tardellirs/model-pulse?view=report
 
 Images: analysis/charts/02-text-orgs.png, 03-derivatives.png, 04-quantizers.png

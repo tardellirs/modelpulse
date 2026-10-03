@@ -2,7 +2,7 @@
 
 Every model page on the Hub shows one number: downloads in the last 30 days. It's useful, but it's a snapshot. It can't tell you whether a model is growing or fading, how it compares with its peers, or how much of its reach comes from the quantizations and fine-tunes built on top of it.
 
-So I rebuilt the history. [Model Pulse](https://huggingface.co/spaces/modelpulse/model-pulse) reads every daily revision of [@cfahlgren1](https://huggingface.co/cfahlgren1)'s [hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats) dataset, back to July 2024, and turns them into a day-by-day series for 1.6 million models. Since February 2025 those snapshots include all-time totals, which makes exact daily downloads possible: 19 months of them, for every model that anyone actually uses.
+So I rebuilt the history. [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse) reads every daily revision of [@cfahlgren1](https://huggingface.co/cfahlgren1)'s [hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats) dataset, back to July 2024, and turns them into a day-by-day series for 1.6 million models. Since February 2025 those snapshots include all-time totals, which makes exact daily downloads possible: 19 months of them, for every model that anyone actually uses.
 
 This post walks through what that data shows. Every number comes from the [open dataset](https://huggingface.co/datasets/modelpulse/model-pulse-data), and every model mentioned can be looked up on Model Pulse.
 
@@ -104,7 +104,7 @@ Two of these are worth a second look. GPT-2, released in 2019, is still the thir
 
 A derivative is a model whose card declares a base model: a quantization, a fine-tune, an adapter or a merge. In March 2025 derivatives took 18% of all downloads on the Hub. In September 2026 they took 43%. Quantizations drove most of it, going from 9% to 28%, and GGUF files alone went from 5% to 11%, most of that in the last three months.
 
-Take [Qwen3-8B](https://huggingface.co/spaces/modelpulse/model-pulse?model=Qwen/Qwen3-8B). 6,283 models build on it, directly or through other derivatives, and 37% of its family's monthly downloads go to those derivatives rather than to the original. If you only look at the original repo, you miss more than a third of its reach.
+Take [Qwen3-8B](https://huggingface.co/spaces/tardellirs/model-pulse?model=Qwen/Qwen3-8B). 6,283 models build on it, directly or through other derivatives, and 37% of its family's monthly downloads go to those derivatives rather than to the original. If you only look at the original repo, you miss more than a third of its reach.
 
 Derivatives also reach scale faster. Of the models created since March 2025, 946 have passed one million downloads. Here is how long it took, by type:
 
@@ -240,7 +240,7 @@ If you rank models by likes, you're ranking them by how exciting they were. To s
 
 ## Explore it yourself
 
-Every number above can be checked on [Model Pulse](https://huggingface.co/spaces/modelpulse/model-pulse):
+Every number above can be checked on [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse):
 
 - Open any model's daily and weekly history, with milestones such as the day it crossed a million downloads.
 - Compare up to five models on one chart.

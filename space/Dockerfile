@@ -6,6 +6,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY --chown=user app/ ./app/
 COPY --chown=user pipeline/ ./pipeline/
 USER user
-ENV DATA_DIR=/home/user/data DATA_REPO=modelpulse/model-pulse-data SITE_REPO=modelpulse/model-pulse PYTHONUNBUFFERED=1
+ENV DATA_DIR=/home/user/data DATA_REPO=modelpulse/model-pulse-data SITE_REPO=tardellirs/model-pulse PYTHONUNBUFFERED=1
 EXPOSE 7860
 CMD ["python", "-m", "app.serve"]

@@ -10,7 +10,7 @@ from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 log = logging.getLogger("modelpulse.jobs")
 
 DATA_REPO = os.environ.get("DATA_REPO", "modelpulse/model-pulse-data")
-SITE_REPO = os.environ.get("SITE_REPO", "modelpulse/model-pulse")
+SITE_REPO = os.environ.get("SITE_REPO", "tardellirs/model-pulse")
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 REFRESH_EVERY = int(os.environ.get("REFRESH_EVERY", "3600"))
 LINK_EVERY = int(os.environ.get("LINK_EVERY", str(3 * 3600)))

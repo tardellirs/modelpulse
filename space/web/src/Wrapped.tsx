@@ -243,7 +243,7 @@ async function shareImage(d: WrappedData) {
     x.fillStyle = k === ms.indexOf(mx) ? MARK : SURF; x.beginPath(); x.roundRect(xx, by + bh - h, w1, h, 4); x.fill();
     x.lineWidth = 3; x.strokeStyle = INK; x.stroke();
   });
-  text("huggingface.co/spaces/modelpulse/model-pulse", 62, H - 40, "500 24px 'IBM Plex Mono'", "#6E6C66");
+  text("huggingface.co/spaces/tardellirs/model-pulse", 62, H - 40, "500 24px 'IBM Plex Mono'", "#6E6C66");
   return new Promise<Blob>((res) => c.toBlob((b) => res(b!), "image/png"));
 }
 

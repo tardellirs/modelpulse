@@ -493,7 +493,7 @@ async function shareImage(g: GalaxyData, L: Layout) {
     text(`${r.label}  ${fmtFull(counts[i])}`, 94, ly, "500 22px 'IBM Plex Mono'", STAR_TEXT);
     ly += 38;
   });
-  text("huggingface.co/spaces/modelpulse/model-pulse", 64, H - 44, "500 20px 'IBM Plex Mono'", "#a9a69e");
+  text("huggingface.co/spaces/tardellirs/model-pulse", 64, H - 44, "500 20px 'IBM Plex Mono'", "#a9a69e");
   return new Promise<Blob>((res) => c.toBlob((b) => res(b!), "image/png"));
 }
 

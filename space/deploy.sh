@@ -17,7 +17,7 @@ docker rm -f modelpulse-api >/dev/null 2>&1 || true
 docker run -d --name modelpulse-api --restart unless-stopped \
   --network dokploy-network --memory 10g --cpus 3 \
   --env-file $DIR/.env \
-  -e DATA_REPO=modelpulse/model-pulse-data -e SITE_REPO=modelpulse/model-pulse -e LINK_CAP=25000 \
+  -e DATA_REPO=modelpulse/model-pulse-data -e SITE_REPO=tardellirs/model-pulse -e LINK_CAP=25000 \
   -v $DIR/data:/home/user/data -v $DIR/work:/home/user/work \
   -l traefik.enable=true \
   -l traefik.docker.network=dokploy-network \

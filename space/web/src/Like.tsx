@@ -22,7 +22,7 @@ export function LikeCta() {
     <span class="btn like-fake" tabIndex={0} aria-describedby="like-tip">
       <Heart fill="#ff4d6d" />Like on Hugging Face
       <span class="like-tip" id="like-tip" role="tooltip">
-        Click <span class="hf-like"><Heart size={12} fill="#ff4d6d" /> like</span> in the Hugging Face bar above this page, next to <code>modelpulse/model-pulse</code>.
+        Click <span class="hf-like"><Heart size={12} fill="#ff4d6d" /> like</span> in the Hugging Face bar above this page, next to <code>tardellirs/model-pulse</code>.
       </span>
     </span>
   );

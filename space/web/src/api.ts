@@ -183,7 +183,7 @@ export function routeToQuery(r: Route) {
   return q.toString().replace(/%2F/g, "/").replace(/%2C/g, ",");
 }
 
-export const SPACE_URL = "https://huggingface.co/spaces/modelpulse/model-pulse";
+export const SPACE_URL = "https://huggingface.co/spaces/tardellirs/model-pulse";
 
 export function shareUrl(r: Route) {
   const q = routeToQuery(r);

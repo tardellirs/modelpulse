@@ -8,19 +8,21 @@ pinned: false
 ---
 
 <p align="center">
-  <img src="https://huggingface.co/spaces/modelpulse/model-pulse/resolve/main/thumbnail-v3.png" alt="Model Pulse: download history for every model on the Hub" width="720">
+  <img src="https://huggingface.co/spaces/tardellirs/model-pulse/resolve/main/thumbnail-v3.png" alt="Model Pulse: download history for every model on the Hub" width="720">
 </p>
 
 **Model Pulse** shows how every model on the Hugging Face Hub is doing over time: daily downloads, likes, and the reach of its quantizations, fine-tunes, adapters and merges, going back to July 2024.
 
-- **[Open Model Pulse](https://huggingface.co/spaces/modelpulse/model-pulse)** and search any model, or go straight to one with `?model=org/name`
+- **[Open Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse)** and search any model, or go straight to one with `?model=org/name`
 - **Compare** up to five models on one chart
+- **[Galaxy](https://huggingface.co/spaces/tardellirs/model-pulse?view=galaxy)**: every model built on Llama, Qwen, FLUX and more, drawn as a galaxy
+- **[Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?view=wrapped)**: any author's last 12 months on the Hub in six cards
 - **Weekly rankings**: most downloaded, fastest growing, new this month, most liked, biggest families, organizations
 - **[The dataset](https://huggingface.co/datasets/modelpulse/model-pulse-data)**: 1.6M models, one row per model per day, updated daily
 
 ### A badge for your model card
 
-[![Model Pulse](https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg?v=2)](https://huggingface.co/spaces/modelpulse/model-pulse?model=Qwen/Qwen3-8B)
+[![Model Pulse](https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg?v=2)](https://huggingface.co/spaces/tardellirs/model-pulse?model=Qwen/Qwen3-8B)
 
 Monthly downloads, a four-week sparkline and the weekly trend, refreshed every day. Copy yours from your model's page on Model Pulse.
 

@@ -2,7 +2,7 @@
 
 Download history for every model on the Hugging Face Hub.
 
-- Site: https://huggingface.co/spaces/modelpulse/model-pulse (static Space, built from `space/web`)
+- Site: https://huggingface.co/spaces/tardellirs/model-pulse (static Space, built from `space/web`)
 - API + badges: https://modelpulse.ifsp.dev (Docker container on the Hostinger VM, `space/`)
 - Data: https://huggingface.co/datasets/modelpulse/model-pulse-data
 
