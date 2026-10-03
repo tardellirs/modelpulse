@@ -8,7 +8,7 @@ pinned: false
 ---
 
 <p align="center">
-  <img src="https://huggingface.co/spaces/modelpulse/README/resolve/main/banner.png" alt="Model Pulse" width="560">
+  <img src="https://huggingface.co/spaces/modelpulse/model-pulse/resolve/main/thumbnail-v3.png" alt="Model Pulse: download history for every model on the Hub" width="720">
 </p>
 
 **Model Pulse** shows how every model on the Hugging Face Hub is doing over time: daily downloads, likes, and the reach of its quantizations, fine-tunes, adapters and merges, going back to July 2024.

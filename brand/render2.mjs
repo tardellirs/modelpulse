@@ -13,6 +13,7 @@ const BANNER_X = Number(process.env.BX ?? 732), BANNER_W = Number(process.env.BW
 const render = (svg, file, width) => { writeFileSync(file, new Resvg(svg, { font: fonts, fitTo: { mode: "width", value: width } }).render().asPng()); console.log(file); };
 
 export const logo = (x, y, s) => `<g transform="translate(${x},${y}) scale(${s / 32})">
+  <rect x="${0 + 1.6}" y="${0 + 1.6}" width="32" height="32" rx="9.5" fill="${INK}"/>
   <rect x="1.5" y="1.5" width="29" height="29" rx="8" fill="${MARK}" stroke="${INK}" stroke-width="3"/>
   <path d="M5.5 17h4.5l3-8 5 15 3-7h5.5" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>`;
 const star = (cx, cy, r, rot) => {
@@ -21,12 +22,10 @@ const star = (cx, cy, r, rot) => {
   return `M${pts.join(" L")}Z`;
 };
 
-// ---- avatar: the site's sticker icon with its hard offset shadow, on the site's paper ----
-render(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="${PAPER}"/>
-  <rect x="84" y="84" width="380" height="380" rx="92" fill="${INK}"/>
-  <rect x="58" y="58" width="380" height="380" rx="92" fill="${MARK}" stroke="${INK}" stroke-width="26"/>
-  <path d="M120 266h56l38-100 62 188 38-88h66" fill="none" stroke="${INK}" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+// ---- avatar: the site's logo, same geometry and hard shadow, centred on the site's paper ----
+render(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 38 38">
+  <rect width="38" height="38" fill="${PAPER}"/>
+  ${logo(2.2, 2.2, 32)}
 </svg>`, "avatar.png", 512);
 
 // ---- banner: the home page lockup, logo + "Model" + highlighted "Pulse" ----
@@ -46,15 +45,21 @@ render(`<svg xmlns="http://www.w3.org/2000/svg" width="1228" height="260" viewBo
 const hub = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const byDay = new Map();
 hub.day.forEach((d, i) => byDay.set(d, (byDay.get(d) ?? 0) + hub.dl[i]));
+// each snapshot is a per-day average since the previous one: spread it over every day of the gap
+const sorted = [...byDay.keys()].sort();
 const weeks = new Map();
-for (const [d, v] of byDay) {
-  const t = Date.parse(d + "T00:00:00Z"); const wd = (new Date(t).getUTCDay() + 6) % 7;
-  const key = t - wd * 86400000; weeks.set(key, (weeks.get(key) ?? 0) + v);
-}
+sorted.forEach((d, i) => {
+  const t = Date.parse(d + "T00:00:00Z");
+  const gap = i ? Math.max(1, Math.round((t - Date.parse(sorted[i - 1] + "T00:00:00Z")) / 86400000)) : 1;
+  for (let k = 0; k < gap; k++) {
+    const tk = t - k * 86400000, key = tk - ((new Date(tk).getUTCDay() + 6) % 7) * 86400000;
+    weeks.set(key, (weeks.get(key) ?? 0) + byDay.get(d));
+  }
+});
 const wk = [...weeks.entries()].sort((a, b) => a[0] - b[0]).slice(-60, -1).map(([, v]) => v);
 
 const W = 1200, H = 630;
-const cx = 64, cy = 360, cw = W - 128, ch = 210;
+const cx = 64, cy = 316, cw = W - 128, ch = 262;
 const max = Math.max(...wk) * 1.08, bw = (cw - 48) / wk.length;
 const bars = wk.map((v, i) => {
   const h = (v / max) * (ch - 40), x = cx + 24 + i * bw + 2, y = cy + ch - 18 - h;
@@ -63,13 +68,12 @@ const bars = wk.map((v, i) => {
 
 render(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${PAPER}"/>
-  ${logo(64, 50, 60)}
-  <text x="140" y="94" font-family="Fredoka Light" font-weight="600" font-size="38" fill="${INK}">Model Pulse</text>
-  <text x="62" y="196" font-family="Fredoka Light" font-weight="600" font-size="64" letter-spacing="-1" fill="${INK}">Download history for</text>
-  <rect x="56" y="222" width="372" height="78" rx="12" fill="${MARK}"/>
-  <text x="70" y="282" font-family="Fredoka Light" font-weight="600" font-size="64" letter-spacing="-1" fill="${INK}">every model</text>
-  <text x="446" y="282" font-family="Fredoka Light" font-weight="600" font-size="64" letter-spacing="-1" fill="${INK}">on the Hub</text>
-  <text x="64" y="334" font-family="IBM Plex Mono" font-weight="500" font-size="20" fill="${MUTED}">weekly downloads across all public models</text>
+  ${logo(60, 44, 104)}
+  <text x="190" y="138" font-family="Fredoka Light" font-weight="600" font-size="112" letter-spacing="-2" fill="${INK}">Model</text>
+  <rect x="512" y="34" width="318" height="134" rx="18" fill="${MARK}"/>
+  <text x="532" y="138" font-family="Fredoka Light" font-weight="600" font-size="112" letter-spacing="-2" fill="${INK}">Pulse</text>
+  <text x="62" y="236" font-family="Fredoka Light" font-weight="500" font-size="40" fill="${INK}">Download history for every model on the Hub</text>
+  <text x="64" y="282" font-family="IBM Plex Mono" font-weight="500" font-size="20" fill="${MUTED}">weekly downloads across all public models</text>
   <rect x="${cx + 6}" y="${cy + 6}" width="${cw}" height="${ch}" rx="18" fill="${INK}"/>
   <rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="18" fill="${SURFACE}" stroke="${INK}" stroke-width="3"/>
   ${[0.33, 0.66].map((f) => `<line x1="${cx + 24}" x2="${cx + cw - 24}" y1="${cy + ch - 18 - f * (ch - 40)}" y2="${cy + ch - 18 - f * (ch - 40)}" stroke="${RULE}" stroke-width="2" stroke-dasharray="5 6"/>`).join("")}
