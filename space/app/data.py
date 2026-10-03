@@ -96,7 +96,8 @@ class Store:
 
     def galaxies(self, limit: int = 16):
         """The biggest families whose base is an original model, not itself a derivative."""
-        return self._rows("SELECT id, fam_members, fam_dl30 FROM models WHERE fam_members >= 50 AND coalesce(len(base_ids), 0) = 0 "
+        return self._rows("SELECT id, fam_members, fam_dl30, n_quantized, n_finetune, n_adapter, n_merge FROM models "
+                          "WHERE fam_members >= 50 AND coalesce(len(base_ids), 0) = 0 "
                           "ORDER BY fam_members DESC LIMIT ?", [limit])
 
     # ---------- pages and sitemap ----------
