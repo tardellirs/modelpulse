@@ -1,9 +1,10 @@
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { navigate, readRoute, SPACE_URL, type Route } from "./api";
+import { navigate, readRoute, type Route } from "./api";
 import { AuthorPage } from "./AuthorPage";
 import { Home } from "./Home";
 import { Logo } from "./Logo";
+import { LikeButton } from "./Like";
 import { ModelPage } from "./ModelPage";
 import { Search } from "./Search";
 import "./styles.css";
@@ -32,10 +33,7 @@ function App() {
           {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
           <nav>
             {!isHome && <a class="hide-sm" href="?" onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
-            <a class="like" href={SPACE_URL} target="_top" title="Like Model Pulse on Hugging Face">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3 1.8-1.9 3.3-3 5.4-3 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z" /></svg>
-              <span class="t">Like</span>
-            </a>
+            <LikeButton />
           </nav>
         </div>
       </header>

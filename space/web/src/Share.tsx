@@ -1,4 +1,5 @@
 import { useState } from "preact/hooks";
+import { LikeCta } from "./Like";
 import { API_BASE, fmt, fmtPct, SPACE_URL, type Model } from "./api";
 
 const BADGE_HOST = "https://modelpulse.ifsp.dev";
@@ -105,10 +106,7 @@ export function Share({ model, url }: { model: Model; url: string }) {
           <div class="cta">
             <h3>Keep Model Pulse on model pages</h3>
             <p>Hugging Face lists the most-liked Spaces on each model page. A like keeps download history one click away for everyone.</p>
-            <a class="btn" href="https://huggingface.co/spaces/modelpulse/model-pulse" target="_top">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="#ff6b81" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3 1.8-1.9 3.3-3 5.4-3 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z" /></svg>
-              Like on Hugging Face
-            </a>
+            <LikeCta />
           </div>
         </div>
       </div>
