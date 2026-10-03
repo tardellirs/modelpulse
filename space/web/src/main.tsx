@@ -7,6 +7,23 @@ import { Home } from "./Home";
 import { Logo } from "./Logo";
 import { ModelPage } from "./ModelPage";
 import { Search } from "./Search";
+// fonts are served with the site rather than from Google Fonts: one less origin to connect to before text renders
+import "@fontsource/fredoka/latin-500.css";
+import "@fontsource/fredoka/latin-ext-500.css";
+import "@fontsource/fredoka/latin-600.css";
+import "@fontsource/fredoka/latin-ext-600.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-ext-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
+import "@fontsource/ibm-plex-mono/latin-ext-500.css";
+import "@fontsource/ibm-plex-mono/latin-600.css";
+import "@fontsource/ibm-plex-mono/latin-ext-600.css";
+import "@fontsource/source-sans-3/latin-400.css";
+import "@fontsource/source-sans-3/latin-ext-400.css";
+import "@fontsource/source-sans-3/latin-600.css";
+import "@fontsource/source-sans-3/latin-ext-600.css";
+import "@fontsource/source-sans-3/latin-700.css";
+import "@fontsource/source-sans-3/latin-ext-700.css";
 import "./styles.css";
 
 /** Load a page's code the first time it is shown, so model pages ship less JavaScript. */

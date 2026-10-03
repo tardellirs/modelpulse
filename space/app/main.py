@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import os
 import threading
 from functools import lru_cache
@@ -15,10 +16,20 @@ from .data import Store
 from .wrapped import Wrapped
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("font/woff", ".woff")
 SITEMAP_MODELS = 100_000
 
 app = FastAPI(title="Model Pulse", docs_url=None, redoc_url=None)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+
+@app.middleware("http")
+async def long_cache_for_hashed_assets(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/assets/") and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 logging.basicConfig(level=logging.INFO)
 store = Store()

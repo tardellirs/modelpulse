@@ -82,6 +82,13 @@ class Pages:
             t = open(os.path.join(self.static_dir, "index.html")).read()
             t = re.sub(r"<title>.*?</title>\s*", "", t, flags=re.S)
             t = re.sub(r'<meta name="description"[^>]*>\s*', "", t)
+            # start downloading the heading and body fonts with the HTML, so text appears in its final face
+            assets = os.path.join(self.static_dir, "assets")
+            names = os.listdir(assets) if os.path.isdir(assets) else []
+            for prefix in ("fredoka-latin-600-normal-", "source-sans-3-latin-400-normal-"):
+                f = next((n for n in names if n.startswith(prefix) and n.endswith(".woff2")), None)
+                if f:
+                    t = t.replace("</head>", f'    <link rel="preload" href="/assets/{f}" as="font" type="font/woff2" crossorigin />\n  </head>', 1)
             self._template = t
         return self._template
 
