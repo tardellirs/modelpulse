@@ -71,21 +71,6 @@ export function Home() {
         )}
       </div>
 
-      <div class="wrap callouts">
-        <a class="card report-callout wrapped-callout" href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>
-          <span class="t">Model Pulse Wrapped</span>
-          <span class="d">Your last 12 months on the Hub in six cards.</span>
-        </a>
-        <a class="card report-callout galaxy-callout" href="?view=galaxy" onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>
-          <span class="t">Model Pulse Galaxy</span>
-          <span class="d">Every model built on Llama, Qwen, FLUX and more.</span>
-        </a>
-        <a class="card report-callout" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>
-          <span class="t">The 19-month report</span>
-          <span class="d">What daily downloads say about the Hub.</span>
-        </a>
-      </div>
-
       <div class="wrap hub-chart">
        <div class="card">
         <h2>Daily downloads across the Hub</h2>

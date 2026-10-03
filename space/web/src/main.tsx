@@ -37,10 +37,10 @@ function App() {
           </a>
           {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
           <nav>
-            {!(isGalaxy && !route.model) && <a href="?view=galaxy" onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>Galaxy</a>}
-            {!isWrapped && <a href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Wrapped</a>}
-            {!isReport && <a class="hide-sm" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>}
-            {!isHome && <a class="hide-sm" href="?" onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
+            {!isHome && <a class="btn nav-btn hide-sm" href="?" onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
+            <a class="btn nav-btn" aria-current={isGalaxy ? "page" : undefined} href="?view=galaxy" onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>Galaxy</a>
+            <a class="btn nav-btn" aria-current={isWrapped ? "page" : undefined} href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Wrapped</a>
+            <a class={`btn nav-btn${isHome || isReport ? "" : " hide-sm"}`} aria-current={isReport ? "page" : undefined} href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>
           </nav>
         </div>
       </header>

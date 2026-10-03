@@ -69,6 +69,10 @@ button { font: inherit; color: inherit; }
   border: 0; background: none; cursor: pointer; letter-spacing: 0.02em;
 }
 .top nav a:hover, .ghost:hover { background: var(--surface); box-shadow: inset 0 0 0 2px var(--ink); }
+/* section buttons in the header, in the same style as the other buttons */
+.top nav a.nav-btn { padding: 7px 13px; border: var(--line); border-radius: 12px; background: var(--surface); font-weight: 600; box-shadow: var(--shadow-sm); }
+.top nav a.nav-btn:hover { background: var(--surface); box-shadow: 4px 4px 0 var(--ink); }
+.top nav a.nav-btn[aria-current="page"] { background: var(--mark); }
 .top nav a.like, .like {
   display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px;
   background: var(--surface); color: var(--ink); text-decoration: none; font: 600 var(--step--1) var(--font-mono);
@@ -284,6 +288,8 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
   .top .wrap { gap: 10px; height: 64px; }
   .brand span { display: none; }
   .top nav a.hide-sm { display: none; }
+  .top nav { gap: 6px; }
+  .top nav a.nav-btn { padding: 5px 9px; font-size: 12px; box-shadow: 2px 2px 0 var(--ink); }
   .like .t { display: none; }
   .search kbd { display: none; }
 }
@@ -325,14 +331,6 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 .report table.list th:first-child { text-align: left; }
 .report table.list td { font-size: 13.5px; }
 .report table.list td:first-child { font-family: var(--font); font-size: 14.5px; white-space: normal; }
-.report-callout {
-  display: grid; gap: 6px; margin-top: 30px; text-decoration: none; background: var(--mark); transition: transform .08s, box-shadow .08s;
-}
-.report-callout:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--ink); }
-.report-callout .tag { font: 600 12px var(--font-mono); background: var(--ink); color: var(--mark); padding: 2px 9px; border-radius: 999px; justify-self: start; }
-.report-callout .t { font: 600 var(--step-2)/1.15 var(--font-display); }
-.report-callout .d { color: var(--ink-2); }
-.report-callout .go { font: 600 var(--step--1) var(--font-mono); text-decoration: underline; text-underline-offset: 4px; }
 
 /* long model ids: keep them inside their boxes */
 .tip .r span { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -341,15 +339,6 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 .legend .chip button { flex: none; }
 .err h1 { overflow-wrap: anywhere; }
 
-/* ---------- home callouts ---------- */
-.callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 26px; }
-.callouts .report-callout { margin-top: 0; gap: 2px; padding: 12px 18px; box-shadow: var(--shadow-sm); }
-.callouts .report-callout:hover { box-shadow: 4px 4px 0 var(--ink); }
-.callouts .report-callout .t { font-size: var(--step-1); }
-.callouts .report-callout .d { font-size: var(--step--1); }
-.wrapped-callout { background: #3b6ff5; color: #fff; }
-.wrapped-callout .d { color: rgba(255,255,255,.9); }
-.wrapped-callout .tag { background: var(--mark); color: var(--ink); }
 .chip-hot { background: var(--mark); }
 
 /* ---------- wrapped ---------- */
@@ -431,14 +420,6 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 @media (max-width: 520px) { .w-card { padding: 26px 20px 22px; border-radius: 22px; } .w-grid .t b { font-size: 1.3rem; } }
 
 /* ---------- galaxy ---------- */
-.galaxy-callout { background-color: #16161a; color: var(--paper);
-  background-image: radial-gradient(circle at 90% 50%, rgba(255,210,30,.55) 0 4px, rgba(255,210,30,.14) 5px 18px, transparent 30px),
-    radial-gradient(circle at 84% 22%, #7d9dff 0 1.6px, transparent 2.4px), radial-gradient(circle at 96% 78%, #ff9d4a 0 1.8px, transparent 2.6px),
-    radial-gradient(circle at 82% 74%, #4ccb8a 0 1.4px, transparent 2.2px), radial-gradient(circle at 97% 20%, #c38dff 0 1.4px, transparent 2.2px),
-    radial-gradient(circle at 78% 46%, #fff 0 1px, transparent 1.8px); }
-.galaxy-callout .d { color: rgba(236,233,226,.82); }
-.callouts .galaxy-callout { padding-right: 64px; }
-.galaxy-callout .tag { background: var(--mark); color: var(--ink); }
 .g-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; flex: none; background: var(--mark);
   box-shadow: 0 0 0 2px var(--ink), 9px -5px 0 -4px #3b6ff5, -8px 6px 0 -4.5px #ff8a1f, 7px 8px 0 -5px #2f8f5b; }
 .galaxy-btn { margin-top: 20px; }
