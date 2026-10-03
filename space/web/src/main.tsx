@@ -3,16 +3,10 @@ import { useEffect, useState } from "preact/hooks";
 import { navigate, readRoute, SPACE_URL, type Route } from "./api";
 import { AuthorPage } from "./AuthorPage";
 import { Home } from "./Home";
+import { Logo } from "./Logo";
 import { ModelPage } from "./ModelPage";
 import { Search } from "./Search";
 import "./styles.css";
-
-const Logo = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
-    <rect width="32" height="32" rx="8" fill="var(--ink)" />
-    <path d="M5 17h5l3-8 5 15 3-7h6" fill="none" stroke="#FFD43B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
-  </svg>
-);
 
 function App() {
   const [route, setRoute] = useState<Route>(readRoute());

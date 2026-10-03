@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { api, fmt, fmtDate, fmtFull, fmtPct, navigate, smooth, taskLabel, ts, type Hub, type Leaderboards, type Row } from "./api";
+import { Logo } from "./Logo";
 import { Chart, Sparkline, type Line } from "./Chart";
 import { Search } from "./Search";
 
@@ -48,15 +49,21 @@ export function Home() {
   return (
     <>
       <div class="wrap home-hero">
-        <h1>Download history for every model on the Hub</h1>
+        <div class="sticker" aria-hidden="true">
+          <svg viewBox="0 0 100 100"><path fill="#E5484D" stroke="#1B1B1F" stroke-width="3" d="M50 3l7.6 11.5 13.2-4.3 1.8 13.7 13.7 1.8-4.3 13.2L97 50l-11.5 7.6 4.3 13.2-13.7 1.8-1.8 13.7-13.2-4.3L50 97l-7.6-11.5-13.2 4.3-1.8-13.7-13.7-1.8 4.3-13.2L3 50l11.5-7.6-4.3-13.2 13.7-1.8 1.8-13.7 13.2 4.3z" /></svg>
+          <span>{meta ? fmt(meta.models) : "1.6M"}<br />models</span>
+        </div>
+        <h1><Logo size={80} />Model <span class="hl">Pulse</span></h1>
         <p class="lede">
-          Daily downloads, likes and derivative families for {meta ? fmtFull(meta.models) : "a million"} models, going back to{" "}
-          {meta ? fmtDate(meta.first, { month: "long", year: "numeric" }) : "July 2024"}. Search for a model or paste its Hugging Face link.
+          The daily download history of every model on the Hugging Face Hub. Search a model or paste its link to see how it grew, how it compares, and how far its derivatives reach.
         </p>
+        <div class="meta">
+          {meta ? `${fmtFull(meta.models)} models · daily since ${fmtDate(meta.first, { month: "short", year: "numeric" })} · updated ${fmtDate(meta.last)}` : "\u00a0"}
+        </div>
         <Search big autoFocus placeholder="Qwen/Qwen3-8B or https://huggingface.co/…" onPick={(id) => navigate({ model: id })} />
         {examples.length > 0 && (
           <div class="examples">
-            <span class="muted">Popular this week:</span>
+            <span class="muted">popular this week</span>
             {examples.map((id) => (
               <a key={id} class="chip" href={`?model=${id}`} onClick={(e) => { e.preventDefault(); navigate({ model: id }); }}>{id}</a>
             ))}
@@ -65,8 +72,9 @@ export function Home() {
       </div>
 
       <div class="wrap hub-chart">
+       <div class="card">
         <h2>Daily downloads across the Hub</h2>
-        <p class="muted" style={{ margin: "0 0 12px" }}>All public models, by task, 7-day average. {meta && `Updated ${fmtDate(meta.last)}.`}</p>
+        <p class="muted" style={{ margin: "4px 0 14px" }}>All public models, by task, 7-day average.</p>
         {hubLines.length ? (
           <>
             <div class="legend" style={{ marginBottom: 10 }}>
@@ -75,10 +83,12 @@ export function Home() {
             <Chart lines={hubLines} stacked height={300} valueLabel={(v) => fmtFull(v)} />
           </>
         ) : <div class="skeleton" style={{ height: 300 }} />}
+       </div>
       </div>
 
-      <section class="section" style={{ marginTop: 28 }}>
+      <section class="section">
         <div class="wrap">
+         <div class="card">
           <div class="section-head">
             <div>
               <h2>{cur.label}</h2>
@@ -91,6 +101,7 @@ export function Home() {
             ))}
           </div>
           {lb ? <Board rows={rows} kind={board} author={!!cur.author} /> : <div class="skeleton" />}
+         </div>
         </div>
       </section>
     </>

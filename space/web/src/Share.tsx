@@ -95,17 +95,17 @@ export function Share({ model, url }: { model: Model; url: string }) {
             <h3>Badge for your model card</h3>
             <p>Updates daily. Paste it into the README of {model.id.split("/").pop()}.</p>
             <div class="seg badge-opts" role="group" aria-label="Badge metric">
-              <button aria-pressed={metric === "month"} onClick={() => setMetric("month")}>Monthly downloads</button>
+              <button aria-pressed={metric === "month"} onClick={() => setMetric("month")}>Monthly</button>
               <button aria-pressed={metric === "all"} onClick={() => setMetric("all")}>All time</button>
               <button aria-pressed={metric === "likes"} onClick={() => setMetric("likes")}>Likes</button>
             </div>
             <div class="badge-preview"><img src={badge.replace(BADGE_HOST, API_BASE)} alt="Model Pulse badge preview" height={22} /></div>
             <div class="code"><code>{md}</code><Copy text={md} label="Copy markdown" /></div>
           </div>
-          <div>
+          <div class="cta">
             <h3>Keep Model Pulse on model pages</h3>
             <p>Hugging Face lists the most-liked Spaces on each model page. A like keeps download history one click away for everyone.</p>
-            <a class="btn primary" href="https://huggingface.co/spaces/modelpulse/model-pulse" target="_top">
+            <a class="btn" href="https://huggingface.co/spaces/modelpulse/model-pulse" target="_top">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="#ff6b81" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3 1.8-1.9 3.3-3 5.4-3 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z" /></svg>
               Like on Hugging Face
             </a>

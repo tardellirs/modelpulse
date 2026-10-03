@@ -1,0 +1,440 @@
+{
+ "n": 946,
+ "median_days": 187.0,
+ "fastest": [
+  {
+   "id": "Comfy-Org/z_image_turbo",
+   "author": "Comfy-Org",
+   "pipeline_tag": null,
+   "base_relation": "finetune",
+   "created": "2025-11-26",
+   "day1m": "2025-12-01",
+   "days": 5
+  },
+  {
+   "id": "fiifinketia/akan-g2p",
+   "author": "fiifinketia",
+   "pipeline_tag": null,
+   "base_relation": null,
+   "created": "2025-03-13",
+   "day1m": "2025-03-18",
+   "days": 5
+  },
+  {
+   "id": "openai/gpt-oss-20b",
+   "author": "openai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2025-08-04",
+   "day1m": "2025-08-09",
+   "days": 5
+  },
+  {
+   "id": "farbodtavakkoli/OTel-2.0-LLM-31B-IT",
+   "author": "farbodtavakkoli",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-07-23",
+   "day1m": "2026-07-28",
+   "days": 5
+  },
+  {
+   "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+   "author": "ornith-ai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-08-19",
+   "day1m": "2026-08-25",
+   "days": 6
+  },
+  {
+   "id": "ornith-ai/Ornith-1.5-35B-A3B-GGUF",
+   "author": "ornith-ai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-08-18",
+   "day1m": "2026-08-25",
+   "days": 7
+  },
+  {
+   "id": "JonathanColetti/Qwen3.8-27B-Uncensored-GGUF",
+   "author": "JonathanColetti",
+   "pipeline_tag": "text-generation",
+   "base_relation": "quantized",
+   "created": "2026-08-14",
+   "day1m": "2026-08-21",
+   "days": 7
+  },
+  {
+   "id": "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
+   "author": "huihui-ai",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-16",
+   "day1m": "2026-08-24",
+   "days": 8
+  },
+  {
+   "id": "lmstudio-community/Qwen3.8-27B-MLX-4bit",
+   "author": "lmstudio-community",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-14",
+   "day1m": "2026-08-22",
+   "days": 8
+  },
+  {
+   "id": "unsloth/Qwen3.8-27B-NVFP4",
+   "author": "unsloth",
+   "pipeline_tag": null,
+   "base_relation": "quantized",
+   "created": "2026-08-13",
+   "day1m": "2026-08-21",
+   "days": 8
+  },
+  {
+   "id": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+   "author": "Comfy-Org",
+   "pipeline_tag": "image-to-video",
+   "base_relation": "finetune",
+   "created": "2025-07-27",
+   "day1m": "2025-08-05",
+   "days": 9
+  },
+  {
+   "id": "lmstudio-community/Qwen3.8-27B-MLX-8bit",
+   "author": "lmstudio-community",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-14",
+   "day1m": "2026-08-23",
+   "days": 9
+  },
+  {
+   "id": "lmstudio-community/Qwen3.8-27B-MLX-6bit",
+   "author": "lmstudio-community",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-14",
+   "day1m": "2026-08-23",
+   "days": 9
+  },
+  {
+   "id": "lmstudio-community/Qwen3.8-27B-MLX-5bit",
+   "author": "lmstudio-community",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-14",
+   "day1m": "2026-08-23",
+   "days": 9
+  },
+  {
+   "id": "Qwen/Qwen3.6-35B-A3B",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": null,
+   "created": "2026-04-15",
+   "day1m": "2026-04-25",
+   "days": 10
+  },
+  {
+   "id": "Qwen/Qwen3.5-35B-A3B",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "finetune",
+   "created": "2026-02-24",
+   "day1m": "2026-03-06",
+   "days": 10
+  },
+  {
+   "id": "lmstudio-community/gpt-oss-20b-MLX-8bit",
+   "author": "lmstudio-community",
+   "pipeline_tag": "text-generation",
+   "base_relation": "quantized",
+   "created": "2025-08-05",
+   "day1m": "2025-08-15",
+   "days": 10
+  },
+  {
+   "id": "Qwen/Qwen3.5-9B",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "finetune",
+   "created": "2026-02-27",
+   "day1m": "2026-03-09",
+   "days": 10
+  },
+  {
+   "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+   "author": "deepseek-ai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-07-31",
+   "day1m": "2026-08-11",
+   "days": 11
+  },
+  {
+   "id": "RadixArk/Kimi-K3-DSpark",
+   "author": "RadixArk",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-07-27",
+   "day1m": "2026-08-07",
+   "days": 11
+  },
+  {
+   "id": "unsloth/Qwen3.5-35B-A3B-GGUF",
+   "author": "unsloth",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-02-24",
+   "day1m": "2026-03-07",
+   "days": 11
+  },
+  {
+   "id": "Lightricks/LTX-2",
+   "author": "Lightricks",
+   "pipeline_tag": "image-to-video",
+   "base_relation": null,
+   "created": "2026-01-03",
+   "day1m": "2026-01-14",
+   "days": 11
+  },
+  {
+   "id": "empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF",
+   "author": "empero-ai",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-06-19",
+   "day1m": "2026-07-01",
+   "days": 12
+  },
+  {
+   "id": "mlx-community/Kimi-K2.5",
+   "author": "mlx-community",
+   "pipeline_tag": "text-generation",
+   "base_relation": "quantized",
+   "created": "2026-01-27",
+   "day1m": "2026-02-08",
+   "days": 12
+  },
+  {
+   "id": "HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF",
+   "author": "HauhauCS",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-17",
+   "day1m": "2026-08-29",
+   "days": 12
+  },
+  {
+   "id": "amazon/chronos-2",
+   "author": "amazon",
+   "pipeline_tag": "time-series-forecasting",
+   "base_relation": null,
+   "created": "2025-10-30",
+   "day1m": "2025-11-11",
+   "days": 12
+  },
+  {
+   "id": "RadixArk/Qwen3.8-27B-NVFP4",
+   "author": "RadixArk",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-08-14",
+   "day1m": "2026-08-27",
+   "days": 13
+  },
+  {
+   "id": "Qwen/Qwen3.5-397B-A17B",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": null,
+   "created": "2026-02-16",
+   "day1m": "2026-03-01",
+   "days": 13
+  },
+  {
+   "id": "Qwen/Qwen3.5-35B-A3B-FP8",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": "quantized",
+   "created": "2026-02-25",
+   "day1m": "2026-03-11",
+   "days": 14
+  },
+  {
+   "id": "farbodtavakkoli/OTel-LLM-E4B-IT",
+   "author": "farbodtavakkoli",
+   "pipeline_tag": "text-generation",
+   "base_relation": "finetune",
+   "created": "2026-06-17",
+   "day1m": "2026-07-01",
+   "days": 14
+  }
+ ],
+ "by_relation": [
+  {
+   "base_relation": "quantized",
+   "n": 297,
+   "med": 100.0
+  },
+  {
+   "base_relation": "adapter",
+   "n": 14,
+   "med": 114.5
+  },
+  {
+   "base_relation": null,
+   "n": 512,
+   "med": 330.5
+  },
+  {
+   "base_relation": "finetune",
+   "n": 117,
+   "med": 127.0
+  },
+  {
+   "base_relation": "merge",
+   "n": 6,
+   "med": 191.0
+  }
+ ],
+ "originals_fastest": [
+  {
+   "id": "fiifinketia/akan-g2p",
+   "author": "fiifinketia",
+   "pipeline_tag": null,
+   "base_relation": null,
+   "created": "2025-03-13",
+   "day1m": "2025-03-18",
+   "days": 5
+  },
+  {
+   "id": "openai/gpt-oss-20b",
+   "author": "openai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2025-08-04",
+   "day1m": "2025-08-09",
+   "days": 5
+  },
+  {
+   "id": "farbodtavakkoli/OTel-2.0-LLM-31B-IT",
+   "author": "farbodtavakkoli",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-07-23",
+   "day1m": "2026-07-28",
+   "days": 5
+  },
+  {
+   "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+   "author": "ornith-ai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-08-19",
+   "day1m": "2026-08-25",
+   "days": 6
+  },
+  {
+   "id": "ornith-ai/Ornith-1.5-35B-A3B-GGUF",
+   "author": "ornith-ai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-08-18",
+   "day1m": "2026-08-25",
+   "days": 7
+  },
+  {
+   "id": "Qwen/Qwen3.6-35B-A3B",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": null,
+   "created": "2026-04-15",
+   "day1m": "2026-04-25",
+   "days": 10
+  },
+  {
+   "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+   "author": "deepseek-ai",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-07-31",
+   "day1m": "2026-08-11",
+   "days": 11
+  },
+  {
+   "id": "RadixArk/Kimi-K3-DSpark",
+   "author": "RadixArk",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-07-27",
+   "day1m": "2026-08-07",
+   "days": 11
+  },
+  {
+   "id": "Lightricks/LTX-2",
+   "author": "Lightricks",
+   "pipeline_tag": "image-to-video",
+   "base_relation": null,
+   "created": "2026-01-03",
+   "day1m": "2026-01-14",
+   "days": 11
+  },
+  {
+   "id": "amazon/chronos-2",
+   "author": "amazon",
+   "pipeline_tag": "time-series-forecasting",
+   "base_relation": null,
+   "created": "2025-10-30",
+   "day1m": "2025-11-11",
+   "days": 12
+  },
+  {
+   "id": "Qwen/Qwen3.5-397B-A17B",
+   "author": "Qwen",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": null,
+   "created": "2026-02-16",
+   "day1m": "2026-03-01",
+   "days": 13
+  },
+  {
+   "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+   "author": "Qwen",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2025-09-09",
+   "day1m": "2025-09-23",
+   "days": 14
+  },
+  {
+   "id": "google/diffusiongemma-26B-A4B-it",
+   "author": "google",
+   "pipeline_tag": "image-text-to-text",
+   "base_relation": null,
+   "created": "2026-06-09",
+   "day1m": "2026-06-24",
+   "days": 15
+  },
+  {
+   "id": "ProteinSequenceAnnotation/esm2_t33_650M_UR50_190K_steps",
+   "author": "ProteinSequenceAnnotation",
+   "pipeline_tag": null,
+   "base_relation": null,
+   "created": "2026-02-26",
+   "day1m": "2026-03-13",
+   "days": 15
+  },
+  {
+   "id": "zai-org/GLM-4.7-Flash",
+   "author": "zai-org",
+   "pipeline_tag": "text-generation",
+   "base_relation": null,
+   "created": "2026-01-19",
+   "day1m": "2026-02-03",
+   "days": 15
+  }
+ ]
+}

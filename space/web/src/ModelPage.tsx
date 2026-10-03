@@ -130,10 +130,10 @@ export function ModelPage({ route }: { route: Route }) {
           {org && (
             <a href={`?author=${org}`} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>
           )}
-          {name}
+          <span class="hl">{name}</span>
         </h1>
 
-        <div class="figures">
+        <div class="card stats" style={{ padding: 0 }}>
           <div class="fig fig-main">
             <div class="num" title={fmtFull(big)}>{fmtFull(big)}</div>
             <div class="label">
@@ -158,6 +158,7 @@ export function ModelPage({ route }: { route: Route }) {
           </div>
         </div>
 
+        <div class="card chart-card">
         <div class="chart-bar">
           <div class="left">
             <div class="seg" role="group" aria-label="Metric">
@@ -210,6 +211,7 @@ export function ModelPage({ route }: { route: Route }) {
           {effMetric !== "likes" && `Daily figures start on ${fmtDate("2025-02-27")}, when the Hub began reporting all-time totals; the rolling 30-day view goes back to ${fmtDate("2024-07-29")}. `}
           The Hub sometimes books delayed downloads in a single day, which shows up as a short spike. Drag on the chart to zoom, double-click to reset.
         </p>
+        </div>
       </div>
 
       {ms.length > 0 && effMetric !== "likes" && (
@@ -253,7 +255,7 @@ function Family({ data }: { data: ModelResponse }) {
   return (
     <section class="section">
       <div class="wrap">
-        <div class="family-top">
+        <div class="card family-top">
           <div class="family-sum">
             <h2>Family</h2>
             <p>

@@ -44,12 +44,13 @@ export function AuthorPage({ route }: { route: Route }) {
           <a class="chip" href={`https://huggingface.co/${a}`} target="_blank" rel="noopener">Open on Hugging Face ↗</a>
         </div>
         <h1 class="model-name">{a}</h1>
-        <div class="figures">
+        <div class="card stats" style={{ padding: 0 }}>
           <div class="fig fig-main"><div class="num">{fmtFull(tot.all)}</div><div class="label">downloads all time, across all models</div></div>
           <div class="fig"><div class="val">{fmt(tot.m30)}</div><div class="label">last 30 days</div></div>
           <div class="fig"><div class="val">{fmt(tot.w)}</div><div class="label">last 7 days</div></div>
           <div class="fig"><div class="val">{fmt(tot.likes)}</div><div class="label">likes</div></div>
         </div>
+        <div class="card chart-card">
         <div class="chart-bar">
           <div class="left">
             <div class="seg" role="group" aria-label="Metric">
@@ -60,9 +61,11 @@ export function AuthorPage({ route }: { route: Route }) {
           </div>
         </div>
         <Chart lines={lines} height={340} />
+        </div>
       </div>
       <section class="section">
         <div class="wrap">
+          <div class="card">
           <div class="section-head"><div><h2>Models by {a}</h2><p>Sorted by downloads in the last 30 days.</p></div></div>
           <div class="table-scroll">
             <table class="list">
@@ -85,6 +88,7 @@ export function AuthorPage({ route }: { route: Route }) {
             </table>
           </div>
           {d.models.length > n && <button class="btn" style={{ marginTop: 16 }} onClick={() => setN(n + 30)}>Show 30 more</button>}
+          </div>
         </div>
       </section>
     </>

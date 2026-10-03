@@ -36,7 +36,8 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
     const el = box.current!;
     if (!lines.length) return;
     const muted = css("--muted"), rule = css("--rule-2"), ink = css("--ink"), mark = css("--mark");
-    const font = `12px ${css("--font")}`;
+    const font = `12px ${css("--font-mono")}`;
+    const axisInk = css("--ink-2");
 
     let data: uPlot.AlignedData;
     if (lines.length === 1) data = [lines[0].t, lines[0].v] as uPlot.AlignedData;
@@ -60,7 +61,8 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
       scales: { x: { time: true }, y: { distr: log ? 3 : 1, range: (u, mn, mx) => [log ? Math.max(1, mn) : 0, mx * 1.08 || 1] } },
       axes: [
         {
-          stroke: muted, font, grid: { show: false }, ticks: { show: true, stroke: rule, size: 4 }, gap: 6,
+          stroke: axisInk, font, grid: { show: false }, ticks: { show: true, stroke: ink, width: 2, size: 5 }, gap: 6,
+          border: { show: true, stroke: ink, width: 2 },
           values: [
             [86400 * 365, "{YYYY}", null, null, null, null, null, null, 1],
             [86400 * 28, "{MMM}", "\n{YYYY}", null, null, null, null, null, 1],
@@ -68,7 +70,7 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
           ] as any,
         },
         {
-          stroke: muted, font, size: 56, gap: 8,
+          stroke: axisInk, font, size: 60, gap: 8,
           grid: { stroke: rule, width: 1 }, ticks: { show: false },
           values: (_u, vals) => vals.map((v) => (v == null ? "" : fmt(v))),
         },
@@ -78,12 +80,13 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
         ...lines.map((l, i) => ({
           label: l.label,
           stroke: l.color,
-          width: l.width ?? (lines.length === 1 ? 2.25 : 2),
+          width: l.width ?? (lines.length === 1 ? 3 : 2.5),
           dash: l.dash ? [5, 4] : undefined,
+          ...(stacked ? { stroke: ink, width: 1 } : {}),
           spanGaps: true,
           points: { show: false },
           fill: stacked
-            ? alpha(l.color, 0.85)
+            ? alpha(l.color, 0.92)
             : l.fill
               ? (u: uPlot) => {
                   const g = u.ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height);
@@ -105,22 +108,26 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
             for (const m of markers) {
               const x = Math.round(u.valToPos(m.t, "x", true));
               if (x < u.bbox.left || x > u.bbox.left + u.bbox.width) continue;
-              ctx.strokeStyle = mark;
-              ctx.lineWidth = 2 * devicePixelRatio;
-              ctx.setLineDash([3 * devicePixelRatio, 3 * devicePixelRatio]);
+              ctx.strokeStyle = ink;
+              ctx.globalAlpha = 0.55;
+              ctx.lineWidth = 1.5 * devicePixelRatio;
+              ctx.setLineDash([4 * devicePixelRatio, 4 * devicePixelRatio]);
               ctx.beginPath();
               ctx.moveTo(x, u.bbox.top);
               ctx.lineTo(x, u.bbox.top + u.bbox.height);
               ctx.stroke();
               ctx.setLineDash([]);
-              ctx.font = `600 ${11 * devicePixelRatio}px ${css("--font")}`;
+              ctx.globalAlpha = 1;
+              ctx.font = `600 ${11 * devicePixelRatio}px ${css("--font-mono")}`;
               const w = ctx.measureText(m.label).width + 10 * devicePixelRatio;
               const h = 18 * devicePixelRatio;
               ctx.fillStyle = mark;
               ctx.beginPath();
-              ctx.roundRect(x - w / 2, u.bbox.top - h + 4 * devicePixelRatio, w, h, 4 * devicePixelRatio);
+              ctx.roundRect(x - w / 2, u.bbox.top - h + 4 * devicePixelRatio, w, h, 6 * devicePixelRatio);
               ctx.fill();
-              ctx.fillStyle = "#151833";
+              ctx.lineWidth = 2 * devicePixelRatio;
+              ctx.stroke();
+              ctx.fillStyle = ink;
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillText(m.label, x, u.bbox.top - h / 2 + 4 * devicePixelRatio);
