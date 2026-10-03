@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { api, fmt, fmtDate, fmtFull, fmtPct, navigate, smooth, taskLabel, ts, type Hub, type Leaderboards, type Row } from "./api";
 import { Logo } from "./Logo";
-import { LivePulse } from "./LivePulse";
 import { Chart, Sparkline, type Line } from "./Chart";
 import { Search } from "./Search";
 
@@ -71,8 +70,6 @@ export function Home() {
           </div>
         )}
       </div>
-
-      <LivePulse hub={hub} />
 
       <div class="wrap callouts">
         <a class="card report-callout wrapped-callout" href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>
