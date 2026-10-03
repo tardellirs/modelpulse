@@ -256,6 +256,8 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 .hub-chart h2 { margin-bottom: 4px; }
 .lb-tabs { margin-bottom: 18px; }
 .foot { padding-block: 40px 60px; color: var(--muted); font: 400 12.5px/1.6 var(--font-mono); }
+.foot .maker { color: var(--ink); }
+.foot .maker a { font-weight: 600; }
 .foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; border-top: 2px solid var(--ink); padding-top: 24px; }
 
 .skeleton { height: 360px; border-radius: 12px; background: linear-gradient(90deg, var(--rule-2), var(--surface), var(--rule-2)); background-size: 200% 100%; animation: sk 1.4s linear infinite; }

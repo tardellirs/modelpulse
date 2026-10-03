@@ -49,6 +49,11 @@ function App() {
             refreshed every day. An independent project, not affiliated with Hugging Face.
           </span>
           <span>Download counts follow the <a href="https://huggingface.co/docs/hub/models-download-stats" target="_blank" rel="noopener">Hub's own counting rules</a>.</span>
+          <span class="maker">
+            Made by <a href="https://huggingface.co/tardellirs" target="_blank" rel="noopener">Tardelli Stekel</a>
+            {" "}(<a href="https://huggingface.co/tardellirs" target="_blank" rel="noopener">@tardellirs</a> on Hugging Face,{" "}
+            <a href="https://stekel.ifsp.dev/" target="_blank" rel="noopener">stekel.ifsp.dev</a>)
+          </span>
         </div>
       </footer>
     </>

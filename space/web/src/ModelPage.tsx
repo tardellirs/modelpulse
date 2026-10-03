@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import {
-  api, daily, fmt, fmtDate, fmtFull, fmtParams, fmtPct, milestones, navigate, ord, plain, shareUrl, smooth, taskLabel, ts,
+  api, daily, weekly, WEEK, fmt, fmtDate, fmtFull, fmtParams, fmtPct, milestones, navigate, ord, plain, shareUrl, smooth, taskLabel, ts,
   type ModelResponse, type Route,
 } from "./api";
 import { Chart, type Line, type Marker } from "./Chart";
 import { Search } from "./Search";
 import { Share } from "./Share";
 
-type Metric = "daily" | "month" | "total" | "likes";
+type Metric = "weekly" | "daily" | "month" | "total" | "likes";
 type RangeKey = "1M" | "3M" | "6M" | "1Y" | "All";
 const RANGES: Record<RangeKey, number | null> = { "1M": 30, "3M": 91, "6M": 182, "1Y": 365, All: null };
 const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5"];
@@ -15,6 +15,10 @@ const color = (i: number) => getComputedStyle(document.documentElement).getPrope
 
 function lineFor(d: ModelResponse, metric: Metric, family: boolean) {
   const s = family && d.family ? d.family : d.series;
+  if (metric === "weekly") {
+    const { t, v } = daily(s.day, s.dl_all);
+    return weekly(t, v);
+  }
   if (metric === "daily") {
     const { t, v } = daily(s.day, s.dl_all);
     return { t, v: smooth(v, 7), raw: v };
@@ -30,9 +34,10 @@ export function ModelPage({ route }: { route: Route }) {
   const [data, setData] = useState<ModelResponse | null>(null);
   const [others, setOthers] = useState<ModelResponse[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [metric, setMetric] = useState<Metric>("daily");
+  const [metric, setMetricRaw] = useState<Metric>("weekly");
   const [rangeKey, setRangeKey] = useState<RangeKey>("1Y");
   const [zoom, setZoom] = useState<[number, number] | null>(null);
+  const setMetric = (m: Metric) => { setZoom(null); setMetricRaw(m); };
   const [family, setFamily] = useState(false);
   const [log, setLog] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -52,11 +57,11 @@ export function ModelPage({ route }: { route: Route }) {
 
   const m = data?.model;
   const hasDaily = !!data && data.series.dl_all.filter((x) => x != null).length > 7;
-  const effMetric: Metric = metric === "daily" && !hasDaily ? "month" : metric;
+  const effMetric: Metric = (metric === "daily" || metric === "weekly") && !hasDaily ? "month" : metric;
 
   const lines: Line[] = useMemo(() => {
     if (!data) return [];
-    const main = lineFor(data, effMetric, family);
+    const main = lineFor(data, effMetric, family) as { t: number[]; v: (number | null)[]; partial?: boolean };
     const out: Line[] = [];
     out.push({ label: family ? `${data.model.id} + derivatives` : data.model.id, color: color(0), t: main.t, v: main.v, fill: !others.length });
     others.forEach((o, i) => {
@@ -66,6 +71,7 @@ export function ModelPage({ route }: { route: Route }) {
     return out;
   }, [data, others, effMetric, family]);
 
+  const mainPartial = useMemo(() => (data && effMetric === "weekly" ? (lineFor(data, "weekly", family) as { partial?: boolean }).partial : false), [data, effMetric, family]);
   const ms = useMemo(() => (data ? milestones(family && data.family ? { ...data.series, ...data.family, likes: [] } : data.series) : []), [data, family]);
   const markers: Marker[] = useMemo(
     () => (effMetric === "likes" || others.length ? [] : ms.filter((x) => x.day).map((x) => ({ t: ts(x.day!), label: x.label }))),
@@ -162,6 +168,7 @@ export function ModelPage({ route }: { route: Route }) {
         <div class="chart-bar">
           <div class="left">
             <div class="seg" role="group" aria-label="Metric">
+              {hasDaily && <button aria-pressed={effMetric === "weekly"} onClick={() => setMetric("weekly")}>Weekly</button>}
               {hasDaily && <button aria-pressed={effMetric === "daily"} onClick={() => setMetric("daily")}>Daily</button>}
               <button aria-pressed={effMetric === "month"} onClick={() => setMetric("month")}>Rolling 30 days</button>
               {hasDaily && <button aria-pressed={effMetric === "total"} onClick={() => setMetric("total")}>All time</button>}
@@ -205,9 +212,12 @@ export function ModelPage({ route }: { route: Route }) {
         )}
 
         <Chart lines={lines} range={range} log={log} markers={markers} onZoom={(r) => setZoom(r)} height={380}
-          valueLabel={effMetric === "daily" ? (v) => fmtFull(v) + "/day" : undefined} />
+          bars={effMetric === "weekly"} partialLast={effMetric === "weekly" && !!mainPartial} endLabel={effMetric !== "weekly"}
+          tipDate={effMetric === "weekly" ? (t) => `Week of ${fmtDate(new Date((t - WEEK / 2) * 1000), { month: "short", day: "numeric", year: "numeric" })}` : undefined}
+          valueLabel={effMetric === "daily" ? (v) => fmtFull(v) + "/day" : effMetric === "weekly" ? (v) => fmtFull(v) + "/week" : undefined} />
         <p class="chart-note">
           {effMetric === "daily" && "7-day average of daily downloads. "}
+          {effMetric === "weekly" && (others.length ? "Downloads per week, Monday to Sunday. " : "Downloads per week, Monday to Sunday; the striped bar is the week in progress. ")}
           {effMetric !== "likes" && `Daily figures start on ${fmtDate("2025-02-27")}, when the Hub began reporting all-time totals; the rolling 30-day view goes back to ${fmtDate("2024-07-29")}. `}
           The Hub sometimes books delayed downloads in a single day, which shows up as a short spike. Drag on the chart to zoom, double-click to reset.
         </p>

@@ -210,3 +210,18 @@ export function parseModelInput(s: string): string | null {
   if (/^[\w.-]+\/[\w.-]+$/.test(s)) return s;
   return null;
 }
+
+export const WEEK = 7 * 86400;
+/** Sum daily downloads into Monday-to-Sunday weeks; t is the middle of each week. */
+export function weekly(t: number[], v: number[]) {
+  const out = new Map<number, number>();
+  for (let i = 0; i < t.length; i++) {
+    const d = new Date(t[i] * 1000);
+    const monday = t[i] - ((d.getUTCDay() + 6) % 7) * 86400;
+    out.set(monday, (out.get(monday) ?? 0) + v[i]);
+  }
+  const weeks = [...out.keys()].sort((a, b) => a - b);
+  const lastDay = t[t.length - 1];
+  return { t: weeks.map((w) => w + WEEK / 2), v: weeks.map((w) => out.get(w)!), partial: lastDay - weeks[weeks.length - 1] < 6 * 86400 };
+}
+

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { api, daily, fmt, fmtFull, fmtParams, fmtPct, navigate, plain, smooth, taskLabel, type AuthorResponse, type Route } from "./api";
+import { api, daily, fmt, fmtDate, fmtFull, fmtParams, fmtPct, navigate, plain, smooth, taskLabel, weekly, WEEK, type AuthorResponse, type Route } from "./api";
 import { Chart, type Line } from "./Chart";
 
-type Metric = "daily" | "month" | "total";
+type Metric = "weekly" | "daily" | "month" | "total";
 
 export function AuthorPage({ route }: { route: Route }) {
   const a = route.author!;
   const [d, setD] = useState<AuthorResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [metric, setMetric] = useState<Metric>("daily");
+  const [metric, setMetric] = useState<Metric>("weekly");
   const [n, setN] = useState(30);
 
   useEffect(() => {
@@ -20,6 +20,10 @@ export function AuthorPage({ route }: { route: Route }) {
     if (!d) return [];
     const c = getComputedStyle(document.documentElement).getPropertyValue("--c1").trim();
     const s = d.series;
+    if (metric === "weekly") {
+      const x = daily(s.day, s.dl_all), w = weekly(x.t, x.v);
+      return [{ label: a, color: c, t: w.t, v: w.v }];
+    }
     if (metric === "daily") {
       const x = daily(s.day, s.dl_all);
       return [{ label: a, color: c, t: x.t, v: smooth(x.v, 7), fill: true }];
@@ -54,13 +58,15 @@ export function AuthorPage({ route }: { route: Route }) {
         <div class="chart-bar">
           <div class="left">
             <div class="seg" role="group" aria-label="Metric">
+              <button aria-pressed={metric === "weekly"} onClick={() => setMetric("weekly")}>Weekly</button>
               <button aria-pressed={metric === "daily"} onClick={() => setMetric("daily")}>Daily</button>
               <button aria-pressed={metric === "month"} onClick={() => setMetric("month")}>Rolling 30 days</button>
               <button aria-pressed={metric === "total"} onClick={() => setMetric("total")}>All time</button>
             </div>
           </div>
         </div>
-        <Chart lines={lines} height={340} />
+        <Chart lines={lines} height={340} bars={metric === "weekly"} endLabel={metric !== "weekly"}
+          tipDate={metric === "weekly" ? (t) => `Week of ${fmtDate(new Date((t - WEEK / 2) * 1000), { month: "short", day: "numeric", year: "numeric" })}` : undefined} />
         </div>
       </div>
       <section class="section">
