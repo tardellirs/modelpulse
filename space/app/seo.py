@@ -85,7 +85,8 @@ class Pages:
             # start downloading the heading and body fonts with the HTML, so text appears in its final face
             assets = os.path.join(self.static_dir, "assets")
             names = os.listdir(assets) if os.path.isdir(assets) else []
-            for prefix in ("fredoka-latin-600-normal-", "source-sans-3-latin-400-normal-"):
+            for prefix in ("fredoka-latin-600-normal-", "source-sans-3-latin-400-normal-", "source-sans-3-latin-600-normal-",
+                           "ibm-plex-mono-latin-500-normal-", "ibm-plex-mono-latin-600-normal-"):
                 f = next((n for n in names if n.startswith(prefix) and n.endswith(".woff2")), None)
                 if f:
                     t = t.replace("</head>", f'    <link rel="preload" href="/assets/{f}" as="font" type="font/woff2" crossorigin />\n  </head>', 1)
@@ -314,6 +315,7 @@ class Pages:
             import markdown
             md = open(self.report_path).read()
             h = markdown.markdown(md, extensions=["tables"])
+            h = h.replace("<img ", '<img loading="lazy" width="1200" height="675" ')
             h = h.replace("https://huggingface.co/spaces/tardellirs/model-pulse?model=", "/model/")
             first = re.sub(r"<[^>]+>", "", re.search(r"<p>(.*?)</p>", h, re.S).group(1)).strip()
             title = re.search(r"<h1>(.*?)</h1>", h, re.S)

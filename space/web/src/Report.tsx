@@ -12,7 +12,8 @@ export function Report() {
     // byline under the title, wide tables scroll on their own
     h = h.replace("</h1>", `</h1><p class="byline">${PUBLISHED} · ${Math.round(words / 230)} min read · by <a href="https://huggingface.co/tardellirs">Tardelli Stekel</a></p>`);
     h = h.replace(/<table>/g, '<div class="table-scroll"><table class="list">').replace(/<\/table>/g, "</table></div>");
-    h = h.replace(/<img /g, '<img loading="lazy" ');
+    // every chart is 1200x675; stating it lets the browser keep the space while the image loads
+    h = h.replace(/<img /g, '<img loading="lazy" decoding="async" width="1200" height="675" ');
     return h;
   }, []);
 

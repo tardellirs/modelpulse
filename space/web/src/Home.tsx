@@ -61,14 +61,13 @@ export function Home() {
           {meta ? `${fmtFull(meta.models)} models · daily since ${fmtDate(meta.first, { month: "short", year: "numeric" })} · updated ${fmtDate(meta.last)}` : "\u00a0"}
         </div>
         <Search big autoFocus placeholder="Qwen/Qwen3-8B or https://huggingface.co/…" onPick={(id) => navigate({ model: id })} />
-        {examples.length > 0 && (
-          <div class="examples">
-            <span class="muted">popular this week</span>
-            {examples.map((id) => (
-              <a key={id} class="chip" href={hrefOf({ model: id })} onClick={(e) => { e.preventDefault(); navigate({ model: id }); }}>{id}</a>
-            ))}
-          </div>
-        )}
+        {/* always rendered, so the chips arriving later don't push the chart down */}
+        <div class="examples">
+          {examples.length > 0 && <span class="muted">popular this week</span>}
+          {examples.map((id) => (
+            <a key={id} class="chip" href={hrefOf({ model: id })} onClick={(e) => { e.preventDefault(); navigate({ model: id }); }}>{id}</a>
+          ))}
+        </div>
       </div>
 
       <div class="wrap hub-chart">
@@ -97,7 +96,7 @@ export function Home() {
           </div>
           <div class="seg lb-tabs" role="tablist">
             {BOARDS.map((b) => (
-              <button key={b.key} role="tab" aria-pressed={board === b.key} aria-selected={board === b.key} onClick={() => setBoard(b.key)}>{b.label}</button>
+              <button key={b.key} role="tab" aria-selected={board === b.key} onClick={() => setBoard(b.key)}>{b.label}</button>
             ))}
           </div>
           {lb ? <Board rows={rows} kind={board} author={!!cur.author} /> : <div class="skeleton" />}

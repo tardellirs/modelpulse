@@ -33,7 +33,8 @@ export function AuthorPage({ route }: { route: Route }) {
   }, [d, metric]);
 
   if (err) return <div class="wrap err"><h1>No models found for {a}</h1><p class="muted">{err}</p></div>;
-  if (!d) return <div class="wrap hero"><div class="model-name">{a}</div><div class="skeleton" style={{ marginTop: 40 }} /></div>;
+  // same shape as the loaded page (a row of chips above the name) so nothing jumps when data arrives
+  if (!d) return <div class="wrap hero"><div class="crumbs" style={{ visibility: "hidden" }}><span class="chip">loading</span></div><h1 class="model-name">{a}</h1><div class="skeleton" style={{ marginTop: 24 }} /></div>;
 
   const tot = d.models.reduce(
     (acc, m) => ({ all: acc.all + (m.dl_all ?? 0), m30: acc.m30 + (m.dl30 ?? 0), w: acc.w + (m.dl_7d ?? 0), likes: acc.likes + (m.likes ?? 0) }),

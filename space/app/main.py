@@ -18,6 +18,7 @@ from .wrapped import Wrapped
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 mimetypes.add_type("font/woff2", ".woff2")
 mimetypes.add_type("font/woff", ".woff")
+mimetypes.add_type("image/webp", ".webp")
 SITEMAP_MODELS = 100_000
 
 app = FastAPI(title="Model Pulse", docs_url=None, redoc_url=None)
@@ -355,7 +356,7 @@ if os.path.isdir(STATIC):
 def spa(path: str, request: Request):
     f = os.path.join(STATIC, path)
     if path and os.path.isfile(f) and os.path.abspath(f).startswith(os.path.abspath(STATIC)):
-        return FileResponse(f)
+        return FileResponse(f, headers={"Cache-Control": "public, max-age=604800"})
     if path.startswith(("api/", "badge/", "og/", "sitemaps/", "assets/")):
         raise HTTPException(404, "Not found")
     p = pages.page(store, path, request.query_params)

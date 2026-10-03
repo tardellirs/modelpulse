@@ -9,21 +9,13 @@ import { ModelPage } from "./ModelPage";
 import { Search } from "./Search";
 // fonts are served with the site rather than from Google Fonts: one less origin to connect to before text renders
 import "@fontsource/fredoka/latin-500.css";
-import "@fontsource/fredoka/latin-ext-500.css";
 import "@fontsource/fredoka/latin-600.css";
-import "@fontsource/fredoka/latin-ext-600.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
-import "@fontsource/ibm-plex-mono/latin-ext-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
-import "@fontsource/ibm-plex-mono/latin-ext-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
-import "@fontsource/ibm-plex-mono/latin-ext-600.css";
 import "@fontsource/source-sans-3/latin-400.css";
-import "@fontsource/source-sans-3/latin-ext-400.css";
 import "@fontsource/source-sans-3/latin-600.css";
-import "@fontsource/source-sans-3/latin-ext-600.css";
 import "@fontsource/source-sans-3/latin-700.css";
-import "@fontsource/source-sans-3/latin-ext-700.css";
 import "./styles.css";
 
 /** Load a page's code the first time it is shown, so model pages ship less JavaScript. */
@@ -64,7 +56,7 @@ function App() {
     <>
       <header class="top">
         <div class="wrap">
-          <a class="brand" href={hrefOf({})} onClick={(e) => { e.preventDefault(); navigate({}); }}>
+          <a class="brand" aria-label="Model Pulse home" href={hrefOf({})} onClick={(e) => { e.preventDefault(); navigate({}); }}>
             <Logo /><span>Model Pulse</span>
           </a>
           {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
@@ -90,6 +82,7 @@ function App() {
             Made by <a href="https://huggingface.co/tardellirs" target="_blank" rel="noopener">Tardelli Stekel</a>
             {" "}(<a href="https://huggingface.co/tardellirs" target="_blank" rel="noopener">@tardellirs</a> on Hugging Face,{" "}
             <a href="https://stekel.ifsp.dev/" target="_blank" rel="noopener">stekel.ifsp.dev</a>)
+            {" · "}<a href="https://github.com/tardellirs/modelpulse" target="_blank" rel="noopener">Source on GitHub</a>
           </span>
         </div>
       </footer>
