@@ -7,5 +7,5 @@ cd "$(dirname "$0")"
 space/.venv/bin/python - <<'PY'
 from huggingface_hub import HfApi
 print(HfApi().upload_folder(repo_id="modelpulse/model-pulse", repo_type="space", folder_path="site",
-      allow_patterns=["index.html", "assets/*"], delete_patterns=["assets/*"], commit_message="Update site"))
+      allow_patterns=["index.html", "assets/*", "report/*"], delete_patterns=["assets/*", "report/*"], commit_message="Update site"))
 PY

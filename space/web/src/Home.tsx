@@ -71,6 +71,15 @@ export function Home() {
         )}
       </div>
 
+      <div class="wrap">
+        <a class="card report-callout" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>
+          <span class="tag">New report</span>
+          <span class="t">What 19 months of daily downloads say about the Hugging Face Hub</span>
+          <span class="d">Qwen's rise, the derivative economy, the quantizers, bigger models, and why likes don't measure use.</span>
+          <span class="go">Read the report</span>
+        </a>
+      </div>
+
       <div class="wrap hub-chart">
        <div class="card">
         <h2>Daily downloads across the Hub</h2>

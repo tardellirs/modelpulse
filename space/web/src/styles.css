@@ -288,3 +288,31 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 .like-tip code { font: 500 12px var(--font-mono); background: var(--paper); padding: 1px 5px; border-radius: 5px; }
 .hf-like { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border: 1.5px solid #d1d5db; border-radius: 6px; background: #fff; font: 500 12px var(--font); color: #374151; white-space: nowrap; vertical-align: 1px; }
 @media (prefers-reduced-motion: reduce) { .like-tip { transition: none; } }
+
+/* ---------- report ---------- */
+.report { max-width: 820px; padding-block: 36px 24px; font-size: 1.0625rem; line-height: 1.7; }
+.report h1 { font: 600 clamp(2rem, 4.6vw, 3rem)/1.08 var(--font-display); letter-spacing: -0.02em; margin-bottom: 14px; }
+.report .byline { font: 400 13px var(--font-mono); color: var(--muted); margin: 0 0 28px; }
+.report h2 { font: 600 var(--step-2)/1.15 var(--font-display); margin: 52px 0 14px; }
+.report p, .report ul { margin: 0 0 16px; }
+.report ul { padding-left: 1.2em; }
+.report li { margin-bottom: 6px; }
+.report a { text-decoration-color: var(--mark); text-decoration-thickness: 3px; }
+.report a:hover { background: var(--mark); }
+.report strong { font-weight: 700; }
+.report code { font: 500 0.85em var(--font-mono); background: var(--surface); border: 1.5px solid var(--rule); padding: 1px 5px; border-radius: 5px; }
+.report img { display: block; width: 100%; height: auto; margin: 22px 0 26px; border-radius: 10px; }
+.report .table-scroll { margin: 8px 0 22px; background: var(--surface); border: var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); padding: 6px 16px; }
+.report table.list { min-width: 520px; font-size: 14px; }
+.report table.list th { text-align: right; }
+.report table.list th:first-child { text-align: left; }
+.report table.list td { font-size: 13.5px; }
+.report table.list td:first-child { font-family: var(--font); font-size: 14.5px; white-space: normal; }
+.report-callout {
+  display: grid; gap: 6px; margin-top: 30px; text-decoration: none; background: var(--mark); transition: transform .08s, box-shadow .08s;
+}
+.report-callout:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--ink); }
+.report-callout .tag { font: 600 12px var(--font-mono); background: var(--ink); color: var(--mark); padding: 2px 9px; border-radius: 999px; justify-self: start; }
+.report-callout .t { font: 600 var(--step-2)/1.15 var(--font-display); }
+.report-callout .d { color: var(--ink-2); }
+.report-callout .go { font: 600 var(--step--1) var(--font-mono); text-decoration: underline; text-underline-offset: 4px; }
