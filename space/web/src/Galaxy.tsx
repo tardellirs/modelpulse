@@ -655,6 +655,26 @@ export function Galaxy({ model }: { model?: string }) {
             <li><span class="k-size" aria-hidden="true" />bigger planet, more downloads</li>
             <li><span class="k-line" aria-hidden="true" />line to the model it was made from</li>
           </ul>
+          {g && L && g.total > 0 && (
+            <div class="g-foot">
+              {L.n - 1 < g.total && <p class="muted">Showing the {fmtFull(L.n - 1)} most downloaded of {fmtFull(g.total)} models.</p>}
+              <div class="w-actions g-actions">
+                <button class="btn primary" disabled={saving} onClick={async () => {
+                  setSaving(true);
+                  try {
+                    const b = await shareImage(g, L);
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(b); a.download = `${g.root.id.replace("/", "_")}-galaxy.png`; a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+                  } finally { setSaving(false); }
+                }}>{saving ? "Drawing…" : "Download image"}</button>
+                <a class="btn" target="_blank" rel="noopener" href={`https://x.com/intent/post?text=${encodeURIComponent(post)}&url=${encodeURIComponent(url)}`}>Post on X</a>
+                <a class="btn" target="_blank" rel="noopener" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}>LinkedIn</a>
+                <button class="btn" onClick={() => navigator.clipboard?.writeText(url)}>Copy link</button>
+                <LikeCta />
+              </div>
+            </div>
+          )}
         </div>
 
         {g && L && g.total > 0 && (
@@ -735,26 +755,6 @@ export function Galaxy({ model }: { model?: string }) {
         )}
       </div>
 
-      {g && L && g.total > 0 && (
-        <div class="wrap g-foot">
-          {L.n - 1 < g.total && <p class="muted">Showing the {fmtFull(L.n - 1)} most downloaded of {fmtFull(g.total)} models.</p>}
-          <div class="w-actions g-actions">
-            <button class="btn primary" disabled={saving} onClick={async () => {
-              setSaving(true);
-              try {
-                const b = await shareImage(g, L);
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(b); a.download = `${g.root.id.replace("/", "_")}-galaxy.png`; a.click();
-                setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-              } finally { setSaving(false); }
-            }}>{saving ? "Drawing…" : "Download image"}</button>
-            <a class="btn" target="_blank" rel="noopener" href={`https://x.com/intent/post?text=${encodeURIComponent(post)}&url=${encodeURIComponent(url)}`}>Post on X</a>
-            <a class="btn" target="_blank" rel="noopener" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}>LinkedIn</a>
-            <button class="btn" onClick={() => navigator.clipboard?.writeText(url)}>Copy link</button>
-            <LikeCta />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

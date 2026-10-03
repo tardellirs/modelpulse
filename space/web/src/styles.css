@@ -279,6 +279,8 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 .lb-tabs { margin-bottom: 18px; }
  /* room for the page before its data arrives, so the footer doesn't jump up and back down */
 main { min-height: calc(100vh - 72px); }
+.foot .gh { display: inline-flex; vertical-align: -4px; margin-left: 8px; color: var(--ink); }
+.foot .gh:hover { color: var(--muted); }
 .foot { padding-block: 40px 60px; color: var(--muted); font: 400 12.5px/1.6 var(--font-mono); }
 .foot .maker { color: var(--ink); }
 .foot .maker a { font-weight: 600; }
@@ -435,9 +437,9 @@ main { min-height: calc(100vh - 72px); }
 @keyframes g-fade { from { opacity: .35; } to { opacity: 1; } }
 
 /* the orrery and its side panel */
-.o-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+.o-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; }
 .o-stage { min-width: 0; }
-.o-sky { position: relative; height: clamp(420px, 76vh, 820px); background: var(--surface); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.o-sky { position: relative; height: clamp(480px, calc(100vh - 150px), 980px); background: var(--surface); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .o-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 .o-sky canvas:active { cursor: grabbing; }
 .o-empty { display: grid; place-items: center; color: var(--muted); font: 500 var(--step-0) var(--font-mono); }
@@ -458,7 +460,8 @@ main { min-height: calc(100vh - 72px); }
 .g-tip b { font-weight: 600; overflow-wrap: anywhere; }
 .g-tip span { color: var(--muted); font: 400 12px var(--font-mono); }
 
-.o-panel { display: flex; flex-direction: column; gap: 18px; background: var(--surface); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+/* the panel scrolls on its own, so the share buttons sit right under the picture */
+.o-panel { position: sticky; top: 88px; max-height: calc(100vh - 110px); overflow-y: auto; display: flex; flex-direction: column; gap: 18px; background: var(--surface); border: var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
 .o-panel h2 { font: 600 var(--step-1) var(--font-display); margin: 0 0 10px; }
 .o-note { margin: -6px 0 10px; font: 400 12px var(--font-mono); color: var(--muted); }
 .o-kinds { display: flex; flex-direction: column; gap: 6px; }
@@ -500,7 +503,8 @@ main { min-height: calc(100vh - 72px); }
 .g-found button:hover, .g-found button:focus-visible { background: var(--mark); }
 .g-found span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-found small { flex: none; color: var(--muted); font: 400 12px var(--font-mono); }
-.g-foot { margin-top: 22px; }
+.g-foot { margin-top: 16px; }
+.g-foot .muted { margin: 0 0 10px; font-size: var(--step--1); }
 .g-actions { justify-content: flex-start; }
 
 .w-entry.g-entry h1 .hl { background: var(--mark); }
@@ -520,6 +524,7 @@ main { min-height: calc(100vh - 72px); }
 
 @media (max-width: 960px) {
   .o-layout { grid-template-columns: 1fr; }
+  .o-panel { position: static; max-height: none; overflow: visible; }
   .o-sky { height: 70vh; min-height: 360px; }
 }
 
