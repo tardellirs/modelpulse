@@ -114,9 +114,12 @@ def main():
                .with_columns(((pl.col("dl_all") - pl.col("dl_all_p")).clip(0) / gap).alias("dl"))
                .join(tags, on="id", how="left").with_columns(pl.col("pipeline_tag").fill_null("other"))
                .group_by("pipeline_tag").agg(pl.col("dl").sum())
-               .select(pl.lit(day).alias("day"), "pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)))
+               .select("pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)))
+    # one row per calendar day since the previous snapshot, each at the per-day average
+    span = [prev_day + dt.timedelta(days=k) for k in range(1, gap + 1)]
+    hub_new = pl.concat([hub_new.with_columns(pl.lit(d).alias("day")) for d in span]).select("day", "pipeline_tag", "dl")
     hp = os.path.join(out, "hub_series.parquet")
-    hub = pl.concat([pl.read_parquet(hp).filter(pl.col("day") != day), hub_new]).sort("day", "pipeline_tag")
+    hub = pl.concat([pl.read_parquet(hp).filter(~pl.col("day").is_in(span)), hub_new]).sort("day", "pipeline_tag")
     hub.write_parquet(hp)
 
     # 7. leaderboards + meta

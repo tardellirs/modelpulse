@@ -212,9 +212,10 @@ def hub_series(models, days):
             d = (cur.join(prev[1], on="id", suffix="_p")
                  .with_columns(((pl.col("dl_all") - pl.col("dl_all_p")).clip(0) / gap).alias("dl"))
                  .join(tags, on="id", how="left").with_columns(pl.col("pipeline_tag").fill_null("other"))
-                 .group_by("pipeline_tag").agg(pl.col("dl").sum())
-                 .with_columns(pl.lit(day).alias("day")))
-            out.append(d)
+                 .group_by("pipeline_tag").agg(pl.col("dl").sum()))
+            # one row per calendar day: a gap's per-day average is written to every day it covers, so sums stay exact
+            for k in range(gap - 1, -1, -1):
+                out.append(d.with_columns(pl.lit(day - dt.timedelta(days=k)).alias("day")))
         if cur.height:
             prev = (day, cur.select("id", "dl_all"))
     hub = pl.concat(out).select("day", "pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)).sort("day", "pipeline_tag")
