@@ -8,3 +8,5 @@ data/
 site/assets/
 site/index.html
 space/.deploy.env
+site/*.txt
+site/google*.html
