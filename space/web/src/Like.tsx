@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "preact/hooks";
 import { SPACE_URL } from "./api";
 
-/** Likes only happen on Hugging Face's own ♡ button, in the bar above the Space. When we're embedded there, point to it. */
+/** Likes only happen on Hugging Face's own ♡ button, in the bar above the Space. */
 export const EMBEDDED = (() => {
   try { return window.self !== window.top; } catch { return true; }
 })();
@@ -12,60 +11,19 @@ const Heart = ({ size = 15, fill = "currentColor" }: { size?: number; fill?: str
   </svg>
 );
 
-const SHOW = "show-like-hint";
-export const showLikeHint = () => { window.scrollTo({ top: 0, behavior: "smooth" }); window.dispatchEvent(new Event(SHOW)); };
-
-export function LikeButton() {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const show = () => setOpen(true);
-    const away = (e: MouseEvent) => { if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false); };
-    addEventListener(SHOW, show);
-    addEventListener("mousedown", away);
-    return () => { removeEventListener(SHOW, show); removeEventListener("mousedown", away); };
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const t = setTimeout(() => setOpen(false), 9000);
-    return () => clearTimeout(t);
-  }, [open]);
-
-  if (!EMBEDDED)
-    return (
-      <a class="like" href={SPACE_URL} target="_blank" rel="noopener" title="Opens Model Pulse on Hugging Face, where you can like it">
-        <Heart /><span class="t">Like on Hugging Face ↗</span>
-      </a>
-    );
-
-  return (
-    <div class="like-wrap" ref={wrap}>
-      <button class="like" aria-expanded={open} aria-controls="like-hint" onClick={() => setOpen(!open)}>
-        <Heart /><span class="t">Like</span><span aria-hidden="true">↑</span>
-      </button>
-      {open && (
-        <div class="like-pop" id="like-hint" role="status">
-          <b>Likes live on Hugging Face's own button.</b>
-          <span>Click <span class="hf-like"><Heart size={12} fill="#ff4d6d" /> like</span> in the bar above this page, next to <code>modelpulse/model-pulse</code>.</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function LikeCta() {
+  // Outside Hugging Face, send people to the Space page, where the like button is.
   if (!EMBEDDED)
     return (
       <a class="btn" href={SPACE_URL} target="_blank" rel="noopener"><Heart fill="#ff4d6d" />Like on Hugging Face ↗</a>
     );
+  // Inside the Space we can't like on the visitor's behalf: show the label, and explain on hover or focus.
   return (
-    <>
-      <p class="like-how">
+    <span class="btn like-fake" tabIndex={0} aria-describedby="like-tip">
+      <Heart fill="#ff4d6d" />Like on Hugging Face
+      <span class="like-tip" id="like-tip" role="tooltip">
         Click <span class="hf-like"><Heart size={12} fill="#ff4d6d" /> like</span> in the Hugging Face bar above this page, next to <code>modelpulse/model-pulse</code>.
-      </p>
-      <button class="btn" onClick={showLikeHint}>Show me where</button>
-    </>
+      </span>
+    </span>
   );
 }

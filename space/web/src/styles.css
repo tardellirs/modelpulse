@@ -272,20 +272,19 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
 }
 
 /* ---------- like hint ---------- */
-.like-wrap { position: relative; }
-.like-wrap .like { cursor: pointer; }
-.like-pop {
-  position: absolute; right: 0; top: calc(100% + 14px); width: min(300px, 86vw); z-index: 40;
-  display: grid; gap: 6px; padding: 14px 16px; background: var(--surface); border: var(--line); border-radius: 14px;
-  box-shadow: var(--shadow); font-size: var(--step--1); line-height: 1.45; animation: pop .16s ease-out;
+.like-fake { position: relative; cursor: help; }
+.like-fake:hover, .like-fake:active { transform: none; box-shadow: var(--shadow-sm); }
+.like-tip {
+  position: absolute; left: 0; bottom: calc(100% + 14px); width: min(290px, 80vw); z-index: 40;
+  padding: 12px 14px; background: var(--surface); border: var(--line); border-radius: 12px; box-shadow: var(--shadow-sm);
+  font: 400 var(--step--1)/1.45 var(--font); color: var(--ink); white-space: normal;
+  opacity: 0; visibility: hidden; transform: translateY(4px); transition: opacity .14s, transform .14s, visibility .14s;
 }
-.like-pop::before {
-  content: ""; position: absolute; right: 26px; top: -9px; width: 14px; height: 14px; background: var(--surface);
-  border-left: var(--line); border-top: var(--line); transform: rotate(45deg);
+.like-tip::after {
+  content: ""; position: absolute; left: 26px; bottom: -9px; width: 14px; height: 14px; background: var(--surface);
+  border-right: var(--line); border-bottom: var(--line); transform: rotate(45deg);
 }
-.like-pop b { font: 600 var(--step-0) var(--font-display); }
-.like-pop code, .like-how code { font: 500 12px var(--font-mono); background: var(--paper); padding: 1px 5px; border-radius: 5px; }
+.like-fake:hover .like-tip, .like-fake:focus .like-tip, .like-fake:focus-within .like-tip { opacity: 1; visibility: visible; transform: none; }
+.like-tip code { font: 500 12px var(--font-mono); background: var(--paper); padding: 1px 5px; border-radius: 5px; }
 .hf-like { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border: 1.5px solid #d1d5db; border-radius: 6px; background: #fff; font: 500 12px var(--font); color: #374151; white-space: nowrap; vertical-align: 1px; }
-.like-how { margin: 0 0 14px; }
-@keyframes pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .like-pop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .like-tip { transition: none; } }

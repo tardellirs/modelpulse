@@ -4,7 +4,6 @@ import { navigate, readRoute, type Route } from "./api";
 import { AuthorPage } from "./AuthorPage";
 import { Home } from "./Home";
 import { Logo } from "./Logo";
-import { LikeButton } from "./Like";
 import { ModelPage } from "./ModelPage";
 import { Search } from "./Search";
 import "./styles.css";
@@ -33,7 +32,6 @@ function App() {
           {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
           <nav>
             {!isHome && <a class="hide-sm" href="?" onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
-            <LikeButton />
           </nav>
         </div>
       </header>
