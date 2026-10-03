@@ -2,6 +2,7 @@ import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { navigate, readRoute, type Route } from "./api";
 import { AuthorPage } from "./AuthorPage";
+import { Galaxy } from "./Galaxy";
 import { Home } from "./Home";
 import { Logo } from "./Logo";
 import { ModelPage } from "./ModelPage";
@@ -24,7 +25,8 @@ function App() {
 
   const isReport = route.view === "report";
   const isWrapped = route.view === "wrapped";
-  const isHome = !route.model && !route.author && !isReport && !isWrapped;
+  const isGalaxy = route.view === "galaxy";
+  const isHome = !route.model && !route.author && !isReport && !isWrapped && !isGalaxy;
 
   return (
     <>
@@ -35,6 +37,7 @@ function App() {
           </a>
           {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
           <nav>
+            {!(isGalaxy && !route.model) && <a href="?view=galaxy" onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>Galaxy</a>}
             {!isWrapped && <a href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Wrapped</a>}
             {!isReport && <a class="hide-sm" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>}
             {!isHome && <a class="hide-sm" href="?" onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
@@ -42,7 +45,7 @@ function App() {
         </div>
       </header>
       <main>
-        {isWrapped ? <Wrapped author={route.author} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
+        {isGalaxy ? <Galaxy model={route.model} key={route.model ?? "entry"} /> : isWrapped ? <Wrapped author={route.author} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
       </main>
       <footer class="foot">
         <div class="wrap">

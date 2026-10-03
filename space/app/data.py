@@ -61,6 +61,44 @@ class Store:
         return self._rows("SELECT id, base_relation AS relation, author, dl30, dl_all, dl_7d, likes FROM children "
                           "WHERE parent = ? ORDER BY dl30 DESC NULLS LAST LIMIT ?", [mid, limit])
 
+    RELATIONS = ("quantized", "finetune", "adapter", "merge")
+
+    def galaxy(self, mid: str, cap: int = 50_000):
+        """Every model built on mid, level by level (biggest first), as parallel arrays; index 0 is mid itself."""
+        root = self.model(mid)
+        if not root:
+            return None
+        con, code = self.con(), {r: i for i, r in enumerate(self.RELATIONS)}
+        ids, parent, rel, dl, idx = [root["id"]], [-1], [-1], [root.get("dl30") or 0], {root["id"]: 0}
+        frontier = [root["id"]]
+        for _ in range(8):
+            if not frontier or len(ids) >= cap:
+                break
+            rows = con.execute("SELECT parent, id, base_relation, coalesce(dl30, 0) FROM children WHERE parent IN (SELECT unnest(?)) "
+                               "ORDER BY dl30 DESC NULLS LAST", [frontier]).fetchall()
+            frontier = []
+            for p, i, r, v in rows:
+                if i in idx or len(ids) >= cap:
+                    continue  # a merge can descend from several members; keep its first (shallowest) parent
+                idx[i] = len(ids)
+                ids.append(i); parent.append(idx[p]); rel.append(code.get(r, 1)); dl.append(v); frontier.append(i)
+        # where this model sits in a bigger family, if it is itself a derivative
+        lineage, cur = [], root
+        for _ in range(8):
+            b = con.execute("SELECT base_ids[1] FROM models WHERE id = ?", [cur["id"]]).fetchone()
+            nxt = self.model(b[0]) if b and b[0] else None
+            if not nxt or nxt["id"] in lineage or nxt["id"] == root["id"]:
+                break
+            lineage.append(nxt["id"]); cur = nxt
+        keep = ("id", "author", "pipeline_tag", "dl30", "dl_all", "likes", "fam_members", "fam_dl30", "fam_all")
+        return {"root": {k: root.get(k) for k in keep}, "relations": list(self.RELATIONS), "lineage": lineage,
+                "total": int(root.get("fam_members") or 0), "nodes": {"id": ids, "parent": parent, "rel": rel, "dl30": dl}}
+
+    def galaxies(self, limit: int = 16):
+        """The biggest families whose base is an original model, not itself a derivative."""
+        return self._rows("SELECT id, fam_members, fam_dl30 FROM models WHERE fam_members >= 50 AND coalesce(len(base_ids), 0) = 0 "
+                          "ORDER BY fam_members DESC LIMIT ?", [limit])
+
     def author_models(self, author: str, limit: int = 200):
         return self._rows("SELECT id, pipeline_tag, params, dl30, dl_all, dl_7d, growth_7d, likes FROM models "
                           "WHERE author = ? ORDER BY dl30 DESC NULLS LAST LIMIT ?", [author, limit])

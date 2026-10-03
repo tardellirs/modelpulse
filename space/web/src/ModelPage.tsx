@@ -291,6 +291,9 @@ function Family({ data }: { data: ModelResponse }) {
                     <div key={p.k}><span><i style={{ background: p.c }} />{p.k}</span><b>{fmtFull(p.n)}</b></div>
                   ))}
                 </div>
+                <a class="btn galaxy-btn" href={`?model=${m.id}&view=galaxy`} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: m.id }); }}>
+                  <span class="g-dot" aria-hidden="true" />See the {fmtFull(m.fam_members)} models as a galaxy
+                </a>
               </>
             )}
           </div>

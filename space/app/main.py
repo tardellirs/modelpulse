@@ -40,10 +40,14 @@ def reload_store():
     _hub.cache_clear()
     badge_svg.cache_clear()
     _wrapped.cache_clear()
+    _galaxy.cache_clear()
+    _galaxies.cache_clear()
+    threading.Thread(target=warm_galaxies, daemon=True).start()
 
 
 @app.on_event("startup")
 def start_jobs():
+    threading.Thread(target=warm_galaxies, daemon=True).start()
     if not os.environ.get("HF_TOKEN"):
         return
     sha = open(os.path.join(jobs.DATA_DIR, ".sha")).read().strip() if os.path.exists(os.path.join(jobs.DATA_DIR, ".sha")) else None
@@ -126,6 +130,38 @@ def wrapped_api(author: str):
     data = _wrapped(author.strip())
     if not data:
         raise HTTPException(404, f"We couldn't find downloads for models by {author} in the last 12 months. Check the spelling: it's the name in huggingface.co/<name>.")
+    return j(data)
+
+
+@lru_cache(maxsize=64)
+def _galaxy(mid: str):
+    return store.galaxy(mid)
+
+
+def warm_galaxies():
+    """The biggest families take seconds to walk; do it before the first visitor asks."""
+    for r in _galaxies():
+        try:
+            _galaxy(r["id"])
+        except Exception:
+            logging.exception("galaxy warmup failed for %s", r.get("id"))
+
+
+@lru_cache(maxsize=1)
+def _galaxies():
+    return store.galaxies()
+
+
+@app.get("/api/galaxies")
+def galaxies():
+    return j(_galaxies())
+
+
+@app.get("/api/galaxy/{mid:path}")
+def galaxy(mid: str):
+    data = _galaxy(mid.strip())
+    if not data:
+        raise HTTPException(404, f"{mid} is not tracked. Models appear once they reach 10 downloads in 30 days or get a like.")
     return j(data)
 
 
