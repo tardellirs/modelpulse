@@ -1,0 +1,8 @@
+{
+  "name": "modelpulse-web",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "tsc --noEmit && rm -rf ../../site/assets && vite build" },
+  "dependencies": { "preact": "^10.26.0", "uplot": "^1.6.31" },
+  "devDependencies": { "@preact/preset-vite": "^2.10.0", "typescript": "^5.8.0", "vite": "^6.3.0" }
+}

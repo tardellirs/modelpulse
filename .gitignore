@@ -1,0 +1,9 @@
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+data/
+.env
+.DS_Store
+site/assets/
+site/index.html

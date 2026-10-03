@@ -1,0 +1,7 @@
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+duckdb==1.5.6
+huggingface_hub>=1.0
+pyyaml>=6
+polars>=1.30
+pyarrow>=17

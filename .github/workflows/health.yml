@@ -1,0 +1,27 @@
+name: Health check
+
+# Fails (and GitHub emails you) when the API is down or the data is more than 3 days old.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: API answers and data is fresh
+        run: |
+          set -e
+          body=$(curl -sS --retry 3 --retry-delay 20 --max-time 30 -w '\n%{http_code}' https://modelpulse.ifsp.dev/api/health)
+          code=$(echo "$body" | tail -1); json=$(echo "$body" | head -1)
+          echo "HTTP $code: $json"
+          [ "$code" = "200" ] || { echo "::error::Model Pulse API unhealthy (HTTP $code): $json"; exit 1; }
+      - name: Badge renders
+        run: |
+          curl -sSf --max-time 30 https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg | grep -q '<svg' || { echo "::error::Badge endpoint broken"; exit 1; }
+      - name: Site is up
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 https://modelpulse-model-pulse.static.hf.space/)
+          echo "site HTTP $code"; [ "$code" = "200" ] || { echo "::error::Static Space returned $code"; exit 1; }
