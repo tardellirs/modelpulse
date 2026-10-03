@@ -41,6 +41,8 @@ export function ModelPage({ route }: { route: Route }) {
   const [family, setFamily] = useState(false);
   const [log, setLog] = useState(false);
   const [adding, setAdding] = useState(false);
+  // open the compare box toward the side with room: anchored left unless the button sits near the right edge
+  const [compareAlign, setCompareAlign] = useState<"left" | "right">("left");
 
   useEffect(() => {
     setData(null); setErr(null); setFamily(false); setZoom(null);
@@ -185,8 +187,12 @@ export function ModelPage({ route }: { route: Route }) {
               <div class="seg"><button aria-pressed={family} onClick={() => setFamily(!family)}>Include {fmtFull(m.fam_members)} derivatives</button></div>
             )}
             {others.length > 0 && <div class="seg"><button aria-pressed={log} onClick={() => setLog(!log)}>Log scale</button></div>}
-            <div class="add-compare">
-              <button class="btn" onClick={() => setAdding(!adding)} aria-expanded={adding} disabled={compare.length >= 4}>
+            <div class={`add-compare align-${compareAlign}`}>
+              <button class="btn" onClick={(e) => {
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setCompareAlign(r.left + 440 > window.innerWidth - 16 ? "right" : "left");
+                setAdding(!adding);
+              }} aria-expanded={adding} disabled={compare.length >= 4}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
                 Compare
               </button>
