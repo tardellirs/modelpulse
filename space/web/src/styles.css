@@ -248,10 +248,8 @@ tr:nth-child(-n+3) .rank { background: var(--mark); }
   filter: drop-shadow(3px 3px 0 var(--ink));
 }
 .sticker svg { position: absolute; inset: 0; }
-.sticker-round { right: calc(max(2%, calc(50% - 560px)) + 70px); top: calc(clamp(10px, 3vw, 40px) + 80px); width: 100px; height: 100px; transform: rotate(-9deg); font: 500 13px/1.1 var(--font-display); z-index: 1; }
-.sticker-round b { font-weight: 600; font-size: 17px; }
 .sticker span { position: relative; }
-@media (max-width: 1100px) { .sticker { display: none; } }
+@media (max-width: 860px) { .sticker { display: none; } }
 .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; align-items: center; justify-content: center; }
 .examples .muted { font: 400 12.5px var(--font-mono); }
 .hub-chart { padding-block: 34px 8px; }

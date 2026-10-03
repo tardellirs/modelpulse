@@ -53,10 +53,6 @@ export function Home() {
           <svg viewBox="0 0 100 100"><path fill="#E5484D" stroke="#1B1B1F" stroke-width="3" d="M50 3l7.6 11.5 13.2-4.3 1.8 13.7 13.7 1.8-4.3 13.2L97 50l-11.5 7.6 4.3 13.2-13.7 1.8-1.8 13.7-13.2-4.3L50 97l-7.6-11.5-13.2 4.3-1.8-13.7-13.7-1.8 4.3-13.2L3 50l11.5-7.6-4.3-13.2 13.7-1.8 1.8-13.7 13.2 4.3z" /></svg>
           <span>{meta ? fmt(meta.models) : "1.6M"}<br />models</span>
         </div>
-        <div class="sticker sticker-round" aria-hidden="true">
-          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#3B6FF5" stroke="#1B1B1F" stroke-width="3" /><circle cx="50" cy="50" r="38" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 3.2" /></svg>
-          <span>daily since<br /><b>{meta ? fmtDate(meta.first, { month: "short", year: "numeric" }) : "Jul 2024"}</b></span>
-        </div>
         <h1><Logo size={80} />Model <span class="hl">Pulse</span></h1>
         <p class="lede">
           The daily download history of every model on the Hugging Face Hub. Search a model or paste its link to see how it grew, how it compares, and how far its derivatives reach.
