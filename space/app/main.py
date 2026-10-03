@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import jobs
 from .data import Store
+from .wrapped import Wrapped
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 
@@ -20,6 +21,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 logging.basicConfig(level=logging.INFO)
 store = Store()
+wrapped = Wrapped(store)
 def link_candidates():
     ranked = {r["id"] for rows in store.leaderboards.values() if isinstance(rows, list) for r in rows if r.get("id")}
     trending = set(jobs.trending_models())
@@ -32,10 +34,12 @@ linker = jobs.Linker(lambda mid: store.model(mid) is not None,
 
 
 def reload_store():
-    global store
+    global store, wrapped
     store = Store()
+    wrapped = Wrapped(store)
     _hub.cache_clear()
     badge_svg.cache_clear()
+    _wrapped.cache_clear()
 
 
 @app.on_event("startup")
@@ -109,6 +113,20 @@ def _hub():
 @app.get("/api/hub")
 def hub():
     return j(_hub())
+
+
+@lru_cache(maxsize=512)
+def _wrapped(author: str):
+    name = wrapped.find_author(author)
+    return wrapped.build(name) if name else None
+
+
+@app.get("/api/wrapped/{author}")
+def wrapped_api(author: str):
+    data = _wrapped(author.strip())
+    if not data:
+        raise HTTPException(404, f"We couldn't find downloads for models by {author} in the last 12 months. Check the spelling: it's the name in huggingface.co/<name>.")
+    return j(data)
 
 
 @app.get("/api/leaderboards")

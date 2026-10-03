@@ -17,6 +17,9 @@ class Store:
         self.leaderboards = json.load(open(os.path.join(root, "leaderboards.json")))
         con = duckdb.connect()
         con.execute("SET enable_object_cache=true")
+        # big Wrapped queries may spill; keep them bounded and away from the read-only app dir
+        con.execute("SET temp_directory='/tmp/duckdb'")
+        con.execute(f"SET memory_limit='{os.environ.get('DUCKDB_MEMORY', '4GB')}'")
         self._con = con
         p = lambda f: os.path.join(root, f).replace("'", "''")
         con.execute(f"CREATE VIEW series AS SELECT * FROM read_parquet('{p('series/*.parquet')}')")

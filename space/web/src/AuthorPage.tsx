@@ -46,6 +46,7 @@ export function AuthorPage({ route }: { route: Route }) {
         <div class="crumbs">
           <span class="chip">{d.models.length >= 200 ? "200+" : d.models.length} tracked models</span>
           <a class="chip" href={`https://huggingface.co/${a}`} target="_blank" rel="noopener">Open on Hugging Face ↗</a>
+          <a class="chip chip-hot" href={`?view=wrapped&author=${a}`} onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped", author: a }); }}>See {a}'s Wrapped</a>
         </div>
         <h1 class="model-name">{a}</h1>
         <div class="card stats" style={{ padding: 0 }}>

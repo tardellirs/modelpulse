@@ -6,6 +6,7 @@ import { Home } from "./Home";
 import { Logo } from "./Logo";
 import { ModelPage } from "./ModelPage";
 import { Report } from "./Report";
+import { Wrapped } from "./Wrapped";
 import { Search } from "./Search";
 import "./styles.css";
 
@@ -22,7 +23,8 @@ function App() {
   }, []);
 
   const isReport = route.view === "report";
-  const isHome = !route.model && !route.author && !isReport;
+  const isWrapped = route.view === "wrapped";
+  const isHome = !route.model && !route.author && !isReport && !isWrapped;
 
   return (
     <>
@@ -33,13 +35,14 @@ function App() {
           </a>
           {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
           <nav>
-            {!isReport && <a href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>}
+            {!isWrapped && <a href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Wrapped</a>}
+            {!isReport && <a class="hide-sm" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>}
             {!isHome && <a class="hide-sm" href="?" onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
           </nav>
         </div>
       </header>
       <main>
-        {route.model ? <ModelPage route={route} key={route.model} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
+        {isWrapped ? <Wrapped author={route.author} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
       </main>
       <footer class="foot">
         <div class="wrap">

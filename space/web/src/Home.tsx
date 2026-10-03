@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { api, fmt, fmtDate, fmtFull, fmtPct, navigate, smooth, taskLabel, ts, type Hub, type Leaderboards, type Row } from "./api";
 import { Logo } from "./Logo";
+import { LivePulse } from "./LivePulse";
 import { Chart, Sparkline, type Line } from "./Chart";
 import { Search } from "./Search";
 
@@ -71,10 +72,18 @@ export function Home() {
         )}
       </div>
 
-      <div class="wrap">
+      <LivePulse hub={hub} />
+
+      <div class="wrap callouts">
+        <a class="card report-callout wrapped-callout" href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>
+          <span class="tag">New</span>
+          <span class="t">Model Pulse Wrapped</span>
+          <span class="d">Your last 12 months on the Hub in six cards: downloads, your #1 model, your biggest week, the models built on yours, and your rank.</span>
+          <span class="go">Get your Wrapped</span>
+        </a>
         <a class="card report-callout" href="?view=report" onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>
-          <span class="tag">New report</span>
-          <span class="t">What 19 months of daily downloads say about the Hugging Face Hub</span>
+          <span class="tag">Report</span>
+          <span class="t">What 19 months of daily downloads say about the Hub</span>
           <span class="d">Qwen's rise, the derivative economy, the quantizers, bigger models, and why likes don't measure use.</span>
           <span class="go">Read the report</span>
         </a>
