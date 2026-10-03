@@ -21,7 +21,7 @@ This post walks through what that data shows. Every number comes from the [open 
 
 ## 1. The Hub serves about 100 million model downloads a day
 
-![Weekly downloads across all public models, by task](report/01-hub.png)
+![Weekly downloads across all public models, by task](/report/01-hub.png)
 
 In September 2026 public models were downloaded about 100M times on a typical day, against about 62M a year earlier. The growth wasn't spread evenly across tasks:
 
@@ -77,7 +77,7 @@ From April to September 2026 the `sentence-transformers` organization served 2.2
 
 ## 3. Qwen gets half of all LLM downloads
 
-![Share of text and vision-language model downloads, by publisher](report/02-text-orgs.png)
+![Share of text and vision-language model downloads, by publisher](/report/02-text-orgs.png)
 
 Count every download of a text-generation or vision-language model on the Hub, including every quantization and fine-tune, and ask who published the repo. In March 2025 Meta's `meta-llama` repos and Qwen's were roughly tied, at about a quarter each. Qwen pulled ahead in the spring of 2025 and kept going. By September 2026 Qwen's own repos took 54% and Meta's took 5%. NVIDIA is the riser to watch, from under 1% to 6%.
 
@@ -100,7 +100,7 @@ Two of these are worth a second look. GPT-2, released in 2019, is still the thir
 
 ## 4. Nearly half of all downloads go to derivatives
 
-![Share of monthly downloads going to derivatives](report/03-derivatives.png)
+![Share of monthly downloads going to derivatives](/report/03-derivatives.png)
 
 A derivative is a model whose card declares a base model: a quantization, a fine-tune, an adapter or a merge. In March 2025 derivatives took 18% of all downloads on the Hub. In September 2026 they took 43%. Quantizations drove most of it, going from 9% to 28%, and GGUF files alone went from 5% to 11%, most of that in the last three months.
 
@@ -118,7 +118,7 @@ Derivatives also reach scale faster. Of the models created since March 2025, 946
 
 ## 5. The quantizers became some of the Hub's biggest publishers
 
-![Monthly downloads of repackaged models, March 2025 vs September 2026](report/04-quantizers.png)
+![Monthly downloads of repackaged models, March 2025 vs September 2026](/report/04-quantizers.png)
 
 | Publisher | Monthly downloads, Mar 2025 | Monthly downloads, Sep 2026 | Repos with downloads, Sep 2026 |
 |---|---:|---:|---:|
@@ -135,7 +135,7 @@ Unsloth grew sixfold and now ranks among the top dozen publishers on the whole H
 
 ## 6. The head of the Hub is losing its grip
 
-![Share of monthly downloads going to the top 10, 100 and 1,000 models](report/05-concentration.png)
+![Share of monthly downloads going to the top 10, 100 and 1,000 models](/report/05-concentration.png)
 
 | | Mar 2025 | Sep 2026 |
 |---|---:|---:|
@@ -149,7 +149,7 @@ Demand is spreading out: the top ten lost a third of their share in eighteen mon
 
 ## 7. People download bigger models
 
-![Share of text-generation downloads by model size](report/06-model-size.png)
+![Share of text-generation downloads by model size](/report/06-model-size.png)
 
 Weighted by downloads, the typical text-generation model went from 3.0B parameters in March 2025 to 5.7B in September 2026, peaking at 6.1B in June. Models with 10B or more parameters went from 19% of text-generation downloads to 35%. Small models haven't gone away: anything under 2B still takes about a third, some of it from CI pipelines that pull tiny test models all day.
 
@@ -169,7 +169,7 @@ New models win share fast, since 2026 models already take more than a fifth of a
 
 ## 9. A launch spikes for two weeks, then plateaus
 
-![Average weekly share of a model's first six months of downloads](report/07-launch-curve.png)
+![Average weekly share of a model's first six months of downloads](/report/07-launch-curve.png)
 
 I took the 2,303 models launched between March 2025 and March 2026 that passed 100K downloads in their first six months, and looked at how those downloads were spread over the 26 weeks:
 
@@ -197,7 +197,7 @@ A couple of niche repos also crossed a million in five days, most likely through
 
 ## 10. Likes measure excitement, not use
 
-![Likes per 100,000 monthly downloads, by task](report/08-likes.png)
+![Likes per 100,000 monthly downloads, by task](/report/08-likes.png)
 
 Across models with at least 1,000 monthly downloads, likes and downloads are only moderately related (Spearman 0.42). What a model is for matters more than how much it's used. Image generation models collect 854 likes per 100K monthly downloads; rerankers collect 5.
 

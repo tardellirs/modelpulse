@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { api, daily, fmt, fmtDate, fmtFull, fmtParams, fmtPct, navigate, plain, smooth, taskLabel, weekly, WEEK, type AuthorResponse, type Route } from "./api";
+import { api, daily, fmt, fmtDate, fmtFull, fmtParams, fmtPct, navigate, plain, smooth, taskLabel, weekly, WEEK, type AuthorResponse, type Route, hrefOf } from "./api";
 import { Chart, type Line } from "./Chart";
 
 type Metric = "weekly" | "daily" | "month" | "total";
@@ -46,7 +46,7 @@ export function AuthorPage({ route }: { route: Route }) {
         <div class="crumbs">
           <span class="chip">{d.models.length >= 200 ? "200+" : d.models.length} tracked models</span>
           <a class="chip" href={`https://huggingface.co/${a}`} target="_blank" rel="noopener">Open on Hugging Face ↗</a>
-          <a class="chip chip-hot" href={`?view=wrapped&author=${a}`} onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped", author: a }); }}>See {a}'s Wrapped</a>
+          <a class="chip chip-hot" href={hrefOf({ view: "wrapped", author: a })} onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped", author: a }); }}>See {a}'s Wrapped</a>
         </div>
         <h1 class="model-name">{a}</h1>
         <div class="card stats" style={{ padding: 0 }}>
@@ -81,7 +81,7 @@ export function AuthorPage({ route }: { route: Route }) {
                 {d.models.slice(0, n).map((m) => (
                   <tr key={m.id}>
                     <td class="name">
-                      <a href={`?model=${m.id}`} onClick={(e) => { e.preventDefault(); navigate({ model: m.id }); }}>{m.id.split("/").slice(1).join("/")}</a>
+                      <a href={hrefOf({ model: m.id })} onClick={(e) => { e.preventDefault(); navigate({ model: m.id }); }}>{m.id.split("/").slice(1).join("/")}</a>
                       <span class="sub">{[taskLabel(m.pipeline_tag), fmtParams(m.params)].filter(Boolean).join(", ")}</span>
                     </td>
                     <td><b>{fmt(m.dl_7d)}</b></td>

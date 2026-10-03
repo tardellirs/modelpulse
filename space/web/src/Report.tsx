@@ -26,12 +26,12 @@ export function Report() {
     const a = (e.target as HTMLElement).closest("a");
     if (!a) return;
     const href = a.getAttribute("href") || "";
-    const m = href.match(/^https:\/\/huggingface\.co\/spaces\/modelpulse\/model-pulse\/?(\?[^#]*)?$/);
+    const m = href.match(/^https:\/\/huggingface\.co\/spaces\/(?:modelpulse|tardellirs)\/model-pulse\/?(\?[^#]*)?$/);
     if (m) {
       e.preventDefault();
       const q = new URLSearchParams((m[1] || "").slice(1));
-      const model = q.get("model");
-      navigate(model ? { model } : {});
+      const model = q.get("model"), view = q.get("view") || undefined;
+      navigate(model || view ? { model: model || undefined, view } : {});
       return;
     }
     if (/^https?:/.test(href)) { a.target = "_blank"; a.rel = "noopener"; }

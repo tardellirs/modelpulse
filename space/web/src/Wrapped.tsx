@@ -1,6 +1,6 @@
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { API_BASE, api, fmt, fmtDate, fmtFull, navigate, SPACE_URL, type Leaderboards } from "./api";
+import { API_BASE, api, fmt, fmtDate, fmtFull, navigate, SPACE_URL, type Leaderboards, hrefOf } from "./api";
 import { LikeCta } from "./Like";
 import { Logo } from "./Logo";
 
@@ -266,7 +266,7 @@ function Entry({ initial }: { initial?: string }) {
         <div class="examples">
           <span class="muted">or try</span>
           {(lb.authors_7d as any[]).slice(0, 10).map((r) => (
-            <a key={r.author} class="chip" href={`?view=wrapped&author=${r.author}`} onClick={(e) => { e.preventDefault(); go(r.author); }}>{r.author}</a>
+            <a key={r.author} class="chip" href={hrefOf({ view: "wrapped", author: r.author })} onClick={(e) => { e.preventDefault(); go(r.author); }}>{r.author}</a>
           ))}
         </div>
       )}
@@ -362,8 +362,8 @@ export function Wrapped({ author }: { author?: string }) {
               <button class="btn" onClick={() => navigator.clipboard?.writeText(url)}>Copy link</button>
             </div>
             <div class="w-more">
-              <a href={`?author=${d.author}`} onClick={(e) => { e.preventDefault(); navigate({ author: d.author }); }}>See {d.author}'s models</a>
-              <a href="?view=wrapped" onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Try another name</a>
+              <a href={hrefOf({ author: d.author })} onClick={(e) => { e.preventDefault(); navigate({ author: d.author }); }}>See {d.author}'s models</a>
+              <a href={hrefOf({ view: "wrapped" })} onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Try another name</a>
             </div>
             <div class="w-like"><LikeCta /></div>
           </div>

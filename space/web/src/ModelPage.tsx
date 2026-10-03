@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import {
   api, daily, weekly, WEEK, fmt, fmtDate, fmtFull, fmtParams, fmtPct, milestones, navigate, ord, plain, shareUrl, smooth, taskLabel, ts,
-  type ModelResponse, type Route,
-} from "./api";
+  type ModelResponse, type Route, hrefOf } from "./api";
 import { Chart, type Line, type Marker } from "./Chart";
 import { Search } from "./Search";
 import { Share } from "./Share";
@@ -128,7 +127,7 @@ export function ModelPage({ route }: { route: Route }) {
             </span>
           )}
           {base && (
-            <a class="chip" href={`?model=${base}`} onClick={(e) => { e.preventDefault(); navigate({ model: base }); }}>
+            <a class="chip" href={hrefOf({ model: base })} onClick={(e) => { e.preventDefault(); navigate({ model: base }); }}>
               {relWord[m.base_relation ?? ""] ?? "Based on"} {base}
             </a>
           )}
@@ -136,7 +135,7 @@ export function ModelPage({ route }: { route: Route }) {
         </div>
         <h1 class="model-name">
           {org && (
-            <a href={`?author=${org}`} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>
+            <a href={hrefOf({ author: org })} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>
           )}
           <span class="hl">{name}</span>
         </h1>
@@ -210,7 +209,7 @@ export function ModelPage({ route }: { route: Route }) {
             {others.map((o, i) => (
               <span class="chip" key={o.model.id}>
                 <i class="sw" style={{ background: color(i + 1) }} />
-                <a href={`?model=${o.model.id}`} onClick={(e) => { e.preventDefault(); navigate({ model: o.model.id }); }}>{o.model.id}</a>
+                <a href={hrefOf({ model: o.model.id })} onClick={(e) => { e.preventDefault(); navigate({ model: o.model.id }); }}>{o.model.id}</a>
                 <button aria-label={`Remove ${o.model.id}`} onClick={() => setCompare(compare.filter((c) => c !== o.model.id))}>✕</button>
               </span>
             ))}
@@ -291,7 +290,7 @@ function Family({ data }: { data: ModelResponse }) {
                     <div key={p.k}><span><i style={{ background: p.c }} />{p.k}</span><b>{fmtFull(p.n)}</b></div>
                   ))}
                 </div>
-                <a class="btn galaxy-btn" href={`?model=${m.id}&view=galaxy`} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: m.id }); }}>
+                <a class="btn galaxy-btn" href={hrefOf({ view: "galaxy", model: m.id })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: m.id }); }}>
                   <span class="g-dot" aria-hidden="true" />See the {fmtFull(m.fam_members)} models as a galaxy
                 </a>
               </>
@@ -305,7 +304,7 @@ function Family({ data }: { data: ModelResponse }) {
                   <tbody>
                     {data.children.slice(0, 12).map((c) => (
                       <tr key={c.id}>
-                        <td class="name"><a href={`?model=${c.id}`} onClick={(e) => { e.preventDefault(); navigate({ model: c.id }); }}>{c.id}</a></td>
+                        <td class="name"><a href={hrefOf({ model: c.id })} onClick={(e) => { e.preventDefault(); navigate({ model: c.id }); }}>{c.id}</a></td>
                         <td class="muted">{c.relation}</td>
                         <td>{fmt(c.dl30)}</td>
                         <td>{fmt(c.dl_all)}</td>

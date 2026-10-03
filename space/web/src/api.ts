@@ -164,14 +164,41 @@ export function milestones(s: Series): Milestone[] {
 
 export type Route = { model?: string; author?: string; compare?: string[]; view?: string };
 
+/**
+ * Inside the Hugging Face Space the app runs in an iframe and keeps its state in the query string, which the
+ * Space page mirrors in its own address bar. On its own domain it uses real paths, which search engines can index.
+ */
+export const PATH_MODE = !/\.hf\.space$/.test(location.hostname);
+
 export function readRoute(): Route {
   const q = new URLSearchParams(location.search);
-  return {
+  const r: Route = {
     model: q.get("model") || undefined,
     author: q.get("author") || undefined,
     compare: q.get("compare")?.split(",").filter(Boolean),
     view: q.get("view") || undefined,
   };
+  const p = location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  if (p[0] === "model" && p.length > 1) r.model = p.slice(1).join("/");
+  else if (p[0] === "author" && p[1]) r.author = p[1];
+  else if (p[0] === "galaxy") { r.view = "galaxy"; if (p.length > 1) r.model = p.slice(1).join("/"); }
+  else if (p[0] === "wrapped") { r.view = "wrapped"; if (p[1]) r.author = p[1]; }
+  else if (p[0] === "report") r.view = "report";
+  return r;
+}
+
+const seg = (id: string) => id.split("/").map(encodeURIComponent).join("/");
+
+/** The link for a route: a path on the app's own domain, a query string inside the Space. */
+export function hrefOf(r: Route) {
+  if (!PATH_MODE) return "?" + routeToQuery(r);
+  let path = "/";
+  if (r.view === "galaxy") path = r.model ? `/galaxy/${seg(r.model)}` : "/galaxy";
+  else if (r.view === "wrapped") path = r.author ? `/wrapped/${encodeURIComponent(r.author)}` : "/wrapped";
+  else if (r.view === "report") path = "/report";
+  else if (r.model) path = `/model/${seg(r.model)}`;
+  else if (r.author) path = `/author/${encodeURIComponent(r.author)}`;
+  return path + (r.compare?.length ? `?compare=${r.compare.join(",")}` : "");
 }
 
 export function routeToQuery(r: Route) {
@@ -191,13 +218,14 @@ export function shareUrl(r: Route) {
 }
 
 export function navigate(r: Route, replace = false) {
-  const q = routeToQuery(r);
-  const url = location.pathname + (q ? `?${q}` : "");
+  const url = PATH_MODE ? hrefOf(r) : location.pathname + hrefOf(r).replace(/^\?$/, "");
   if (replace) history.replaceState(null, "", url);
   else history.pushState(null, "", url);
-  try {
-    window.parent?.postMessage({ queryString: q, hash: "" }, "https://huggingface.co");
-  } catch {}
+  if (!PATH_MODE) {
+    try {
+      window.parent?.postMessage({ queryString: routeToQuery(r), hash: "" }, "https://huggingface.co");
+    } catch {}
+  }
   window.dispatchEvent(new Event("routechange"));
   if (!replace) window.scrollTo({ top: 0 });
 }

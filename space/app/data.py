@@ -99,6 +99,28 @@ class Store:
         return self._rows("SELECT id, fam_members, fam_dl30 FROM models WHERE fam_members >= 50 AND coalesce(len(base_ids), 0) = 0 "
                           "ORDER BY fam_members DESC LIMIT ?", [limit])
 
+    # ---------- pages and sitemap ----------
+
+    def find_author(self, name: str):
+        r = self.con().execute("SELECT author FROM models WHERE author = ? LIMIT 1", [name]).fetchone() or \
+            self.con().execute("SELECT author FROM models WHERE lower(author) = lower(?) LIMIT 1", [name]).fetchone()
+        return r[0] if r else None
+
+    def author_summary(self, author: str):
+        r = self.con().execute("SELECT count(*), sum(dl30), sum(dl_all), sum(likes) FROM models WHERE author = ?", [author]).fetchone()
+        return {"models": r[0], "dl30": r[1] or 0, "dl_all": r[2] or 0, "likes": r[3] or 0}
+
+    def top_models(self, n: int):
+        return self._rows("SELECT id, pipeline_tag, dl30 FROM models ORDER BY dl30 DESC NULLS LAST LIMIT ?", [n])
+
+    def sitemap_authors(self, n: int):
+        return [r[0] for r in self.con().execute(
+            "SELECT author FROM models GROUP BY author HAVING sum(dl30) >= 1000 ORDER BY sum(dl30) DESC LIMIT ?", [n]).fetchall()]
+
+    def sitemap_galaxies(self, n: int):
+        return [r[0] for r in self.con().execute(
+            "SELECT id FROM models WHERE fam_members >= 20 ORDER BY fam_dl30 DESC NULLS LAST LIMIT ?", [n]).fetchall()]
+
     def author_models(self, author: str, limit: int = 200):
         return self._rows("SELECT id, pipeline_tag, params, dl30, dl_all, dl_7d, growth_7d, likes FROM models "
                           "WHERE author = ? ORDER BY dl30 DESC NULLS LAST LIMIT ?", [author, limit])

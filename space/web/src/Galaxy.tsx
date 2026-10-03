@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { fmt, fmtFull, get, navigate, shareUrl } from "./api";
+import { fmt, fmtFull, get, navigate, shareUrl, hrefOf } from "./api";
 import { LikeCta } from "./Like";
 import { Logo } from "./Logo";
 import { Search } from "./Search";
@@ -514,7 +514,7 @@ function Entry() {
           <h2>The biggest galaxies right now</h2>
           <div class="g-grid">
             {fams.map((r, k) => (
-              <a key={r.id} class="g-fam" href={`?model=${r.id}&view=galaxy`} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: r.id }); }}>
+              <a key={r.id} class="g-fam" href={hrefOf({ view: "galaxy", model: r.id })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: r.id }); }}>
                 <i class="g-dot" style={{ transform: `rotate(${k * 47}deg)` }} aria-hidden="true" />
                 <span class="o">{r.id.split("/")[0]}/</span>
                 <span class="nm">{short(r.id)}</span>
@@ -568,8 +568,8 @@ export function Galaxy({ model }: { model?: string }) {
     <div class="galaxy">
       <div class="wrap g-head">
         <div class="crumbs">
-          <a class="chip" href="?view=galaxy" onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>All galaxies</a>
-          {top && <a class="chip chip-hot" href={`?model=${top}&view=galaxy`} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: top }); }}>Part of the {short(top)} galaxy</a>}
+          <a class="chip" href={hrefOf({ view: "galaxy" })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>All galaxies</a>
+          {top && <a class="chip chip-hot" href={hrefOf({ view: "galaxy", model: top })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: top }); }}>Part of the {short(top)} galaxy</a>}
         </div>
         <h1 class="model-name">{org && <span class="org">{org}/</span>}<span class="hl">{name}</span></h1>
         <p class="g-lede">
@@ -589,7 +589,7 @@ export function Galaxy({ model }: { model?: string }) {
           {g && sel >= 0 && L && (
             <div class="g-card">
               <button class="x" aria-label="Close" onClick={() => setSel(-1)}>×</button>
-              <a class="id" href={`?model=${g.nodes.id[sel]}`} onClick={(e) => { e.preventDefault(); navigate({ model: g.nodes.id[sel] }); }}>{g.nodes.id[sel]}</a>
+              <a class="id" href={hrefOf({ model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ model: g.nodes.id[sel] }); }}>{g.nodes.id[sel]}</a>
               <span class="g-rel">
                 <i style={{ background: REL[g.nodes.rel[sel] >= 0 ? g.nodes.rel[sel] : 1].color }} />
                 {REL[g.nodes.rel[sel] >= 0 ? g.nodes.rel[sel] : 1].of} {short(g.nodes.id[g.nodes.parent[sel]])}
@@ -597,8 +597,8 @@ export function Galaxy({ model }: { model?: string }) {
               <span class="n"><b>{fmtFull(g.nodes.dl30[sel])}</b> downloads in the last 30 days</span>
               {L.sub[sel] > 1 && <span class="n"><b>{fmtFull(L.sub[sel] - 1)}</b> models built on it</span>}
               <div class="acts">
-                <a class="btn primary" href={`?model=${g.nodes.id[sel]}`} onClick={(e) => { e.preventDefault(); navigate({ model: g.nodes.id[sel] }); }}>Download history</a>
-                {L.sub[sel] > 1 && <a class="btn" href={`?model=${g.nodes.id[sel]}&view=galaxy`} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: g.nodes.id[sel] }); }}>Its own galaxy</a>}
+                <a class="btn primary" href={hrefOf({ model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ model: g.nodes.id[sel] }); }}>Download history</a>
+                {L.sub[sel] > 1 && <a class="btn" href={hrefOf({ view: "galaxy", model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: g.nodes.id[sel] }); }}>Its own galaxy</a>}
               </div>
             </div>
           )}
@@ -648,7 +648,7 @@ export function Galaxy({ model }: { model?: string }) {
               <a class="btn" target="_blank" rel="noopener" href={`https://x.com/intent/post?text=${encodeURIComponent(post)}&url=${encodeURIComponent(url)}`}>Post on X</a>
               <a class="btn" target="_blank" rel="noopener" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}>LinkedIn</a>
               <button class="btn" onClick={() => navigator.clipboard?.writeText(url)}>Copy link</button>
-              <a class="btn" href={`?model=${g.root.id}`} onClick={(e) => { e.preventDefault(); navigate({ model: g.root.id }); }}>{name} download history</a>
+              <a class="btn" href={hrefOf({ model: g.root.id })} onClick={(e) => { e.preventDefault(); navigate({ model: g.root.id }); }}>{name} download history</a>
               <LikeCta />
             </div>
           </div>

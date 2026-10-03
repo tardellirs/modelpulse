@@ -7,6 +7,10 @@ DIR=/opt/modelpulse
 cd "$(dirname "$0")"
 rsync -a --delete --exclude .venv --exclude web --exclude __pycache__ ./ "$HOST:$DIR/src/"
 rsync -a --delete --exclude __pycache__ ../pipeline/ "$HOST:$DIR/src/pipeline/"
+# the same frontend build the Space uses, served on our own domain with server-rendered pages
+(cd web && npm run build >/dev/null)
+rsync -a --delete ../site/ "$HOST:$DIR/src/app/static/"
+rsync -a web/src/report.md "$HOST:$DIR/src/app/report.md"
 ssh "$HOST" bash -s <<'REMOTE'
 set -euo pipefail
 DIR=/opt/modelpulse

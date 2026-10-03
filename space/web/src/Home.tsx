@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { api, fmt, fmtDate, fmtFull, fmtPct, navigate, smooth, taskLabel, ts, type Hub, type Leaderboards, type Row } from "./api";
+import { api, fmt, fmtDate, fmtFull, fmtPct, navigate, smooth, taskLabel, ts, type Hub, type Leaderboards, type Row, hrefOf } from "./api";
 import { Logo } from "./Logo";
 import { Chart, Sparkline, type Line } from "./Chart";
 import { Search } from "./Search";
@@ -65,7 +65,7 @@ export function Home() {
           <div class="examples">
             <span class="muted">popular this week</span>
             {examples.map((id) => (
-              <a key={id} class="chip" href={`?model=${id}`} onClick={(e) => { e.preventDefault(); navigate({ model: id }); }}>{id}</a>
+              <a key={id} class="chip" href={hrefOf({ model: id })} onClick={(e) => { e.preventDefault(); navigate({ model: id }); }}>{id}</a>
             ))}
           </div>
         )}
@@ -111,7 +111,7 @@ export function Home() {
 function Board({ rows, kind, author }: { rows: Row[]; kind: string; author: boolean }) {
   const [n, setN] = useState(25);
   const go = (r: Row) => (author ? navigate({ author: r.author }) : navigate({ model: r.id }));
-  const href = (r: Row) => (author ? `?author=${r.author}` : `?model=${r.id}`);
+  const href = (r: Row) => hrefOf(author ? { author: r.author } : { model: r.id });
   return (
     <>
       <div class="table-scroll">

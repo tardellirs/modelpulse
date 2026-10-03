@@ -4,17 +4,18 @@ import threading
 from functools import lru_cache
 from html import escape
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import jobs
+from . import jobs, og, seo
 from .data import Store
 from .wrapped import Wrapped
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+SITEMAP_MODELS = 100_000
 
 app = FastAPI(title="Model Pulse", docs_url=None, redoc_url=None)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -42,6 +43,7 @@ def reload_store():
     _wrapped.cache_clear()
     _galaxy.cache_clear()
     _galaxies.cache_clear()
+    _og_model.cache_clear()
     threading.Thread(target=warm_galaxies, daemon=True).start()
 
 
@@ -56,7 +58,8 @@ def start_jobs():
     if os.environ.get("RUN_DAILY", "1") == "1":
         threading.Thread(target=jobs.updater, args=(os.path.expanduser("~/work"),), daemon=True).start()
 
-CACHE = {"Cache-Control": "public, max-age=3600"}
+# API JSON and badges are for the app, not for search results
+CACHE = {"Cache-Control": "public, max-age=3600", "X-Robots-Tag": "noindex"}
 
 
 def j(data, status=200):
@@ -257,7 +260,44 @@ def badge_svg(mid, metric, theme):
 @app.get("/badge/{mid:path}.svg")
 def badge(mid: str, metric: str = "month", theme: str = "light"):
     svg = badge_svg(mid, metric if metric in ("month", "all", "likes") else "month", "dark" if theme == "dark" else "light")
-    return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=21600"})
+    return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=21600", "X-Robots-Tag": "noindex"})
+
+
+# ---------- pages, previews and sitemap ----------
+
+pages = seo.Pages(STATIC, os.path.join(os.path.dirname(__file__), "report.md"))
+
+
+@lru_cache(maxsize=2048)
+def _og_model(mid: str):
+    m = store.model(mid)
+    return og.model_card(m, store.series(m["id"])) if m else None
+
+
+@app.get("/og/model/{mid:path}.png")
+def og_model(mid: str):
+    png = _og_model(mid)
+    if png is None:
+        raise HTTPException(404, "Not tracked")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/robots.txt")
+def robots():
+    return Response(f"User-agent: *\nAllow: /\n\nSitemap: {seo.SITE}/sitemap.xml\n", media_type="text/plain")
+
+
+@app.get("/sitemap.xml")
+def sitemap_index():
+    return Response(pages.sitemap_index(store, SITEMAP_MODELS), media_type="application/xml", headers={"Cache-Control": "public, max-age=21600"})
+
+
+@app.get("/sitemaps/{name}.xml")
+def sitemap(name: str):
+    xml = pages.sitemap(store, name, SITEMAP_MODELS)
+    if xml is None:
+        raise HTTPException(404, "No such sitemap")
+    return Response(xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=21600"})
 
 
 # ---------- frontend ----------
@@ -267,8 +307,13 @@ if os.path.isdir(STATIC):
 
 
 @app.get("/{path:path}")
-def spa(path: str):
+def spa(path: str, request: Request):
     f = os.path.join(STATIC, path)
     if path and os.path.isfile(f) and os.path.abspath(f).startswith(os.path.abspath(STATIC)):
         return FileResponse(f)
-    return FileResponse(os.path.join(STATIC, "index.html"))
+    if path.startswith(("api/", "badge/", "og/", "sitemaps/", "assets/")):
+        raise HTTPException(404, "Not found")
+    p = pages.page(store, path, request.query_params)
+    if p.redirect:
+        return RedirectResponse(p.redirect, status_code=301)
+    return HTMLResponse(pages.render(p), status_code=p.status, headers={"Cache-Control": "public, max-age=600"})
