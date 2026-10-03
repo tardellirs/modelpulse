@@ -98,6 +98,7 @@ class Pages:
             f"<title>{e(p.title)}</title>",
             f'<meta name="description" content="{e(p.description)}" />',
             f'<link rel="canonical" href="{e(url)}" />',
+            '<meta name="msvalidate.01" content="0F762368C80A35B6AA04DBEC3D1E5D2B" />',
             '<meta property="og:site_name" content="Model Pulse" />',
             '<meta property="og:type" content="website" />',
             f'<meta property="og:title" content="{e(p.title)}" />',

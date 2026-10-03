@@ -7,3 +7,4 @@ data/
 .DS_Store
 site/assets/
 site/index.html
+space/.deploy.env

@@ -2,7 +2,9 @@
 # Build and (re)start the Model Pulse API on the Hostinger VM behind Dokploy's Traefik.
 # Usage: ./deploy.sh   (run locally; syncs code to the VM and restarts the container)
 set -euo pipefail
-HOST=root@187.127.23.69
+# the server address lives outside the repo: put DEPLOY_HOST=user@host in space/.deploy.env (gitignored)
+[ -f "$(dirname "$0")/.deploy.env" ] && . "$(dirname "$0")/.deploy.env"
+HOST="${DEPLOY_HOST:?set DEPLOY_HOST=user@host in space/.deploy.env}"
 DIR=/opt/modelpulse
 cd "$(dirname "$0")"
 rsync -a --delete --exclude .venv --exclude web --exclude __pycache__ ./ "$HOST:$DIR/src/"
