@@ -8,7 +8,7 @@ pinned: false
 ---
 
 <p align="center">
-  <img src="https://huggingface.co/spaces/modelpulse/model-pulse/resolve/main/thumbnail.png" alt="Model Pulse: download history for every model on the Hub" width="720">
+  <img src="https://huggingface.co/spaces/modelpulse/README/resolve/main/banner.png" alt="Model Pulse" width="560">
 </p>
 
 **Model Pulse** shows how every model on the Hugging Face Hub is doing over time: daily downloads, likes, and the reach of its quantizations, fine-tunes, adapters and merges, going back to July 2024.
@@ -20,8 +20,10 @@ pinned: false
 
 ### A badge for your model card
 
-[![Model Pulse](https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg)](https://huggingface.co/spaces/modelpulse/model-pulse?model=Qwen/Qwen3-8B)
+[![Model Pulse](https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg?v=2)](https://huggingface.co/spaces/modelpulse/model-pulse?model=Qwen/Qwen3-8B)
 
 Monthly downloads, a four-week sparkline and the weekly trend, refreshed every day. Copy yours from your model's page on Model Pulse.
+
+Made by **Tardelli Stekel** ([@tardellirs](https://huggingface.co/tardellirs), [stekel.ifsp.dev](https://stekel.ifsp.dev/)).
 
 <sub>Built from the daily snapshots of [cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats). An independent project, not affiliated with Hugging Face.</sub>

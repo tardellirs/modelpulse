@@ -28,3 +28,5 @@ Daily download history, likes and derivative families for every model on the Hug
 - A README badge with monthly downloads and a sparkline, updated daily
 
 Data comes from daily snapshots of [cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats), compiled into [modelpulse/model-pulse-data](https://huggingface.co/datasets/modelpulse/model-pulse-data). An independent project, not affiliated with Hugging Face.
+
+Made by **Tardelli Stekel** ([@tardellirs](https://huggingface.co/tardellirs), [stekel.ifsp.dev](https://stekel.ifsp.dev/)).

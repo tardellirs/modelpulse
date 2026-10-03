@@ -163,35 +163,40 @@ def badge_svg(mid, metric, theme):
             label, value = "downloads/mo", human(m["dl30"])
         delta = m.get("growth_7d")
     dark = theme == "dark"
-    ink, paper, accent = ("#151833", "#ffffff", "#3B4CF5") if not dark else ("#F6F7FA", "#151833", "#8F9BFF")
-    lw = 18 + text_w(label) + 10
+    ink = "#1B1B1F"
+    right_bg, value_fg, accent = ("#FBFAF5", ink, "#3B6FF5") if not dark else ("#1F2023", "#F4F1E8", "#7FA2FF")
+    border = ink if not dark else "#F4F1E8"
+    lw = 20 + text_w(label) + 9
     sw = 40 if len(spark) > 2 else 0
     dtext = "" if delta is None else (("▲" if delta >= 0 else "▼") + f"{abs(delta) * 100:.0f}%")
-    rw = 10 + text_w(value, 11, True) + (10 + sw if sw else 0) + (8 + text_w(dtext, 10) if dtext else 0) + 10
+    if metric == "likes":  # show likes gained this week instead of download growth
+        gained = (m or {}).get("likes_7d") or 0
+        dtext, delta = (f"+{human(gained)}", 1) if gained > 0 else ("", None)
+    rw = 10 + text_w(value, 11, True) + (10 + sw if sw else 0) + (8 + text_w(dtext, 10) if dtext else 0) + 9
     W, H = round(lw + rw), 22
     path = ""
     if sw:
         mx = max(spark) or 1
         x0 = lw + 10 + text_w(value, 11, True) + 10
         step = sw / (len(spark) - 1)
-        coords = [(x0 + i * step, 16 - (v / mx) * 10) for i, v in enumerate(spark)]
+        coords = [(x0 + i * step, 16.5 - (v / mx) * 10) for i, v in enumerate(spark)]
         path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in coords)
-    dx = lw + rw - 10 - text_w(dtext, 10)
-    dcol = "#1F9D55" if (delta or 0) >= 0 else "#D64545"
-    if dark:
-        dcol = "#5BD08A" if (delta or 0) >= 0 else "#FF7A7A"
+    dx = lw + rw - 9 - text_w(dtext, 10)
+    up = (delta or 0) >= 0
+    dcol = ("#1F8A4C" if up else "#D23B3B") if not dark else ("#5BD08A" if up else "#FF7A7A")
     t = escape
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="{t(label)}: {t(value)}">
 <title>{t(mid)} · {t(label)}: {t(value)} · Model Pulse</title>
-<rect width="{W}" height="{H}" rx="5" fill="{paper}" stroke="{ink}" stroke-opacity=".18"/>
-<path d="M0 5a5 5 0 0 1 5-5h{lw - 5:.0f}v{H}H5a5 5 0 0 1-5-5z" fill="{ink}"/>
-<path d="M6 11h2.5l1.5-4 2.5 8 1.5-4H16" fill="none" stroke="#FFD43B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="0.75" y="0.75" width="{W - 1.5}" height="{H - 1.5}" rx="5" fill="{right_bg}" stroke="{border}" stroke-width="1.5"/>
+<path d="M0.75 5.75a5 5 0 0 1 5-5h{lw - 5.75:.1f}v{H - 1.5}H5.75a5 5 0 0 1-5-5z" fill="#FFD21E"/>
+<line x1="{lw:.1f}" y1="0.75" x2="{lw:.1f}" y2="{H - 0.75}" stroke="{border}" stroke-width="1.5"/>
+<path d="M5.5 11.5h2.6l1.7-4.6 2.8 9.2 1.7-4.6H17" fill="none" stroke="{ink}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 <g font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">
-<text x="19" y="15" fill="{paper}">{t(label)}</text>
-<text x="{lw + 10:.0f}" y="15" fill="{ink}" font-weight="bold">{t(value)}</text>
-{f'<text x="{dx:.0f}" y="15" fill="{dcol}" font-size="10">{t(dtext)}</text>' if dtext else ''}
+<text x="20" y="15" fill="{ink}">{t(label)}</text>
+<text x="{lw + 10:.0f}" y="15" fill="{value_fg}" font-weight="bold">{t(value)}</text>
+{f'<text x="{dx:.0f}" y="15" fill="{dcol}" font-size="10" font-weight="bold">{t(dtext)}</text>' if dtext else ''}
 </g>
-{f'<path d="{path}" fill="none" stroke="{accent}" stroke-width="1.4" stroke-linejoin="round"/>' if path else ''}
+{f'<path d="{path}" fill="none" stroke="{border}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="{path}" fill="none" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' if path else ''}
 </svg>"""
 
 
