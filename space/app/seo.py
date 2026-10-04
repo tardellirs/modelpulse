@@ -197,10 +197,15 @@ class Pages:
             "@context": "https://schema.org", "@type": "WebSite", "name": "Model Pulse", "url": SITE + "/",
             "potentialAction": {"@type": "SearchAction", "target": SITE + "/model/{model_id}", "query-input": "required name=model_id"},
         }, {
-            "@context": "https://schema.org", "@type": "Dataset", "name": "Model Pulse: daily Hugging Face model downloads",
-            "description": f"Daily download and like history for {full(meta['models'])} models on the Hugging Face Hub since {first}, updated every day.",
-            "url": "https://huggingface.co/datasets/modelpulse/model-pulse-data", "creator": CREATOR, "isAccessibleForFree": True,
-            "temporalCoverage": f"{first}/{last}", "keywords": ["Hugging Face", "model downloads", "machine learning", "statistics"],
+            "@context": "https://schema.org", "@type": "Dataset", "name": "Model Pulse: daily Hugging Face downloads and likes",
+            "description": f"Daily download and like history for {full(meta['models'])} models and every actively used dataset on the Hugging Face Hub, "
+                           f"and daily likes for every liked Space, since {first}, updated every day.",
+            "url": "https://huggingface.co/datasets/modelpulse/model-pulse-data", "sameAs": SITE + "/",
+            "license": "https://www.apache.org/licenses/LICENSE-2.0", "creator": CREATOR, "isAccessibleForFree": True,
+            "temporalCoverage": f"{first}/{last}",
+            "keywords": ["Hugging Face", "model downloads", "dataset downloads", "Spaces", "machine learning", "statistics"],
+            "distribution": [{"@type": "DataDownload", "encodingFormat": "application/vnd.apache.parquet",
+                              "contentUrl": "https://huggingface.co/datasets/modelpulse/model-pulse-data/tree/main"}],
         }]
         return Page("Model Pulse · Download history for every Hugging Face model",
                     f"Daily download history, likes and rankings for {compact(meta['models'])} models on the Hugging Face Hub, updated every day since July 2024.",
