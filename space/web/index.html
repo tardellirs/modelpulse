@@ -9,6 +9,24 @@
     <!-- the server sends a plain-HTML version of each page for search engines; with JavaScript the app replaces it -->
     <script>document.documentElement.classList.add("js")</script>
     <style>.js #app > .ssr { display: none }</style>
+    <!-- Google Analytics (GA4), one stream for modelpulse.ifsp.dev and the Hugging Face Space. Page changes inside the
+         app are history pushes, which GA4's enhanced measurement already counts. The library loads once the page is
+         idle so it never competes with the first render; inside the Space's iframe the cookies must allow third-party use. -->
+    <script>
+      if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { dataLayer.push(arguments); };
+        gtag("js", new Date());
+        gtag("config", "G-DZCN93407Y", window.top !== window ? { cookie_flags: "SameSite=None;Secure" } : {});
+        addEventListener("load", function () {
+          (window.requestIdleCallback || setTimeout)(function () {
+            var s = document.createElement("script");
+            s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=G-DZCN93407Y";
+            document.head.appendChild(s);
+          }, { timeout: 2000 });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
