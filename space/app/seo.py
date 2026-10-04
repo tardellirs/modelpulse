@@ -326,23 +326,42 @@ class Pages:
                     image=f"{SITE}/og/space/{seg(rid)}.png", ld=[crumbs(*crumb)])
 
     def author(self, store, name: str) -> Page:
-        author = store.find_author(name)
+        repos = getattr(store, "repos", None)
+        author = store.find_author(name) or (repos.find_author(name) if repos else None)
         if not author:
-            return self.not_found(f"No tracked models for {name}.")
+            return self.not_found(f"No tracked models, datasets or Spaces for {name}.")
         if author != name:
             return Page("", "", "", "", redirect=f"/author/{quote(author, safe='')}")
         path = f"/author/{quote(author, safe='')}"
         s = store.author_summary(author)
         models = store.author_models(author, 100)
-        top = ", ".join(m["id"].split("/", 1)[-1] for m in models[:3])
-        body = (f'<nav>{a("/", "Model Pulse")}</nav><h1>{e(author)} on Hugging Face: model downloads</h1>'
-                f"<p>{e(author)} has {full(s['models'])} tracked models, downloaded {full(s['dl30'])} times in the last 30 days"
-                + (f" and {full(s['dl_all'])} times in total" if s["dl_all"] else "") + f". {a('/wrapped/' + quote(author, safe=''), author + ' Wrapped: the last 12 months')}.</p>"
-                "<h2>Models by downloads in the last 30 days</h2><ol>" + "".join(
-                    f"<li>{a('/model/' + seg(m['id']), m['id'])} {compact(m['dl30'])} downloads, {e(task(m.get('pipeline_tag')))}</li>" for m in models) + "</ol>")
-        return Page(f"{author} on Hugging Face: model downloads and rankings · Model Pulse",
-                    f"Download history for {full(s['models'])} models by {author} on the Hugging Face Hub, with {compact(s['dl30'])} downloads in the last 30 days. Top models: {top}.",
-                    path, body, image=f"{SITE}/og/author/{quote(author, safe='')}.png", ld=[crumbs(("Model Pulse", "/"), (author, path))])
+        rr = repos.author_repos(author, 50) if repos else {"datasets": [], "spaces": [], "totals": {}}
+        t = rr["totals"]
+        top = ", ".join(m["id"].split("/", 1)[-1] for m in (models or rr["datasets"] or rr["spaces"])[:3])
+        parts = []
+        if s["models"]:
+            parts.append(f"{full(s['models'])} tracked models, downloaded {full(s['dl30'])} times in the last 30 days"
+                         + (f" and {full(s['dl_all'])} times in total" if s["dl_all"] else ""))
+        if t.get("datasets"):
+            parts.append(f"{full(t['datasets'])} datasets, downloaded {full(t['datasets_dl30'])} times in the last 30 days")
+        if t.get("spaces"):
+            parts.append(f"{full(t['spaces'])} Spaces with {full(t['spaces_likes'])} likes")
+        body = (f'<nav>{a("/", "Model Pulse")}</nav><h1>{e(author)} on Hugging Face: downloads and rankings</h1>'
+                f"<p>{e(author)} has {e('; '.join(parts))}. {a('/wrapped/' + quote(author, safe=''), author + ' Wrapped: the last 12 months')}.</p>")
+        if models:
+            body += "<h2>Models by downloads in the last 30 days</h2><ol>" + "".join(
+                f"<li>{a('/model/' + seg(m['id']), m['id'])} {compact(m['dl30'])} downloads, {e(task(m.get('pipeline_tag')))}</li>" for m in models) + "</ol>"
+        if rr["datasets"]:
+            body += "<h2>Datasets by downloads in the last 30 days</h2><ol>" + "".join(
+                f"<li>{a('/dataset/' + seg(x['id']), x['id'])} {compact(x['dl30'])} downloads</li>" for x in rr["datasets"]) + "</ol>"
+        if rr["spaces"]:
+            body += "<h2>Spaces by likes</h2><ol>" + "".join(
+                f"<li>{a('/space/' + seg(x['id']), x.get('title') or x['id'])} {full(x['likes'])} likes</li>" for x in rr["spaces"]) + "</ol>"
+        what = " and ".join(w for w, n in (("models", s["models"]), ("datasets", t.get("datasets")), ("Spaces", t.get("spaces"))) if n)
+        return Page(f"{author} on Hugging Face: downloads and rankings · Model Pulse",
+                    f"Download history for the {what} by {author} on the Hugging Face Hub. Top: {top}.",
+                    path, body, image=f"{SITE}/og/author/{quote(author, safe='')}.png" if s["models"] else DEFAULT_IMAGE,
+                    ld=[crumbs(("Model Pulse", "/"), (author, path))])
 
     def galaxies(self, store) -> Page:
         gs = store.galaxies(40)

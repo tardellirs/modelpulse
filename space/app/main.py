@@ -179,9 +179,10 @@ def search_all(q: str = Query("", max_length=120)):
 def author(author: str):
     s = store.author_series(author)
     models = [clean(r) for r in store.author_models(author)]
-    if not models:
-        raise HTTPException(404, f"No tracked models for {author}.")
-    return j({"author": author, "series": s, "models": models})
+    rr = repos.author_repos(author)
+    if not models and not rr["datasets"] and not rr["spaces"]:
+        raise HTTPException(404, f"No tracked models, datasets or Spaces for {author}.")
+    return j({"author": author, "series": s, "models": models, **rr})
 
 
 @app.get("/api/search")

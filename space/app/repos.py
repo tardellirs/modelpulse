@@ -119,6 +119,29 @@ class Repos:
             "sum(n)::BIGINT AS n FROM new_by_sdk WHERE day >= DATE '2022-01-01' GROUP BY ALL ORDER BY 1", [sdks])
         return {"sdks": sdks + ["other"], **data}
 
+    def find_author(self, name: str):
+        if not self.ok:
+            return None
+        for table in ("datasets", "spaces"):
+            r = self.s.con().execute(f"SELECT author FROM {table} WHERE lower(author) = lower(?) LIMIT 1", [name]).fetchone()
+            if r:
+                return r[0]
+        return None
+
+    def author_repos(self, author: str, limit: int = 200):
+        """An author's datasets (by downloads) and Spaces (by likes), with totals."""
+        if not self.ok:
+            return {"datasets": [], "spaces": [], "totals": {}}
+        ds = self.s._rows("SELECT id, pipeline_tag, size, dl30, dl_all, dl_7d, growth_7d, likes, used_by_models FROM datasets "
+                          "WHERE author = ? ORDER BY dl30 DESC NULLS LAST LIMIT ?", [author, limit])
+        sp = self.s._rows("SELECT id, title, emoji, sdk, likes, likes_7d, likes_30d FROM spaces WHERE author = ? "
+                          "ORDER BY likes DESC NULLS LAST LIMIT ?", [author, limit])
+        t = self.s.con().execute(
+            "SELECT (SELECT count(*) FROM datasets WHERE author = ?), (SELECT coalesce(sum(dl30), 0) FROM datasets WHERE author = ?), "
+            "(SELECT count(*) FROM spaces WHERE author = ?), (SELECT coalesce(sum(likes), 0) FROM spaces WHERE author = ?)",
+            [author, author, author, author]).fetchone()
+        return {"datasets": ds, "spaces": sp, "totals": {"datasets": t[0], "datasets_dl30": t[1], "spaces": t[2], "spaces_likes": t[3]}}
+
     def top_ids(self, kind: str, n: int):
         table, col = ("datasets", "dl30") if kind == "datasets" else ("spaces", "likes")
         return [r[0] for r in self.s.con().execute(f"SELECT id FROM {table} ORDER BY {col} DESC NULLS LAST LIMIT ?", [n]).fetchall()]
