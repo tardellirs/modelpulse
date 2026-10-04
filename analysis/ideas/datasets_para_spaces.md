@@ -2,6 +2,12 @@
 
 Pesquisa somente leitura. Todos os números vêm dos scouts e do pesquisador de concorrência; nada foi medido de novo para este relatório. Onde a fonte não verificou algo, está dito.
 
+> **Correções (verificadas em 2026-10-04, depois do relatório):**
+> - O histórico do `hysts-bot-data/daily-papers-stats` não é de ~16 dias: o repositório tem 21.527 commits desde 2024-03-12 (cerca de 700 por mês, quase de hora em hora), e versões antigas baixam normalmente (2.130 papers em 03/2024, 8.087 em 06/2025, 18.535 hoje; campos `arxiv_id`, `upvotes` e, depois, `num_comments`). Uma versão por dia desde 2024 dá ~935 arquivos de até 1,5 MB, menos de 1 GB. O scout só paginou os primeiros 400 commits.
+> - O histórico de estrelas do GitHub pode ser reconstruído pela API do GitHub (data de cada estrela), com custo de rate limit, não só desde 2026-07.
+> - O Model Pulse aparece em "Spaces using" de lmarena, mteb e outros só porque o robô de links lista os datasets mais baixados no README; não consome esses dados. Essas ideias seriam produtos novos.
+> - `hfmlsoc/hub_weekly_snapshots` começa em 2024-07-24, como o Model Pulse: não estende o histórico para trás, no máximo tapa buracos.
+
 ## Resumo: as 3 melhores ideias
 
 1. **Papers do HF Daily Papers (hysts-bot-data: daily-papers-stats + paper-github-stars).** Uma página por paper com curva de upvotes e de estrelas no GitHub, e histórico de ranking. Os Spaces e páginas oficiais mostram só o estado atual. A fonte atualiza várias vezes por dia, mas o histórico é jovem (cerca de 16 dias nos stats, desde 2026-07 nas estrelas), então o valor vem de começar a acumular já.
