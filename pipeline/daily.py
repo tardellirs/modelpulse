@@ -86,6 +86,35 @@ def main():
     month_df.write_parquet(sp, compression="zstd", compression_level=9, row_group_size=200_000, statistics=True)
     build.log("series", m, month_df.height)
 
+    # 3b. how the counters moved since the last snapshot: frozen share (stalls) and rollbacks (see stalls.py)
+    def snap(d):
+        return (pl.scan_parquet(os.path.join(out, "series", "*.parquet")).filter(pl.col("day") == d)
+                .select("id", "dl_all", "dl30").collect())
+    prev = snap(prev_day)
+    frozen, back = stalls.signals(prev, today)
+    rb = stalls.Rollbacks(meta.get("rollback"))
+    if (day - prev_day).days == 1 and rb.state is None:
+        meta.setdefault("frozen", {})[str(day)] = frozen
+    base_day = dt.date.fromisoformat(rb.state["base"]) if rb.state else prev_day
+    base = prev if base_day == prev_day else snap(base_day)
+    verdict = rb.check(base_day, base, day, today, back)
+    skip = set(meta.get("skip_days", []))
+    if verdict == "hold":
+        meta["rollback"] = rb.state
+        skip.add(str(day))
+        build.log("rollback: models counters went down for", f"{back:.1%}", "; snapshot set aside, measuring from", base_day)
+    else:
+        meta.pop("rollback", None)
+        if verdict == "release":  # the drop lasted: a correction, so the held snapshots count after all
+            skip -= set(rb.released)
+        if rb.recovered:  # their catch-up joins them in a stall window (see stalls.settle)
+            meta["pending"] = sorted(set(meta.get("pending", [])) | set(rb.recovered))
+            build.log("no rollback after all; using", rb.released)
+    # measured from the base snapshot to today, through the held ones when they were released
+    chain = [] if verdict == "hold" else [(base_day, base)] + [(dt.date.fromisoformat(d), snap(dt.date.fromisoformat(d))) for d in rb.released] + [(day, today)]
+    meta["skip_days"] = sorted(skip)
+    build.SKIP = skip
+
     # 4. models, families, children
     days = [(dt.date.fromisoformat(d), None) for d in meta["days"]] + [(day, None)]
     first = pl.concat([old_models.drop_nulls("first_seen"),
@@ -111,25 +140,16 @@ def main():
     build.author_series(models, source=src)
 
     # 6. hub-wide daily downloads for the new day
-    prev = pl.scan_parquet(os.path.join(out, "series", "*.parquet")).filter(pl.col("day") == prev_day).select("id", "dl_all").collect()
-    gap = max(1, (day - prev_day).days)
-    tags = models.select("id", pl.col("pipeline_tag").fill_null("other"))
-    hub_new = (today.select("id", "dl_all").drop_nulls().join(prev, on="id", suffix="_p")
-               .with_columns(((pl.col("dl_all") - pl.col("dl_all_p")).clip(0) / gap).alias("dl"))
-               .join(tags, on="id", how="left").with_columns(pl.col("pipeline_tag").fill_null("other"))
-               .group_by("pipeline_tag").agg(pl.col("dl").sum())
-               .select("pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)))
-    # one row per calendar day since the previous snapshot, each at the per-day average
-    span = [prev_day + dt.timedelta(days=k) for k in range(1, gap + 1)]
-    hub_new = pl.concat([hub_new.with_columns(pl.lit(d).alias("day")) for d in span]).select("day", "pipeline_tag", "dl")
     hp = os.path.join(out, "hub_series.parquet")
-    hub = pl.concat([pl.read_parquet(hp).filter(~pl.col("day").is_in(span)), hub_new]).sort("day", "pipeline_tag")
+    hub = pl.read_parquet(hp)
+    tags = models.select("id", pl.col("pipeline_tag").fill_null("other"))
+    for frm, to in zip(chain, chain[1:]):
+        new = stalls.increment(frm, to, tags)
+        hub = pl.concat([hub.filter(~pl.col("day").is_in(new["day"].unique().implode())), new]).sort("day", "pipeline_tag")
     # days when the Hub's counters stood still get spread over their catch-up days (see stalls.py)
-    wins = stalls.windows(hub)
+    hub, wins = stalls.settle(hub, meta, day)
     if wins:
         build.log("stalls", [f"{w[0]}..{w[-1]}" for w in wins])
-        hub = stalls.smooth(hub, wins)
-        meta["skip_days"] = sorted(set(meta.get("skip_days", [])) | set(stalls.skip_days(wins)))
     hub.write_parquet(hp)
 
     # 7. leaderboards + meta

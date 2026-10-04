@@ -76,25 +76,48 @@ def main():
     sp_month = os.path.join(build.OUT, "series", f"{m}.parquet")
     prev_day = dt.date.fromisoformat(rmeta["datasets_days"][-1])
     append_month(sp_month, today)
+    # how the counters moved since the last snapshot: frozen share (stalls) and rollbacks (see stalls.py)
+    def snap(d):
+        return (pl.scan_parquet(os.path.join(build.OUT, "series", "*.parquet")).filter(pl.col("day") == d)
+                .select("id", "dl_all", "dl30").collect())
+    prev = snap(prev_day)
+    frozen, back = stalls.signals(prev, today)
+    rb = stalls.Rollbacks(rmeta.get("rollback"))
+    if (ds_day - prev_day).days == 1 and rb.state is None:
+        rmeta.setdefault("frozen", {})[str(ds_day)] = frozen
+    base_day = dt.date.fromisoformat(rb.state["base"]) if rb.state else prev_day
+    base = prev if base_day == prev_day else snap(base_day)
+    verdict = rb.check(base_day, base, ds_day, today, back)
+    skip = set(rmeta.get("skip_days", []))
+    if verdict == "hold":
+        rmeta["rollback"] = rb.state
+        skip.add(str(ds_day))
+        build.log("rollback: dataset counters went down for", f"{back:.1%}", "; snapshot set aside, measuring from", base_day)
+    else:
+        rmeta.pop("rollback", None)
+        if verdict == "release":  # the drop lasted: a correction, so the held snapshots count after all
+            skip -= set(rb.released)
+        if rb.recovered:  # their catch-up joins them in a stall window (see stalls.settle)
+            rmeta["pending"] = sorted(set(rmeta.get("pending", [])) | set(rb.recovered))
+            build.log("no rollback after all; using", rb.released)
+    # measured from the base snapshot to today, through the held ones when they were released
+    chain = [] if verdict == "hold" else [(base_day, base)] + [(dt.date.fromisoformat(d), snap(dt.date.fromisoformat(d))) for d in rb.released] + [(ds_day, today)]
+    rmeta["skip_days"] = sorted(skip)
+    build.SKIP = skip
     days = [(dt.date.fromisoformat(d), None) for d in rmeta["datasets_days"] if d != str(ds_day)] + [(ds_day, None)]
     first = pl.concat([old.drop_nulls("first_seen"), today.select("id", pl.col("day").alias("first_seen"))]).group_by("id").agg(pl.col("first_seen").min())
     ds = build.derived(days, meta, first=first).sort("id")
     build.author_series(ds, source=pl.scan_parquet(sp_month))
-    # Hub-wide dataset downloads for the days since the previous snapshot, then settle any stalled counters
-    prev = pl.scan_parquet(os.path.join(build.OUT, "series", "*.parquet")).filter(pl.col("day") == prev_day).select("id", "dl_all").collect()
-    gap = max(1, (ds_day - prev_day).days)
-    tags = ds.select("id", pl.col("pipeline_tag").fill_null("other"))
-    inc = (today.select("id", "dl_all").drop_nulls().join(prev, on="id", suffix="_p")
-           .with_columns(((pl.col("dl_all") - pl.col("dl_all_p")).clip(0) / gap).alias("dl"))
-           .join(tags, on="id", how="left").with_columns(pl.col("pipeline_tag").fill_null("other"))
-           .group_by("pipeline_tag").agg(pl.col("dl").sum()).select("pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)))
-    span = [prev_day + dt.timedelta(days=k) for k in range(1, gap + 1)]
+    # Hub-wide dataset downloads for the days since the base snapshot, then settle any stalled counters
     hp = os.path.join(build.OUT, "hub_series.parquet")
-    hub = pl.concat([pl.read_parquet(hp).filter(~pl.col("day").is_in(span))] + [inc.with_columns(pl.lit(d).alias("day")).select("day", "pipeline_tag", "dl") for d in span]).sort("day", "pipeline_tag")
-    wins = stalls.windows(hub)
-    skip = sorted(set(rmeta.get("skip_days", [])) | set(stalls.skip_days(wins)))
-    stalls.smooth(hub, wins).write_parquet(hp)
-    build.SKIP = set(skip)
+    hub = pl.read_parquet(hp)
+    tags = ds.select("id", pl.col("pipeline_tag").fill_null("other"))
+    for frm, to in zip(chain, chain[1:]):
+        new = stalls.increment(frm, to, tags)
+        hub = pl.concat([hub.filter(~pl.col("day").is_in(new["day"].unique().implode())), new]).sort("day", "pipeline_tag")
+    hub, wins = stalls.settle(hub, rmeta, ds_day, min_frozen=stalls.FROZEN_DATASETS)
+    hub.write_parquet(hp)
+    build.SKIP = set(rmeta.get("skip_days", []))
     ds_days = [(d, None) for d, _ in days]
     changed += ["datasets/datasets.parquet", "datasets/hub_series.parquet", "datasets/leaderboards.json",
                 f"datasets/series/{m}.parquet", f"datasets/author_series/{m}.parquet"]
@@ -121,7 +144,7 @@ def main():
             pl.col("created").cast(pl.Datetime))
     uses = br.build_uses(out, sp_path, refs)
     shutil.rmtree(cache, ignore_errors=True)
-    br.finish(out, ds, sp, uses, ds_days, sp_day, skip)
+    br.finish(out, ds, sp, uses, ds_days, sp_day, {k: rmeta[k] for k in ("skip_days", "frozen", "rollback", "pending") if k in rmeta})
 
     if a.no_upload:
         build.log("done (no upload)")

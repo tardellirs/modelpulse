@@ -117,7 +117,9 @@ def at_or_before(series_last, ref_day, max_back=10):
 
 def derived(days, meta, first=None):
     last = days[-1][0]
-    recent = scan_series().filter(pl.col("day") >= last - dt.timedelta(days=40)).collect()
+    skip = [dt.date.fromisoformat(d) for d in SKIP]
+    recent = scan_series().filter((pl.col("day") >= last - dt.timedelta(days=40))
+                                  & (~pl.col("day").is_in(skip) | (pl.col("day") == last))).collect()
     now = recent.filter(pl.col("day") == last).select("id", "dl30", "dl_all", "likes")
     w1 = at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("dl_all").alias("all_7"), pl.col("likes").alias("likes_7"))
     w2 = at_or_before(recent, last - dt.timedelta(days=14)).select("id", pl.col("dl_all").alias("all_14"))
@@ -202,33 +204,18 @@ def author_series(models, source=None):
     log("author_series", n)
 
 
-def hub_series(models, days):
+def hub_series(models, days, min_frozen=stalls.FROZEN):
     """Hub-wide daily downloads per pipeline_tag: sum of positive dl_all deltas between consecutive snapshots."""
     tags = models.select("id", pl.col("pipeline_tag").fill_null("other"))
-    out = []
-    prev = None
-    for day, path in days:
-        cur = read_day(day, path).select("id", "dl_all", "dl30").drop_nulls("dl_all")
-        if prev is not None and cur.height:
-            gap = (day - prev[0]).days
-            d = (cur.join(prev[1], on="id", suffix="_p")
-                 .with_columns(((pl.col("dl_all") - pl.col("dl_all_p")).clip(0) / gap).alias("dl"))
-                 .join(tags, on="id", how="left").with_columns(pl.col("pipeline_tag").fill_null("other"))
-                 .group_by("pipeline_tag").agg(pl.col("dl").sum()))
-            # one row per calendar day: a gap's per-day average is written to every day it covers, so sums stay exact
-            for k in range(gap - 1, -1, -1):
-                out.append(d.with_columns(pl.lit(day - dt.timedelta(days=k)).alias("day")))
-        if cur.height:
-            prev = (day, cur.select("id", "dl_all"))
-    if not out:  # no all-time totals in these snapshots yet
-        pl.DataFrame(schema={"day": pl.Date, "pipeline_tag": pl.String, "dl": pl.Int64}).write_parquet(os.path.join(OUT, "hub_series.parquet"))
+    snaps = ((day, read_day(day, path).select("id", "dl_all", "dl30")) for day, path in days)
+    raw, frozen, aside, state = stalls.measure(snaps, tags)
+    if not raw.height:  # no all-time totals in these snapshots yet
+        raw.write_parquet(os.path.join(OUT, "hub_series.parquet"))
         return []
-    hub = pl.concat(out).select("day", "pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)).sort("day", "pipeline_tag")
-    wins = stalls.windows(hub)
-    hub = stalls.smooth(hub, wins)
+    hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in aside}, min_frozen)
     hub.write_parquet(os.path.join(OUT, "hub_series.parquet"))
-    log("stalls", len(wins))
-    return stalls.skip_days(wins)
+    log("stalls", len(wins), "rollbacks", [str(d) for d in aside])
+    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside})
 
 
 SKIP: set[str] = set()  # days whose snapshot is ignored (see stalls.py); set by the caller from meta.json

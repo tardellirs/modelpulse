@@ -91,7 +91,7 @@ def build_datasets(raw, out, meta_path):
     meta = dataset_meta(meta_path)
     ds = build.derived(days, meta).sort("id")
     build.author_series(ds)
-    skip = build.hub_series(ds, days)
+    skip = build.hub_series(ds, days, min_frozen=stalls.FROZEN_DATASETS)
     build.SKIP = set(skip)
     return ds, days, skip
 
@@ -241,8 +241,11 @@ def leaderboards(out, ds, sp, last_ds, last_sp):
     log("leaderboards written")
 
 
-def finish(out, ds, sp, uses, ds_days, last_sp, skip):
-    """Usage counts, tables, rankings and meta: shared by the full build and the daily update."""
+def finish(out, ds, sp, uses, ds_days, last_sp, counters):
+    """Usage counts, tables, rankings and meta: shared by the full build and the daily update.
+
+    `counters` is the stall state kept in repos_meta.json: skip_days, and frozen / rollback when known (see stalls.py).
+    """
     ds = (ds.drop("used_by_models", "used_by_spaces", strict=False)
             .join(count_uses(uses, "dataset", "model", "used_by_models"), on="id", how="left")
             .join(count_uses(uses, "dataset", "space", "used_by_spaces"), on="id", how="left")
@@ -253,7 +256,7 @@ def finish(out, ds, sp, uses, ds_days, last_sp, skip):
     sp.write_parquet(os.path.join(out, "spaces", "spaces.parquet"), compression="zstd", row_group_size=100_000)
     leaderboards(out, ds, sp, ds_days[-1][0], last_sp)
     json.dump({"datasets_days": [str(d) for d, _ in ds_days], "datasets": ds.height, "spaces": sp.height,
-               "spaces_last": str(last_sp), "skip_days": skip, "built": dt.datetime.now(dt.timezone.utc).isoformat()},
+               "spaces_last": str(last_sp), **counters, "built": dt.datetime.now(dt.timezone.utc).isoformat()},
               open(os.path.join(out, "repos_meta.json"), "w"))
     log("done: datasets", ds.height, "spaces", sp.height)
 
@@ -265,7 +268,7 @@ def main():
     ds, ds_days, skip = build_datasets(raw_ds, out, ds_path)
     sp, last_sp = build_spaces(raw_sp, out, sp_path)
     uses = build_uses(out, sp_path, model_refs(md_path))
-    finish(out, ds, sp, uses, ds_days, last_sp, skip)
+    finish(out, ds, sp, uses, ds_days, last_sp, {"skip_days": skip})
 
 
 if __name__ == "__main__":

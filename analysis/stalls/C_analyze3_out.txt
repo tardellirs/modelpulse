@@ -1,0 +1,11 @@
+dataset total stall (ratio<0.1) n 28 | models upload minute-of-day deviation from local median: stall mean 2.68, others mean 2.94 (min); MWU p=0.051
+   datasets-after-models spacing (min): stall mean 4.79, others mean 4.06; MWU p=0.030
+   interval h: stall mean 23.909 sd 0.728, others mean 23.946 sd 0.842
+model half-stall (ratio<0.7 & frozen>0.3) n 21 | models upload minute-of-day deviation from local median: stall mean 2.43, others mean 2.95 (min); MWU p=0.452
+   datasets-after-models spacing (min): stall mean 4.66, others mean 4.09; MWU p=0.070
+   interval h: stall mean 24.040 sd 0.134, others mean 23.938 sd 0.857
+corr(m_ratio, m_dev) pearson/spearman -0.033 -0.019
+ym         2025-07  2025-08  2025-09  2025-10  2025-11  2025-12  2026-01  2026-02  2026-03  2026-04  2026-05  2026-06  2026-07  2026-08  2026-09  2026-10
+n               22       31       30       29       30       25       30       27       29       11       19       19       26       26       30        4
+ds_stalls        2        5        2        3        0        1        1        1        1        1        1        1        4        3        2        0
+m_half           1        4        1        3        1        1        1        1        0        1        0        0        2        3        2        0

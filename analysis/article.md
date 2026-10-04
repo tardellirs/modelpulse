@@ -8,8 +8,8 @@ This post walks through what that data shows. Every number comes from the [open 
 
 ## The short version
 
-- The Hub serves about **100 million model downloads a day**, up from about 62 million a year ago.
-- **Rerankers grew almost 10x** and vision-language models more than 6x in that year. BERT-style fill-mask models are the only big category that shrank.
+- The Hub serves about **100 million model downloads a day**, up from about 61 million a year ago.
+- **Rerankers grew about 10x** and vision-language models more than 6x in that year. BERT-style fill-mask models are the only big category that shrank.
 - **Qwen became the default open LLM publisher.** Its own repos went from 9% of text and vision-language model downloads in March 2025 to 30% in September 2026, after peaking at 50% in April. Meta's went from 10% to 3%.
 - **43% of all downloads go to derivatives**, up from 18%. Quantizations alone went from 9% to 28%.
 - **Unsloth grew 6x and LM Studio's community org 24x**, making the quantizers some of the biggest publishers on the Hub.
@@ -27,22 +27,22 @@ This post walks through what that data shows. Every number comes from the [open 
 
 ![Weekly downloads across all public models, by task](01-hub.png)
 
-In September 2026 public models were downloaded about 100M times on a typical day, against about 62M a year earlier. The growth wasn't spread evenly across tasks:
+In September 2026 public models were downloaded about 103M times on a typical day, against about 61M a year earlier. The growth wasn't spread evenly across tasks:
 
 | Task | Sep 2025, per day | Sep 2026, per day | Change |
 |---|---:|---:|---:|
-| Text generation | 9.0M | 18.0M | 2.0x |
-| Sentence similarity | 6.7M | 16.2M | 2.4x |
-| Vision-language (image-text-to-text) | 1.6M | 10.7M | 6.6x |
-| Feature extraction | 2.8M | 5.9M | 2.2x |
+| Text generation | 9.2M | 19.3M | 2.1x |
+| Sentence similarity | 6.7M | 16.3M | 2.5x |
+| Vision-language (image-text-to-text) | 1.7M | 10.9M | 6.6x |
+| Feature extraction | 2.8M | 6.1M | 2.2x |
 | Automatic speech recognition | 2.4M | 4.8M | 2.0x |
-| Fill-mask | 5.5M | 4.6M | 0.8x |
-| Text ranking (rerankers) | 0.4M | 3.9M | 9.7x |
-| Everything else | 31.8M | 34.7M | 1.1x |
+| Fill-mask | 5.6M | 5.1M | 0.9x |
+| Text ranking (rerankers) | 0.4M | 3.9M | 10.2x |
+| Everything else | 31.7M | 36.7M | 1.2x |
 
 Two things stand out. Rerankers went from a niche to nearly 4M downloads a day, which is what you'd expect as retrieval pipelines add a reranking step. And fill-mask, the task behind the original BERT wave, is the only large category that shrank.
 
-The spike in late June 2026 is a reminder of how the Hub counts: it sometimes books delayed downloads on a single day. Weekly totals smooth most of that out.
+Days when the Hub's counters stood still, or briefly went backwards, are spread over the days around them, keeping totals exact (see "How this was measured").
 
 ## 2. Embeddings and retrieval quietly run the Hub
 
@@ -310,7 +310,7 @@ The model listed by the most Spaces isn't a frontier model. It's Xenova/detr-res
 **Caveats.**
 - Downloads follow the Hub's own [counting rules](https://huggingface.co/docs/hub/models-download-stats), so they include CI jobs, benchmarks and other automated pulls. That's why tiny test models rank surprisingly high.
 - The source has gaps: two weeks in August 2024, most of June 2025, and parts of April to June 2026. Totals are unaffected, but daily values across a gap are averages, and monthly figures across one are interpolated.
-- The Hub sometimes books delayed downloads on a single day, which shows up as a short spike.
+- On some days the Hub's counters stand still and catch up a day or two later, mostly on Wednesdays and often only for newer repos while older ones keep counting. Twice, in May 2025 and June 2026, they went backwards for a large share of models and came back days later. The Hub-wide figures spread each such episode evenly over its days, which keeps totals exact, and measure across the rollbacks so a recovery isn't counted as new downloads.
 - Publisher shares count downloads of an organization's own repos. A Qwen model quantized by Unsloth counts for Unsloth.
 - "Created" dates come from the Hub, which dates repos migrated from its early days to March 2022.
 

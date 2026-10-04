@@ -291,7 +291,7 @@ if (hubPath) {
     if (seen.has(key) || ![0, 3, 6, 9].includes(m)) return ""; seen.add(key);
     return `<text x="${L + i * bw}" y="${B + 26}" ${MONO} font-size="14" fill="${MUTED}">${d.toLocaleString("en", { month: "short", timeZone: "UTC" })} ${String(d.getUTCFullYear()).slice(2)}</text>`; }).join("");
   const legend = order.map((t, k) => `<g transform="translate(${L + k * 196},168)"><rect width="16" height="16" rx="4" fill="${COL[t]}" stroke="${INK}" stroke-width="2"/><text x="24" y="13" font-size="16" fill="${INK}">${LABELS[t]}</text></g>`).join("");
-  save("01-hub", frame("The Hub serves ~100M model downloads a day", "Weekly downloads across all public models, by task. Up from ~62M a day a year ago.",
+  save("01-hub", frame("The Hub serves ~100M model downloads a day", "Weekly downloads across all public models, by task. Up from ~61M a day a year ago.",
     grid + `<line x1="${L}" x2="${W - R}" y1="${B}" y2="${B}" stroke="${INK}" stroke-width="3"/>` + bars + xt + legend));
 }
 
