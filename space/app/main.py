@@ -46,7 +46,8 @@ def link_candidates():
 linker = jobs.Linker(lambda mid: store.model(mid) is not None,
                      lambda mid: (store.model(mid) or {}).get("dl30"),
                      link_candidates,
-                     datasets=lambda: repos.top_ids("datasets", jobs.DATASET_LINK_CAP) if repos.ok else [])
+                     datasets=lambda: repos.top_ids("datasets", jobs.DATASET_LINK_CAP) if repos.ok else [],
+                     ds_popularity=lambda did: (repos.dataset(did) or {}).get("dl30") if repos.ok else 0)
 
 
 def reload_store():

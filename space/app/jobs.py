@@ -16,6 +16,8 @@ REFRESH_EVERY = int(os.environ.get("REFRESH_EVERY", "3600"))
 LINK_EVERY = int(os.environ.get("LINK_EVERY", str(3 * 3600)))
 LINK_CAP = int(os.environ.get("LINK_CAP", "5000"))
 DATASET_LINK_CAP = int(os.environ.get("DATASET_LINK_CAP", "5000"))
+# the Hub rejects a README over about 1.02 MB ("request entity too large"), whatever the caps say
+README_MAX = int(os.environ.get("README_MAX", "1000000"))
 
 
 def refresher(current_sha, on_new):
@@ -41,14 +43,16 @@ class Linker:
 
     Each flush adds models people opened, plus automatic candidates (trending on the Hub, Model Pulse
     rankings, most downloaded). Over LINK_CAP, protected models (trending, rankings) always stay and the
-    least downloaded of the rest are dropped.
+    least downloaded of the rest are dropped. The README must also stay under README_MAX bytes: past it, the least
+    downloaded models and datasets go first, compared by monthly downloads.
     """
 
-    def __init__(self, exists, popularity, candidates, datasets=None):
+    def __init__(self, exists, popularity, candidates, datasets=None, ds_popularity=None):
         self.exists = exists            # id -> bool, model is tracked
         self.popularity = popularity    # id -> monthly downloads
         self.candidates = candidates    # () -> (ids to add, ids that must never be dropped)
         self.datasets = datasets        # () -> dataset ids, most used first, for the card's `datasets:` list
+        self.ds_popularity = ds_popularity or (lambda did: 0)  # id -> monthly downloads
         self.pending: set[str] = set()
         self.lock = threading.Lock()
         self.api = HfApi()
@@ -63,7 +67,8 @@ class Linker:
         auto, protected = self.candidates()
         batch = {m for m in opened if self.exists(m)} | set(auto)
         path = hf_hub_download(SITE_REPO, "README.md", repo_type="space", force_download=True)
-        _, front, body = open(path, encoding="utf-8").read().split("---", 2)
+        original = open(path, encoding="utf-8").read()
+        _, front, body = original.split("---", 2)
         meta = yaml.safe_load(front) or {}
         models = list(meta.get("models") or [])
         new = sorted(batch - set(models))
@@ -83,7 +88,27 @@ class Linker:
         meta["models"] = models
         if ds:
             meta["datasets"] = ds
-        out = "---\n" + yaml.safe_dump(meta, sort_keys=False, allow_unicode=True, width=10_000) + "---" + body
+
+        def render():
+            return "---\n" + yaml.safe_dump(meta, sort_keys=False, allow_unicode=True, width=10_000) + "---" + body
+        out = render()
+        if len(out.encode()) > README_MAX:
+            # least downloaded first, models and datasets alike; trending and ranked models always stay
+            pool = sorted([(self.popularity(m) or 0, "models", m) for m in meta["models"] if m not in protected]
+                          + [(self.ds_popularity(d) or 0, "datasets", d) for d in meta.get("datasets", [])])
+            per = len(out.encode()) / max(1, len(meta["models"]) + len(meta.get("datasets", [])))
+            k = 0
+            while len(out.encode()) > README_MAX and k < len(pool):
+                step = max(1, int((len(out.encode()) - README_MAX) / per) + 10)
+                gone = {(kind, rid) for _, kind, rid in pool[k:k + step]}
+                k += step
+                for kind in ("models", "datasets"):
+                    meta[kind] = [r for r in meta.get(kind, []) if (kind, r) not in gone]
+                out = render()
+            dropped += sum(1 for _, kind, _ in pool[:k] if kind == "models")
+            models, ds = meta["models"], meta.get("datasets", [])
+        if out == original:  # the trim undid the change
+            return 0
         self.api.upload_file(path_or_fileobj=out.encode(), path_in_repo="README.md", repo_id=SITE_REPO, repo_type="space",
                              commit_message=f"Link {len(new)} models" + (f", drop {dropped}" if dropped else "") + (f", {len(ds)} datasets" if ds_changed else ""))
         log.info("linked %d models, dropped %d (%d total), datasets %d%s", len(new), dropped, len(models), len(ds), " (updated)" if ds_changed else "")
