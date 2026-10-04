@@ -12,10 +12,10 @@ This post walks through what that data shows. Every number comes from the [open 
 - **Rerankers grew about 10x** and vision-language models more than 6x in that year. BERT-style fill-mask models are the only big category that shrank.
 - **Qwen became the default open LLM publisher.** Its own repos went from 9% of text and vision-language model downloads in March 2025 to 30% in September 2026, after peaking at 50% in April. Meta's went from 10% to 3%.
 - **43% of all downloads go to derivatives**, up from 18%. Quantizations alone went from 9% to 28%.
-- **Unsloth grew 6x and LM Studio's community org 24x**, making the quantizers some of the biggest publishers on the Hub.
+- **Unsloth grew 6x and LM Studio's community org 25x**, making the quantizers some of the biggest publishers on the Hub.
 - **The top of the Hub is losing its grip**: the ten most downloaded models took 34% of downloads in March 2025 and 22% now.
 - **Big models are the fastest-growing slice.** Downloads of 100B+ models grew 14x and of 10–35B models 8x, against 2.6x for models under 10B.
-- **Old models still carry the Hub**: 9 of the 15 most downloaded models are dated 2022 or earlier.
+- **Old models still carry the Hub**: 10 of the 15 most downloaded models are dated 2022 or earlier.
 - **A launch spikes for two weeks and then plateaus.** 40% of successful launches had their best week after their third month.
 - **Likes measure excitement, not use.** Image models collect 160 times more likes per download than rerankers.
 - **Dataset downloads grew 2.5x in a year**, to about 8M a day, and they're far less concentrated than model downloads.
@@ -50,30 +50,30 @@ Generative models get the attention, but the most downloaded models on the Hub a
 
 | Model | Created | Downloads in September 2026 |
 |---|---|---:|
-| sentence-transformers/all-MiniLM-L6-v2 | 2022 or earlier | 251.5M |
-| cross-encoder/ms-marco-MiniLM-L6-v2 | 2022 or earlier | 89.1M |
-| BAAI/bge-small-en-v1.5 | 2023 | 65.6M |
-| sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 | 2022 or earlier | 50.8M |
-| google/electra-base-discriminator | 2022 or earlier | 48.2M |
-| google-bert/bert-base-uncased | 2022 or earlier | 41.9M |
-| BAAI/bge-m3 | 2024 | 36.8M |
-| Qwen/Qwen3-0.6B | 2025 | 30.4M |
-| google-t5/t5-small | 2022 or earlier | 25.1M |
-| amazon/chronos-2 | 2025 | 23.4M |
-| Comfy-Org/MiniMax-H3 | 2026 | 22.9M |
-| openai/clip-vit-base-patch32 | 2022 or earlier | 22.1M |
-| timm/mobilenetv3_small_100.lamb_in1k | 2022 or earlier | 21.9M |
-| sentence-transformers/all-mpnet-base-v2 | 2022 or earlier | 21.0M |
-| BAAI/bge-reranker-v2-m3 | 2024 | 17.7M |
+| sentence-transformers/all-MiniLM-L6-v2 | 2022 or earlier | 253.3M |
+| cross-encoder/ms-marco-MiniLM-L6-v2 | 2022 or earlier | 89.6M |
+| BAAI/bge-small-en-v1.5 | 2023 | 65.9M |
+| sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 | 2022 or earlier | 50.9M |
+| google/electra-base-discriminator | 2022 or earlier | 48.8M |
+| google-bert/bert-base-uncased | 2022 or earlier | 43.1M |
+| BAAI/bge-m3 | 2024 | 37.0M |
+| Qwen/Qwen3-0.6B | 2025 | 30.3M |
+| google-t5/t5-small | 2022 or earlier | 25.4M |
+| amazon/chronos-2 | 2025 | 23.6M |
+| Comfy-Org/MiniMax-H3 | 2026 | 23.3M |
+| openai/clip-vit-base-patch32 | 2022 or earlier | 22.3M |
+| timm/mobilenetv3_small_100.lamb_in1k | 2022 or earlier | 22.0M |
+| sentence-transformers/all-mpnet-base-v2 | 2022 or earlier | 21.1M |
+| FacebookAI/xlm-roberta-base | 2022 or earlier | 17.9M |
 
 From April to September 2026 the `sentence-transformers` organization served 2.28B downloads, slightly more than Qwen's 2.16B. The `sentence-transformers` library went from 12% of all downloads to 24%, while `transformers` went from 67% to 50%:
 
 | Library | Mar 2025 | Sep 2026 |
 |---|---:|---:|
-| transformers | 66.7% | 50.0% |
-| sentence-transformers | 12.3% | 24.1% |
+| transformers | 66.7% | 49.8% |
+| sentence-transformers | 12.3% | 24.3% |
 | no library tag | 3.5% | 7.7% |
-| timm | 5.3% | 1.6% |
+| timm | 5.3% | 1.7% |
 | diffusers | 2.7% | 1.6% |
 | gguf | 0.0% | 1.6% |
 | mlx | 0.0% | 0.6% |
@@ -83,22 +83,22 @@ From April to September 2026 the `sentence-transformers` organization served 2.2
 
 ![Share of text and vision-language model downloads, by publisher](/report/02-text-orgs.webp)
 
-Count every download of a text-generation or vision-language model on the Hub, including every quantization and fine-tune, and ask who published the repo. Most of these downloads go to thousands of small publishers, so a single organization with a tenth of them is a giant. In July 2024 Meta's `meta-llama` repos took about 11% and Qwen's 6%. By March 2025 they were tied at about 9% each. Then Qwen pulled away: 27% in September 2025, a peak of 50% in April 2026, and 30% in September 2026. Since April its share has slipped while Google's rose from 1.5% to 4.3% and quantized repos kept growing. Meta's repos took 3%. NVIDIA is the riser to watch, from almost nothing to 3.5%.
+Count every download of a text-generation or vision-language model on the Hub, including every quantization and fine-tune, and ask who published the repo. Most of these downloads go to thousands of small publishers, so a single organization with a tenth of them is a giant. In July 2024 Meta's `meta-llama` repos took about 11% and Qwen's 6%. By March 2025 they were tied at about 9% each. Then Qwen pulled away: 27% in September 2025, a peak of 50% in April 2026, and 30% in September 2026. Since April its share has slipped while Google's rose from 1.5% to 4.3% and quantized repos kept growing. Meta's repos took 3%. NVIDIA is the riser to watch, from almost nothing to 3.4%.
 
 The most downloaded text and vision-language models in September 2026:
 
 | Model | Downloads in September 2026 |
 |---|---:|
-| Qwen/Qwen3-0.6B | 30.4M |
-| Qwen/Qwen3-VL-8B-Instruct | 16.6M |
+| Qwen/Qwen3-0.6B | 30.3M |
+| Qwen/Qwen3-VL-8B-Instruct | 16.5M |
 | openai-community/gpt2 | 16.2M |
-| google/gemma-4-26B-A4B-it | 13.4M |
-| Qwen/Qwen3-8B | 12.0M |
-| trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 | 11.4M |
-| google/gemma-4-31B-it | 10.2M |
-| Qwen/Qwen2.5-7B-Instruct | 10.1M |
-| Qwen/Qwen3.5-9B | 9.6M |
-| unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF | 9.5M |
+| google/gemma-4-26B-A4B-it | 13.3M |
+| Qwen/Qwen3-8B | 11.8M |
+| trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 | 11.1M |
+| google/gemma-4-31B-it | 10.1M |
+| Qwen/Qwen3.5-9B | 9.7M |
+| unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF | 9.6M |
+| Qwen/Qwen2.5-7B-Instruct | 9.6M |
 
 Two of these are worth a second look. GPT-2, released in 2019, is still the third most downloaded text model. And a tiny test model used in TRL's CI makes the top ten, which shows how much of the Hub's traffic comes from automated pipelines.
 
@@ -126,16 +126,16 @@ Derivatives also reach scale faster. Of the models created since March 2025, 946
 
 | Publisher | Monthly downloads, Mar 2025 | Monthly downloads, Sep 2026 | Repos with downloads, Sep 2026 |
 |---|---:|---:|---:|
-| unsloth | 11.1M | 66.3M | 1,439 |
-| mradermacher | 7.2M | 46.8M | 70,233 |
-| lmstudio-community | 1.7M | 41.2M | 750 |
-| bartowski | 10.4M | 15.9M | 2,330 |
-| MaziyarPanahi | 47.7M | 10.5M | 2,790 |
-| mlx-community | 2.2M | 9.4M | 5,440 |
-| ggml-org | 0.2M | 6.6M | 193 |
-| TheBloke | 17.1M | 2.7M | 3,655 |
+| unsloth | 11.1M | 66.9M | 1,440 |
+| mradermacher | 7.2M | 46.7M | 70,233 |
+| lmstudio-community | 1.7M | 42.1M | 750 |
+| bartowski | 10.4M | 16.0M | 2,333 |
+| MaziyarPanahi | 47.7M | 10.0M | 2,790 |
+| mlx-community | 2.2M | 9.4M | 5,436 |
+| ggml-org | 0.2M | 6.5M | 193 |
+| TheBloke | 17.1M | 2.8M | 3,655 |
 
-Unsloth grew sixfold and now ranks among the top dozen publishers on the whole Hub. LM Studio's community org grew 24-fold. mradermacher runs at a different scale altogether: more than 70,000 repos got at least one download in September. TheBloke, who defined this category in 2023, is down to 2.7M a month as people move to newer models, and MaziyarPanahi went the other way too, from 47.7M to 10.5M.
+Unsloth grew sixfold and now ranks among the top dozen publishers on the whole Hub. LM Studio's community org grew 25-fold. mradermacher runs at a different scale altogether: more than 70,000 repos got at least one download in September. TheBloke, who defined this category in 2023, is down to 2.8M a month as people move to newer models, and MaziyarPanahi went the other way too, from 47.7M to 10.0M.
 
 ## 6. The head of the Hub is losing its grip
 
@@ -143,13 +143,13 @@ Unsloth grew sixfold and now ranks among the top dozen publishers on the whole H
 
 | | Jul 2024 (est.) | Mar 2025 | Sep 2026 |
 |---|---:|---:|---:|
-| Share of downloads, top 10 models | 46.7% | 33.7% | 21.9% |
-| Share of downloads, top 100 models | 76.5% | 62.9% | 47.0% |
+| Share of downloads, top 10 models | 46.7% | 33.7% | 22.0% |
+| Share of downloads, top 100 models | 76.5% | 62.9% | 47.2% |
 | Share of downloads, top 1,000 models | 94.6% | 91.3% | 78.6% |
 | Share of downloads, top 1% of models | 98.4% | 98.1% | 96.3% |
 | Models with at least one download | 406K | 752K | 1.52M |
 
-Demand is spreading out: the top ten took almost half of all downloads in mid-2024 and take a fifth now. The tail is still enormous, though. Of the 1.6M models tracked in September 2026, 46% got fewer than 10 downloads in the month and 88% got fewer than 100. Only 433 passed a million.
+Demand is spreading out: the top ten took almost half of all downloads in mid-2024 and take a fifth now. The tail is still enormous, though. Of the 1.6M models tracked in September 2026, 47% got fewer than 10 downloads in the month and 88% got fewer than 100. Only 425 passed a million.
 
 ## 7. Big models are the fastest-growing slice
 
@@ -162,7 +162,7 @@ Weighted by downloads, the typical text-generation model went from 3.0B paramete
 | Under 10B | 109M | 280M | 2.6x |
 | 10B to 35B | 13M | 104M | 8.2x |
 | 35B to 100B | 7.7M | 18M | 2.3x |
-| 100B and up | 3.1M | 43M | 14x |
+| 100B and up | 3.1M | 42M | 14x |
 
 Models with 10B or more parameters went from 19% of text-generation downloads to 35%, and 100B+ alone from 2% to 9%. The 35B–100B band, home of the dense 70B models, grew more slowly than the Hub. The growth went to the bands on either side of it.
 
@@ -176,11 +176,11 @@ The Hub dates every repo migrated from its early days to March 2022, so "2022 or
 
 | Created | Jul 2024 (est.) | Mar 2025 | Sep 2026 |
 |---|---:|---:|---:|
-| 2022 or earlier | 75.7% | 56.0% | 33.7% |
+| 2022 or earlier | 75.7% | 56.0% | 33.5% |
 | 2023 | 16.1% | 17.6% | 11.4% |
-| 2024 | 8.2% | 22.9% | 15.2% |
-| 2025 | | 3.5% | 17.8% |
-| 2026 | | | 21.9% |
+| 2024 | 8.2% | 22.9% | 15.1% |
+| 2025 | | 3.5% | 17.9% |
+| 2026 | | | 22.0% |
 
 New models win share fast, since 2026 models already take more than a fifth of all downloads, but the old guard erodes slowly: three quarters of downloads in mid-2024 went to models from 2022 or earlier, and a third still do.
 
@@ -188,7 +188,7 @@ New models win share fast, since 2026 models already take more than a fifth of a
 
 ![Average weekly share of a model's first six months of downloads](/report/07-launch-curve.webp)
 
-I took the 2,303 models launched between March 2025 and March 2026 that passed 100K downloads in their first six months, and looked at how those downloads were spread over the 26 weeks:
+I took the 2,301 models launched between March 2025 and March 2026 that passed 100K downloads in their first six months, and looked at how those downloads were spread over the 26 weeks:
 
 - On average the first two weeks take about 8% of the six months each. After that, downloads settle at around 3% a week and stay there; they don't fade.
 - For the median model, the first month accounts for only 14% of the first six months.
@@ -259,7 +259,7 @@ Some of the most downloaded datasets in September 2026:
 | allenai/ai2_arc | 0.7M | Reasoning benchmark |
 | cais/mmlu | 0.7M | Knowledge benchmark |
 
-Benchmarks are a large part of the head: evaluation harnesses download GSM8K, ARC and MMLU every time they run. And 29% of September's dataset downloads went to repos with no task, modality or size in their metadata at all. Many of those look like file storage (caches, asset bundles, model inputs) more than datasets in the ML sense.
+Benchmarks are a large part of the head: evaluation harnesses download GSM8K, ARC and MMLU every time they run. And 28% of September's dataset downloads went to repos with no task, modality or size in their metadata at all. Many of those look like file storage (caches, asset bundles, model inputs) more than datasets in the ML sense.
 
 ## 12. One in seven new datasets is robot data
 

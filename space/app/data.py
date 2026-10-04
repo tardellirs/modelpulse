@@ -30,7 +30,8 @@ class Store:
         con.execute(f"CREATE TABLE models AS SELECT * FROM read_parquet('{p('models.parquet')}')")
         con.execute(f"CREATE TABLE hub AS SELECT * FROM read_parquet('{p('hub_series.parquet')}')")
         con.execute("CREATE TABLE search_ix AS SELECT id, lower(id) AS lid, author, pipeline_tag, dl30 FROM models")
-        # snapshots from days when the Hub's counters stood still; leaving them out spreads the catch-up evenly
+        # snapshots from days when the Hub's counters stood still or went backwards (see pipeline/stalls.py); leaving
+        # them out spreads the catch-up evenly
         con.execute("CREATE TABLE skip_days (day DATE)")
         for d in self.meta.get("skip_days", []):
             con.execute("INSERT INTO skip_days VALUES (?)", [d])

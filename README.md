@@ -37,7 +37,7 @@ Download counts follow the [Hub's own counting rules](https://huggingface.co/doc
 
 | Path | What |
 |---|---|
-| `pipeline/` | Backfill, full build and daily incremental update of the dataset (polars): `build.py`/`daily.py` for models, `build_repos.py`/`daily_repos.py` for datasets and Spaces, `stalls.py` for days when the Hub's counters stood still |
+| `pipeline/` | Backfill, full build and daily incremental update of the dataset (polars): `build.py`/`daily.py` for models, `build_repos.py`/`daily_repos.py` for datasets and Spaces, `stalls.py` for days when the Hub's counters stood still (fully or in part) or went backwards, and `rebuild_hub.py` to rebuild the Hub-wide series and skip days from the snapshots |
 | `space/app/` | FastAPI + DuckDB API, badges, server-rendered pages (`seo.py`), link previews (`og.py`), datasets and Spaces (`repos.py`), background jobs |
 | `space/web/` | Preact + Vite + uPlot frontend |
 | `analysis/` | Notebook-style scripts and charts behind the report |
