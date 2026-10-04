@@ -48,6 +48,7 @@ class Wrapped:
                  SELECT id, day, dl_all, lag(dl_all) OVER w AS p, lag(day) OVER w AS pd
                  FROM series
                  WHERE id IN (SELECT id FROM models WHERE author = ?) AND day BETWEEN ? AND ?
+                   AND day NOT IN (SELECT day FROM skip_days)
                  WINDOW w AS (PARTITION BY id ORDER BY day))
                SELECT id, day, greatest(1, day - pd) AS gap, greatest(0, dl_all - p) AS d
                FROM s WHERE p IS NOT NULL AND day > ?""",

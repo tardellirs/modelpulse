@@ -17,6 +17,8 @@ import sys
 import time
 
 import polars as pl
+
+import stalls
 import pyarrow.parquet as pq
 
 
@@ -219,15 +221,24 @@ def hub_series(models, days):
         if cur.height:
             prev = (day, cur.select("id", "dl_all"))
     hub = pl.concat(out).select("day", "pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)).sort("day", "pipeline_tag")
+    wins = stalls.windows(hub)
+    hub = stalls.smooth(hub, wins)
     hub.write_parquet(os.path.join(OUT, "hub_series.parquet"))
+    log("stalls", len(wins))
+    return stalls.skip_days(wins)
     log("hub_series", hub.height)
+
+
+SKIP: set[str] = set()  # days whose snapshot is ignored (see stalls.py); set by the caller from meta.json
 
 
 def sparks(ids, last):
     """Daily downloads over the last ~28 days for a set of models."""
-    s = (scan_series().filter(pl.col("id").is_in(ids) & (pl.col("day") >= last - dt.timedelta(days=29)))
+    skip = [dt.date.fromisoformat(d) for d in SKIP]
+    s = (scan_series().filter(pl.col("id").is_in(ids) & (pl.col("day") >= last - dt.timedelta(days=29)) & ~pl.col("day").is_in(skip))
          .select("id", "day", "dl_all").collect().sort("id", "day")
-         .with_columns(pl.col("dl_all").diff().over("id").clip(0).alias("d"))
+         .with_columns((pl.col("dl_all").diff().over("id").clip(0)
+                        / pl.col("day").diff().over("id").dt.total_days().clip(1)).alias("d"))
          .drop_nulls("d").group_by("id", maintain_order=True).agg(pl.col("d")))
     return dict(zip(s["id"].to_list(), s["d"].to_list()))
 
@@ -295,9 +306,9 @@ def main():
     family_series(pairs, fam_ids)
     author_series(models)
     leaderboards(models, days[-1][0])
-    hub_series(models, days)
+    skip = hub_series(models, days)
     json.dump({"days": [str(d) for d, _ in days], "built": dt.datetime.utcnow().isoformat() + "Z",
-               "models": models.height, "families": len(fam_ids)},
+               "models": models.height, "families": len(fam_ids), "skip_days": skip},
               open(os.path.join(OUT, "meta.json"), "w"))
     log("done")
 

@@ -30,6 +30,10 @@ class Store:
         con.execute(f"CREATE TABLE models AS SELECT * FROM read_parquet('{p('models.parquet')}')")
         con.execute(f"CREATE TABLE hub AS SELECT * FROM read_parquet('{p('hub_series.parquet')}')")
         con.execute("CREATE TABLE search_ix AS SELECT id, lower(id) AS lid, author, pipeline_tag, dl30 FROM models")
+        # snapshots from days when the Hub's counters stood still; leaving them out spreads the catch-up evenly
+        con.execute("CREATE TABLE skip_days (day DATE)")
+        for d in self.meta.get("skip_days", []):
+            con.execute("INSERT INTO skip_days VALUES (?)", [d])
 
     def con(self):
         c = getattr(self.local, "c", None)
@@ -49,13 +53,13 @@ class Store:
         return rows[0] if rows else None
 
     def series(self, mid: str):
-        return self._columns("SELECT day, dl30, dl_all, likes FROM series WHERE id = ? ORDER BY day", [mid])
+        return self._columns("SELECT day, dl30, dl_all, likes FROM series WHERE id = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [mid])
 
     def family_series(self, mid: str):
-        return self._columns("SELECT day, dl30, dl_all, members FROM family_series WHERE id = ? ORDER BY day", [mid])
+        return self._columns("SELECT day, dl30, dl_all, members FROM family_series WHERE id = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [mid])
 
     def author_series(self, author: str):
-        return self._columns("SELECT day, dl30, dl_all, likes, models FROM author_series WHERE author = ? ORDER BY day", [author])
+        return self._columns("SELECT day, dl30, dl_all, likes, models FROM author_series WHERE author = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [author])
 
     def children(self, mid: str, limit: int = 50):
         return self._rows("SELECT id, base_relation AS relation, author, dl30, dl_all, dl_7d, likes FROM children "

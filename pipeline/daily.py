@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 
 import build
+import stalls
 
 SRC = "cfahlgren1/hub-stats"
 
@@ -120,9 +121,16 @@ def main():
     hub_new = pl.concat([hub_new.with_columns(pl.lit(d).alias("day")) for d in span]).select("day", "pipeline_tag", "dl")
     hp = os.path.join(out, "hub_series.parquet")
     hub = pl.concat([pl.read_parquet(hp).filter(~pl.col("day").is_in(span)), hub_new]).sort("day", "pipeline_tag")
+    # days when the Hub's counters stood still get spread over their catch-up days (see stalls.py)
+    wins = stalls.windows(hub)
+    if wins:
+        build.log("stalls", [f"{w[0]}..{w[-1]}" for w in wins])
+        hub = stalls.smooth(hub, wins)
+        meta["skip_days"] = sorted(set(meta.get("skip_days", [])) | set(stalls.skip_days(wins)))
     hub.write_parquet(hp)
 
     # 7. leaderboards + meta
+    build.SKIP = set(meta.get("skip_days", []))
     build.leaderboards(models, day)
     meta["days"] = sorted(set(meta["days"]) | {str(day)})
     meta.update(built=dt.datetime.now(dt.timezone.utc).isoformat(), models=models.height, families=len(fam_ids))
