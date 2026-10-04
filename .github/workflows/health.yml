@@ -1,6 +1,6 @@
 name: Health check
 
-# Fails (and GitHub emails you) when the API is down or the data is more than 3 days old.
+# Fails (and GitHub emails you) when the API is down or any of the model, dataset or Space data is more than 3 days old.
 on:
   schedule:
     - cron: "17 */6 * * *"
@@ -18,6 +18,12 @@ jobs:
           code=$(echo "$body" | tail -1); json=$(echo "$body" | head -1)
           echo "HTTP $code: $json"
           [ "$code" = "200" ] || { echo "::error::Model Pulse API unhealthy (HTTP $code): $json"; exit 1; }
+      - name: Dataset and Space pages answer
+        run: |
+          for u in /api/dataset/HuggingFaceFW/fineweb /api/space/enzostvs/deepsite /dataset/HuggingFaceFW/fineweb; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --retry 2 --max-time 30 "https://modelpulse.ifsp.dev$u")
+            echo "$u HTTP $code"; [ "$code" = "200" ] || { echo "::error::$u returned $code"; exit 1; }
+          done
       - name: Badge renders
         run: |
           curl -sSf --max-time 30 https://modelpulse.ifsp.dev/badge/Qwen/Qwen3-8B.svg | grep -q '<svg' || { echo "::error::Badge endpoint broken"; exit 1; }

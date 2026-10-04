@@ -1,6 +1,6 @@
 ---
 license: apache-2.0
-pretty_name: Model Pulse — daily download history of Hugging Face models
+pretty_name: Model Pulse — daily history of Hugging Face models, datasets and Spaces
 tags:
   - hub-stats
   - downloads
@@ -18,13 +18,23 @@ configs:
     data_files: "author_series/*.parquet"
   - config_name: hub_series
     data_files: "hub_series.parquet"
+  - config_name: dataset_series
+    data_files: "datasets/series/*.parquet"
+  - config_name: datasets
+    data_files: "datasets/datasets.parquet"
+  - config_name: space_series
+    data_files: "spaces/series/*.parquet"
+  - config_name: spaces
+    data_files: "spaces/spaces.parquet"
+  - config_name: uses
+    data_files: "uses.parquet"
 ---
 
 # Model Pulse data
 
-Daily download and like history for every actively used model on the Hugging Face Hub, from 2024-07-29 onward, updated every day. It powers [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse), also at [modelpulse.ifsp.dev](https://modelpulse.ifsp.dev) with a page for every model.
+Daily download and like history for every actively used model and dataset on the Hugging Face Hub, and daily likes for every liked Space, from 2024-07-29 onward, updated every day. It powers [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse), also at [modelpulse.ifsp.dev](https://modelpulse.ifsp.dev) with a page for every model, dataset and Space.
 
-Built from the daily snapshots of [cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats) (Apache 2.0), reading each historical revision of `models.parquet`.
+Built from the daily snapshots of [cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats) (Apache 2.0), reading each historical revision of `models.parquet`, `datasets.parquet` and `spaces.parquet`.
 
 ## Files
 
@@ -37,10 +47,20 @@ Built from the daily snapshots of [cfahlgren1/hub-stats](https://huggingface.co/
 | `author_series/YYYY-MM.parquet` | one per author per day | downloads summed over the author's models |
 | `hub_series.parquet` | one per day per task | Hub-wide daily downloads by `pipeline_tag` |
 | `leaderboards.json` | | weekly rankings shown on the site |
+| `datasets/series/YYYY-MM.parquet` | one per dataset per snapshot day | `id, day, dl30, dl_all, likes` |
+| `datasets/datasets.parquet` | one per tracked dataset | latest metadata (task, size, license) plus derived metrics and usage counts |
+| `datasets/author_series/`, `datasets/hub_series.parquet`, `datasets/leaderboards.json` | | the same views as for models |
+| `spaces/series/YYYY-MM.parquet` | one per Space per snapshot day | `id, day, likes, trending` |
+| `spaces/spaces.parquet` | one per Space with at least one like | title, emoji, SDK, likes gained in 7 and 30 days, ranks |
+| `spaces/new_by_sdk.parquet` | one per day per SDK | Spaces created each day, from the latest snapshot |
+| `uses.parquet` | one per reference | `src_kind, src, dst_kind, dst, created, weight`: a Space using a model or dataset, or a model trained on a dataset, from today's cards |
+| `repos_meta.json` | | days covered and skipped snapshots for datasets and Spaces |
 
 ## Notes
 
 - `dl30` is the Hub's rolling 30-day download count. `dl_all` (all-time downloads) only exists from 2025-02-27, so exact daily downloads, computed as the difference of `dl_all` between snapshots, start on that date.
 - Some days are missing in the source (Aug 2024, Jun 2025, Apr 2026, May–Jun 2026). Totals are unaffected; daily values across a gap are averages.
-- A model is tracked once it has 10+ downloads in 30 days, 50+ all-time downloads, or at least one like.
+- A model or dataset is tracked once it has 10+ downloads in 30 days, 50+ all-time downloads, or at least one like. A Space is tracked once it has a like; the Hub doesn't publish visits for Spaces.
+- On some days the Hub's download counters stand still and catch up a day or two later. `hub_series` spreads each such episode evenly over its days (sums unchanged), and the snapshots inside it are listed in `skip_days` (`meta.json` for models, `repos_meta.json` for datasets) so per-repo series can do the same.
+- `uses.parquet` comes from the cards as they are today, dated by when each Space or model was created, not by when it started using what it lists.
 - Download counts follow the Hub's [counting rules](https://huggingface.co/docs/hub/models-download-stats); the Hub occasionally books delayed downloads on a single day.

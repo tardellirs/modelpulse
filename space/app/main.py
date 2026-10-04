@@ -95,8 +95,17 @@ def health():
     from datetime import date
     last = store.meta["days"][-1]
     lag = (date.today() - date.fromisoformat(last)).days
-    return JSONResponse({"ok": lag <= 3, "last_day": last, "days_behind": lag, "models": store.meta["models"]},
-                        status_code=200 if lag <= 3 else 503, headers={"Cache-Control": "no-store"})
+    out = {"last_day": last, "days_behind": lag, "models": store.meta["models"]}
+    ok = lag <= 3
+    if repos.ok:  # datasets and Spaces update separately; either falling behind is a failure too
+        ds_last, sp_last = repos.meta["datasets_days"][-1], repos.meta["spaces_last"]
+        ds_lag, sp_lag = (date.today() - date.fromisoformat(ds_last)).days, (date.today() - date.fromisoformat(sp_last)).days
+        out.update(datasets_last_day=ds_last, datasets_days_behind=ds_lag, spaces_last_day=sp_last, spaces_days_behind=sp_lag)
+        ok = ok and ds_lag <= 3 and sp_lag <= 3
+    else:
+        out["repos"] = "missing"
+        ok = False
+    return JSONResponse({"ok": ok, **out}, status_code=200 if ok else 503, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/meta")
@@ -341,6 +350,11 @@ def changed_urls():
                 urls.append(f"{seo.SITE}/model/{seo.seg(r['id'])}")
             elif r.get("author"):
                 urls.append(f"{seo.SITE}/author/{quote(r['author'], safe='')}")
+    if repos.ok:
+        for kind, prefix in (("datasets", "dataset"), ("spaces", "space")):
+            for rows in repos.lb[kind].values():
+                for r in rows if isinstance(rows, list) else []:
+                    urls.append(f"{seo.SITE}/{prefix}/{seo.seg(r['id'])}")
     return list(dict.fromkeys(urls))
 
 
