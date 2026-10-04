@@ -86,17 +86,18 @@ class Repos:
         q = q.strip().lower()
         if not q or not self.ok:
             return {"datasets": [], "spaces": []}
-        order = "ORDER BY (lid = ?) DESC, starts_with(lid, ?) DESC, starts_with(split_part(lid,'/',2), ?) DESC"
-        ds = self.s._rows(f"SELECT id, dl30 FROM ds_search WHERE lid LIKE ? {order}, dl30 DESC NULLS LAST LIMIT ?", [f"%{q}%", q, q, q, limit])
-        sp = self.s._rows(f"SELECT s.id, s.likes, sp.title, sp.emoji FROM sp_search s JOIN spaces sp USING (id) "
-                          f"WHERE s.lid LIKE ? OR s.ltitle LIKE ? ORDER BY (s.lid = ?) DESC, starts_with(s.lid, ?) DESC, s.likes DESC NULLS LAST LIMIT ?",
-                          [f"%{q}%", f"%{q}%", q, q, limit])
+        # the repo name matters more than the org: "fineweb" should find HuggingFaceFW/fineweb before fineweb-x/whatever
+        ds = self.s._rows("SELECT id, dl30 FROM ds_search WHERE lid LIKE ? ORDER BY (lid = ? OR split_part(lid,'/',2) = ?) DESC, "
+                          "starts_with(split_part(lid,'/',2), ?) DESC, dl30 DESC NULLS LAST LIMIT ?", [f"%{q}%", q, q, q, limit])
+        sp = self.s._rows("SELECT s.id, s.likes, sp.title, sp.emoji FROM sp_search s JOIN spaces sp USING (id) "
+                          "WHERE s.lid LIKE ? OR s.ltitle LIKE ? ORDER BY (s.lid = ? OR split_part(s.lid,'/',2) = ? OR s.ltitle = ?) DESC, "
+                          "s.likes DESC NULLS LAST LIMIT ?", [f"%{q}%", f"%{q}%", q, q, q, limit])
         return {"datasets": ds, "spaces": sp}
 
     def new_spaces(self):
         """Spaces created per week, by SDK (the five biggest, the rest as other)."""
         sdks = [r[0] for r in self.s.con().execute(
-            "SELECT sdk FROM new_by_sdk WHERE day >= current_date - INTERVAL 365 DAY GROUP BY 1 ORDER BY sum(n) DESC LIMIT 5").fetchall()]
+            "SELECT sdk FROM new_by_sdk WHERE day >= current_date - INTERVAL 365 DAY AND sdk <> 'other' GROUP BY 1 ORDER BY sum(n) DESC LIMIT 5").fetchall()]
         data = self.s._columns(
             "SELECT strftime(date_trunc('week', day), '%Y-%m-%d') AS week, CASE WHEN list_contains(?, sdk) THEN sdk ELSE 'other' END AS sdk, "
             "sum(n)::BIGINT AS n FROM new_by_sdk WHERE day >= DATE '2022-01-01' GROUP BY ALL ORDER BY 1", [sdks])
