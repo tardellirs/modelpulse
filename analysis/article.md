@@ -19,7 +19,7 @@ This post walks through what that data shows. Every number comes from the [open 
 - **A launch spikes for two weeks and then plateaus.** 40% of successful launches had their best week after their third month.
 - **Likes measure excitement, not use.** Image models collect 160 times more likes per download than rerankers.
 - **Dataset downloads grew 2.5x in a year**, to about 8M a day, and they're far less concentrated than model downloads.
-- **One in seven new datasets is robot data.** Robotics dataset downloads grew 16x.
+- **Robotics is now the second most downloaded dataset category**, after text generation, up from 23rd two years ago. One in seven new datasets is robot data.
 - **Fine-tuners moved from IMDb and SQuAD to reasoning traces**, now cited by 12% of the people who list their training data.
 - **Spaces are being created faster than people like them.** At the peak, Spaces were created more than four times faster than in late 2024, while likes per month fell by almost half.
 
@@ -261,13 +261,17 @@ Some of the most downloaded datasets in September 2026:
 
 Benchmarks are a large part of the head: evaluation harnesses download GSM8K, ARC and MMLU every time they run. And 28% of September's dataset downloads went to repos with no task, modality or size in their metadata at all. Many of those look like file storage (caches, asset bundles, model inputs) more than datasets in the ML sense.
 
-## 12. One in seven new datasets is robot data
+## 12. Robotics is now the second most downloaded dataset category
+
+![Rank of dataset task categories by monthly downloads](13-robotics-rank.png)
+
+Among datasets that declare a task category, about a third of all dataset downloads, robotics went from 23rd in September 2024 to 2nd in September 2026, behind only text generation. It got 13.7M downloads that month, ahead of text classification (10.5M) and question answering (8.3M), up 16x from 0.9M in March 2025 and 5% of all dataset downloads. No other large category grew nearly as fast; the few that grew faster, like image-to-3d, are a tenth of its size.
 
 ![Robotics datasets created per month](09-robotics.png)
 
-Robotics is the fastest-growing dataset category on the Hub by far. In September 2026, 6,570 new datasets were tagged robotics, 14% of all new datasets. Two years earlier it was 136. The number of people publishing them grew just as fast: 46 authors created a robotics dataset in the third quarter of 2024, and 2,823 in the third quarter of 2026.
+The number of datasets grew even faster. In September 2026, 6,570 new datasets were tagged robotics, 14% of all new datasets; two years earlier it was 136 a month. 46 authors created a robotics dataset in the third quarter of 2024, and 2,823 in the third quarter of 2026.
 
-Most of these are small recordings of someone's own robot: the median robotics dataset gets 31 downloads a month. The downloads add up anyway, from 0.9M in March 2025 to 13.7M in September 2026, a 16x rise and 5% of all dataset downloads. The most downloaded are large shared collections: NVIDIA's GR00T simulation data, the community's LeRobot conversions of Open X-Embodiment (Language Table, DROID, Kuka, Bridge), and new teleoperation sets.
+Most are LeRobot recordings. In a sample of 30 created in September, 26 carry the LeRobot tag, and most hold camera video plus joint positions from a few dozen demonstrations of a task, often pick-and-place on a low-cost SO-101 arm. They are small and personal: the median robotics dataset gets 31 downloads a month, and LeRobot tends to create one dataset per recording session, so the count overstates the activity a little. The downloads come mostly from large shared collections: NVIDIA's GR00T simulation data, the community's LeRobot conversions of Open X-Embodiment (Language Table, DROID, Kuka, Bridge), and new teleoperation sets.
 
 ## 13. Fine-tuners swapped IMDb and SQuAD for reasoning traces
 
