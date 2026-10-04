@@ -21,6 +21,7 @@ import os
 import sys
 
 import polars as pl
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 import build
@@ -46,16 +47,18 @@ def as_list(v):
 
 def card_refs(path, field, ids_col="id"):
     """(id, ref) pairs from one list field of each repo's card, without parsing cards that don't mention it."""
-    df = pl.from_arrow(pq.read_table(path, columns=[ids_col, "cardData"])).filter(pl.col("cardData").str.contains(f'"{field}"'))
+    # streamed in batches: the card text of every model on the Hub is several GB, too much to hold at once next to the API
     out_id, out_ref = [], []
-    for rid, card in zip(df[ids_col].to_list(), df["cardData"].to_list()):
-        try:
-            refs = as_list(json.loads(card).get(field))
-        except Exception:
-            continue
-        for r in dict.fromkeys(refs):
-            out_id.append(rid); out_ref.append(r)
-    return pl.DataFrame({"src": out_id, "dst": out_ref})
+    for batch in pq.ParquetFile(path).iter_batches(batch_size=50_000, columns=[ids_col, "cardData"]):
+        hit = batch.filter(pc.fill_null(pc.match_substring(batch.column("cardData"), f'"{field}"'), False))
+        for rid, card in zip(hit.column(ids_col).to_pylist(), hit.column("cardData").to_pylist()):
+            try:
+                refs = as_list(json.loads(card).get(field))
+            except Exception:
+                continue
+            for r in dict.fromkeys(refs):
+                out_id.append(rid); out_ref.append(r)
+    return pl.DataFrame({"src": out_id, "dst": out_ref}, schema={"src": pl.String, "dst": pl.String})
 
 
 def tag_value(prefix):
