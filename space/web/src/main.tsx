@@ -34,6 +34,8 @@ function lazy<P>(load: () => Promise<ComponentType<P>>) {
 const Galaxy = lazy(() => import("./Galaxy").then((m) => m.Galaxy));
 const Wrapped = lazy(() => import("./Wrapped").then((m) => m.Wrapped));
 const Report = lazy(() => import("./Report").then((m) => m.Report));
+const DatasetPage = lazy(() => import("./Repos").then((m) => m.DatasetPage));
+const SpacePage = lazy(() => import("./Repos").then((m) => m.SpacePage));
 
 function App() {
   const [route, setRoute] = useState<Route>(readRoute());
@@ -50,7 +52,7 @@ function App() {
   const isReport = route.view === "report";
   const isWrapped = route.view === "wrapped";
   const isGalaxy = route.view === "galaxy";
-  const isHome = !route.model && !route.author && !isReport && !isWrapped && !isGalaxy;
+  const isHome = !route.model && !route.dataset && !route.space && !route.author && !isReport && !isWrapped && !isGalaxy;
 
   return (
     <>
@@ -59,7 +61,7 @@ function App() {
           <a class="brand" aria-label="Model Pulse home" href={hrefOf({})} onClick={(e) => { e.preventDefault(); navigate({}); }}>
             <Logo /><span>Model Pulse</span>
           </a>
-          {!isHome && <Search hotkey onPick={(id) => navigate({ model: id })} />}
+          {!isHome && <Search hotkey all onPick={(id, kind) => navigate({ [kind]: id })} />}
           <nav>
             {!isHome && <a class="btn nav-btn hide-sm" href={hrefOf({})} onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
             <a class="btn nav-btn" aria-current={isGalaxy ? "page" : undefined} href={hrefOf({ view: "galaxy" })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>Galaxy</a>
@@ -69,7 +71,7 @@ function App() {
         </div>
       </header>
       <main>
-        {isGalaxy ? <Galaxy model={route.model} key={route.model ?? "entry"} /> : isWrapped ? <Wrapped author={route.author} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
+        {isGalaxy ? <Galaxy model={route.model} key={route.model ?? "entry"} /> : isWrapped ? <Wrapped author={route.author} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.dataset ? <DatasetPage id={route.dataset} key={route.dataset} /> : route.space ? <SpacePage id={route.space} key={route.space} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
       </main>
       <footer class="foot">
         <div class="wrap">

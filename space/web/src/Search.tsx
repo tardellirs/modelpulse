@@ -1,7 +1,9 @@
+import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { api, fmt, parseModelInput, taskLabel } from "./api";
+import { api, fmt, parseHubInput, parseModelInput, taskLabel, type Kind } from "./api";
 
-type Hit = { id: string; pipeline_tag: string | null; dl30: number | null };
+type Hit = { id: string; kind: Kind; meta: string; title?: string | null };
+const GROUP: Record<Kind, string> = { model: "Models", dataset: "Datasets", space: "Spaces" };
 
 const SearchIcon = ({ size = 16 }) => (
   <svg class="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
@@ -10,8 +12,9 @@ const SearchIcon = ({ size = 16 }) => (
   </svg>
 );
 
-export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = [] }: {
-  onPick: (id: string) => void; big?: boolean; placeholder?: string; autoFocus?: boolean; hotkey?: boolean; exclude?: string[];
+/** Models only by default; with `all`, datasets and Spaces too, grouped by kind. */
+export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = [], all }: {
+  onPick: (id: string, kind: Kind) => void; big?: boolean; placeholder?: string; autoFocus?: boolean; hotkey?: boolean; exclude?: string[]; all?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
@@ -35,23 +38,28 @@ export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = 
   useEffect(() => {
     const s = q.trim();
     if (s.length < 2) { setHits([]); return; }
-    const parsed = parseModelInput(s);
-    const term = parsed && s.includes("huggingface.co") ? parsed : s;
+    const parsed = parseHubInput(s);
+    const term = parsed && s.includes("huggingface.co") ? parsed.id : s;
     const n = ++seq.current;
     const t = setTimeout(() => {
-      api.search(term).then((r) => {
-        if (n !== seq.current) return;
-        setHits(r.filter((h) => !exclude.includes(h.id)));
-        setSel(0);
-      }).catch(() => {});
+      const done = (h: Hit[]) => { if (n === seq.current) { setHits(h.filter((x) => !exclude.includes(x.id))); setSel(0); } };
+      if (all) {
+        api.searchAll(term).then((r) => done([
+          ...r.models.map((h): Hit => ({ id: h.id, kind: "model", meta: `${taskLabel(h.pipeline_tag)} · ${fmt(h.dl30)}/mo` })),
+          ...r.datasets.map((h): Hit => ({ id: h.id, kind: "dataset", meta: `${fmt(h.dl30)}/mo` })),
+          ...r.spaces.map((h): Hit => ({ id: h.id, kind: "space", title: h.title, meta: `${h.emoji ?? ""} ${fmt(h.likes)} likes`.trim() })),
+        ])).catch(() => {});
+      } else {
+        api.search(term).then((r) => done(r.map((h): Hit => ({ id: h.id, kind: "model", meta: `${taskLabel(h.pipeline_tag)} · ${fmt(h.dl30)}/mo` })))).catch(() => {});
+      }
     }, 120);
     return () => clearTimeout(t);
   }, [q]);
 
-  const pick = (id: string) => {
+  const pick = (id: string, kind: Kind = "model") => {
     setQ(""); setHits([]); setOpen(false);
     input.current?.blur();
-    onPick(id);
+    onPick(id, kind);
   };
 
   const onKey = (e: KeyboardEvent) => {
@@ -60,7 +68,8 @@ export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = 
     else if (e.key === "Escape") { setOpen(false); input.current?.blur(); }
     else if (e.key === "Enter") {
       e.preventDefault();
-      if (hits[sel]) pick(hits[sel].id);
+      if (hits[sel]) pick(hits[sel].id, hits[sel].kind);
+      else if (all) { const p = parseHubInput(q); if (p) pick(p.id, p.kind); }
       else { const p = parseModelInput(q); if (p) pick(p); }
     }
   };
@@ -79,8 +88,8 @@ export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = 
         ref={input}
         value={q}
         autoFocus={autoFocus}
-        placeholder={placeholder ?? "Search models"}
-        aria-label="Search models"
+        placeholder={placeholder ?? (all ? "Search models, datasets and Spaces" : "Search models")}
+        aria-label={all ? "Search models, datasets and Spaces" : "Search models"}
         role="combobox"
         aria-expanded={open && hits.length > 0}
         aria-controls="search-results"
@@ -95,10 +104,13 @@ export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = 
       {open && hits.length > 0 && (
         <ul class="results" id="search-results" role="listbox">
           {hits.map((h, i) => (
-            <li key={h.id} role="option" aria-selected={i === sel} onMouseEnter={() => setSel(i)} onMouseDown={(e) => { e.preventDefault(); pick(h.id); }}>
-              <span class="rid">{hl(h.id)}</span>
-              <span class="rmeta">{taskLabel(h.pipeline_tag)} · {fmt(h.dl30)}/mo</span>
-            </li>
+            <Fragment key={`${h.kind}:${h.id}`}>
+              {all && (i === 0 || hits[i - 1].kind !== h.kind) && <li key={`g-${h.kind}`} class="rgroup" role="presentation">{GROUP[h.kind]}</li>}
+              <li key={`${h.kind}:${h.id}`} role="option" aria-selected={i === sel} onMouseEnter={() => setSel(i)} onMouseDown={(e) => { e.preventDefault(); pick(h.id, h.kind); }}>
+                <span class="rid">{hl(h.id)}</span>
+                <span class="rmeta">{h.meta}</span>
+              </li>
+            </Fragment>
           ))}
         </ul>
       )}

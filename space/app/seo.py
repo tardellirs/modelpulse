@@ -122,7 +122,7 @@ class Pages:
 
     def page(self, store, path: str, query) -> Page:
         # old query-string links (as used inside the Space) move to their real paths
-        if query.get("model") or query.get("author") or query.get("view"):
+        if query.get("model") or query.get("dataset") or query.get("space") or query.get("author") or query.get("view"):
             return Page("", "", "", "", redirect=self._query_path(query))
         parts = [p for p in path.split("/") if p]
         if not parts:
@@ -130,6 +130,10 @@ class Pages:
         head, rest = parts[0], "/".join(parts[1:])
         if head == "model" and rest:
             return self.model(store, rest)
+        if head == "dataset" and rest:
+            return self.dataset(store, rest)
+        if head == "space" and rest:
+            return self.space(store, rest)
         if head == "author" and len(parts) == 2:
             return self.author(store, parts[1])
         if head == "galaxy":
@@ -142,7 +146,7 @@ class Pages:
 
     @staticmethod
     def _query_path(q):
-        view, model, author = q.get("view"), q.get("model"), q.get("author")
+        view, model, author, dataset, space = q.get("view"), q.get("model"), q.get("author"), q.get("dataset"), q.get("space")
         if view == "galaxy":
             path = f"/galaxy/{seg(model)}" if model else "/galaxy"
         elif view == "wrapped":
@@ -151,6 +155,10 @@ class Pages:
             path = "/report"
         elif model:
             path = f"/model/{seg(model)}"
+        elif dataset:
+            path = f"/dataset/{seg(dataset)}"
+        elif space:
+            path = f"/space/{seg(space)}"
         elif author:
             path = f"/author/{quote(author, safe='')}"
         else:
@@ -247,6 +255,69 @@ class Pages:
         return Page(f"{mid} downloads: daily history and stats · Model Pulse", desc, path, body,
                     image=f"{SITE}/og/model/{seg(mid)}.png", ld=[crumbs(*crumb)])
 
+    def dataset(self, store, rid: str) -> Page:
+        repos = getattr(store, "repos", None)
+        d = repos.dataset(rid) if repos else None
+        if not d:
+            return self.not_found(f"{rid} is not tracked. Datasets appear once they reach 10 downloads in 30 days or get a like.")
+        if d["id"] != rid:
+            return Page("", "", "", "", redirect=f"/dataset/{seg(d['id'])}")
+        path = f"/dataset/{seg(rid)}"
+        author, name = rid.split("/", 1) if "/" in rid else ("", rid)
+        task_name = task(d.get("pipeline_tag")) if d.get("pipeline_tag") else ""
+        models = repos.used_by("dataset", rid, "model", 12)
+        spaces = repos.used_by("dataset", rid, "space", 8)
+        desc = (f"{rid} was downloaded {compact(d.get('dl30'))} times in the last 30 days"
+                + (f" and {compact(d.get('dl_all'))} times in total" if d.get("dl_all") else "")
+                + (f". {full(models['count'])} models are trained on it" if models["count"] else "")
+                + ". Daily download history since July 2024, rankings and the models and Spaces that use it.")
+        body = [f'<nav>{a("/", "Model Pulse")}' + (f' / {a("/author/" + quote(author, safe=""), author)}' if author else "") + "</nav>",
+                f"<h1>{e(rid)} download history</h1>",
+                f"<p><b>{e(rid)}</b> is a{'n' if task_name[:1] in 'aeio' and task_name else ''} {e(task_name + ' ' if task_name else '')}dataset on the Hugging Face Hub. "
+                f"In the last 30 days it was downloaded <b>{full(d.get('dl30'))}</b> times ({full(d.get('dl_7d'))} in the last 7 days)"
+                + (f", and <b>{full(d.get('dl_all'))}</b> times in total" if d.get("dl_all") else "")
+                + (f". It ranks #{full(d.get('rank_dl30'))} among datasets by monthly downloads" if d.get("rank_dl30") else "") + ".</p>"]
+        if d.get("description"):
+            body.append(f"<p>{e(d['description'])}</p>")
+        if models["count"]:
+            body.append(f"<h2>Models trained on {e(name)}</h2><p>{full(models['count'])} models list it as training data.</p><ul>" + "".join(
+                f"<li>{a('/model/' + seg(m['id']), m['id'])} {compact(m.get('dl30'))} downloads in 30 days</li>" for m in models["top"]) + "</ul>")
+        if spaces["count"]:
+            body.append(f"<h2>Spaces using {e(name)}</h2><ul>" + "".join(
+                f"<li>{a('/space/' + seg(s['id']), s.get('title') or s['id'])} {full(s.get('likes'))} likes</li>" for s in spaces["top"]) + "</ul>")
+        body.append(f"<p>{a('https://huggingface.co/datasets/' + rid, 'Open ' + rid + ' on Hugging Face')}</p>")
+        crumb = [("Model Pulse", "/")] + ([(author, f"/author/{quote(author, safe='')}")] if author else []) + [(name, path)]
+        return Page(f"{rid} downloads: daily history and stats · Model Pulse", desc, path, "".join(body),
+                    image=f"{SITE}/og/dataset/{seg(rid)}.png", ld=[crumbs(*crumb)])
+
+    def space(self, store, rid: str) -> Page:
+        repos = getattr(store, "repos", None)
+        s = repos.space(rid) if repos else None
+        if not s:
+            return self.not_found(f"{rid} is not tracked. Spaces appear once they get a like.")
+        if s["id"] != rid:
+            return Page("", "", "", "", redirect=f"/space/{seg(s['id'])}")
+        path = f"/space/{seg(rid)}"
+        author, name = rid.split("/", 1) if "/" in rid else ("", rid)
+        title = s.get("title") or name
+        uses = repos.space_uses(rid)
+        desc = (f"{title} ({rid}) has {full(s.get('likes'))} likes on Hugging Face, {full(s.get('likes_7d'))} of them in the last 7 days. "
+                "Likes over time since July 2024, its ranking and the models and datasets it uses.")
+        body = [f'<nav>{a("/", "Model Pulse")}' + (f' / {a("/author/" + quote(author, safe=""), author)}' if author else "") + "</nav>",
+                f"<h1>{e(title)}: likes over time</h1>",
+                f"<p><b>{e(rid)}</b> is a{'n' if (s.get('sdk') or '')[:1] in 'aeio' and s.get('sdk') else ''} {e((s.get('sdk') or '') + ' ')}Space on the Hugging Face Hub. "
+                f"It has <b>{full(s.get('likes'))}</b> likes, {full(s.get('likes_7d'))} in the last 7 days and {full(s.get('likes_30d'))} in the last 30, "
+                f"and ranks #{full(s.get('rank_likes'))} among Spaces by likes.</p>"]
+        if s.get("short_description"):
+            body.append(f"<p>{e(s['short_description'])}</p>")
+        if uses["models"] or uses["datasets"]:
+            body.append("<h2>What it uses</h2><ul>" + "".join(
+                f"<li>{a('/model/' + seg(m['id']), m['id'])} (model)</li>" for m in uses["models"]) + "".join(
+                f"<li>{a('/dataset/' + seg(x['id']), x['id'])} (dataset)</li>" for x in uses["datasets"]) + "</ul>")
+        body.append(f"<p>{a('https://huggingface.co/spaces/' + rid, 'Open ' + rid + ' on Hugging Face')}</p>")
+        crumb = [("Model Pulse", "/")] + ([(author, f"/author/{quote(author, safe='')}")] if author else []) + [(title, path)]
+        return Page(f"{title}: likes over time · {rid} · Model Pulse", desc, path, "".join(body), ld=[crumbs(*crumb)])
+
     def author(self, store, name: str) -> Page:
         author = store.find_author(name)
         if not author:
@@ -332,13 +403,15 @@ class Pages:
         first, last = span(store)
         return f"""# Model Pulse
 
-> Daily download history, likes and derivative families for {full(store.meta['models'])} models on the Hugging Face Hub, from {first} to {last}, updated every day. Made by Tardelli Stekel (huggingface.co/tardellirs).
+> Daily download history, likes and derivative families for {full(store.meta['models'])} models on the Hugging Face Hub, plus download history for datasets and likes for Spaces, from {first} to {last}, updated every day. Made by Tardelli Stekel (huggingface.co/tardellirs).
 
 Every page states its figures in plain text: downloads in the last 30 days, the last 7 days and all time, likes, the model's rank on the Hub and within its task, and how many quantizations, fine-tunes, adapters and merges build on it.
 
 ## Pages
 
 - [Any model]({SITE}/model/Qwen/Qwen3-8B): {SITE}/model/{{org}}/{{name}}, download history and stats for one model
+- [Any dataset]({SITE}/dataset/HuggingFaceFW/fineweb): {SITE}/dataset/{{org}}/{{name}}, download history, and the models trained on it and Spaces using it
+- [Any Space]({SITE}/space/HuggingFaceFW/finephrase): {SITE}/space/{{org}}/{{name}}, likes over time and the models and datasets it uses
 - [Any author or organization]({SITE}/author/Qwen): {SITE}/author/{{name}}, all of its models ranked by downloads
 - [Model galaxies]({SITE}/galaxy): every model built on a base model, e.g. {SITE}/galaxy/meta-llama/Llama-3.1-8B
 - [Report]({SITE}/report): what 19 months of daily downloads say about the Hub
@@ -358,6 +431,8 @@ Every page states its figures in plain text: downloads in the last 30 days, the 
     def sitemap_index(self, store, n_models: int) -> str:
         last = span(store)[1]
         files = ["static", "authors", "galaxies"] + [f"models-{i + 1}" for i in range((n_models + self.PER_FILE - 1) // self.PER_FILE)]
+        if getattr(store, "repos", None) and store.repos.ok:
+            files += ["datasets-1", "datasets-2", "spaces-1", "spaces-2"]
         items = "".join(f"<sitemap><loc>{SITE}/sitemaps/{f}.xml</loc><lastmod>{last}</lastmod></sitemap>" for f in files)
         return f'<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{items}</sitemapindex>'
 
@@ -369,6 +444,15 @@ Every page states its figures in plain text: downloads in the last 30 days, the 
             paths = [f"/author/{quote(x, safe='')}" for x in store.sitemap_authors(20_000)]
         elif name == "galaxies":
             paths = [f"/galaxy/{seg(x)}" for x in store.sitemap_galaxies(10_000)]
+        elif m := re.fullmatch(r"(datasets|spaces)-(\d+)", name):
+            repos = getattr(store, "repos", None)
+            if not repos or not repos.ok:
+                return None
+            k = int(m.group(2)) - 1
+            ids = repos.top_ids(m.group(1), 2 * self.PER_FILE)[k * self.PER_FILE:(k + 1) * self.PER_FILE]
+            if not ids:
+                return None
+            paths = [f"/{m.group(1)[:-1]}/{seg(x)}" for x in ids]
         elif m := re.fullmatch(r"models-(\d+)", name):
             k = int(m.group(1)) - 1
             ids = store.top_ids(n_models)[k * self.PER_FILE:(k + 1) * self.PER_FILE]

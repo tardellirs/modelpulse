@@ -103,6 +103,8 @@ button { font: inherit; color: inherit; }
 }
 .results li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 10px; border-radius: 9px; cursor: pointer; }
 .results li[aria-selected="true"] { background: var(--mark); }
+.results li.rgroup { cursor: default; padding: 8px 10px 2px; font: 600 11.5px var(--font-mono); color: var(--muted); }
+.results li.rgroup:first-child { padding-top: 2px; }
 .results .rid { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .results .rid b { font-weight: 700; }
 .results .rmeta { color: var(--muted); white-space: nowrap; font: 400 12px var(--font-mono); }
@@ -532,3 +534,29 @@ main { min-height: calc(100vh - 72px); }
 .about h2 { font: 600 var(--step-2) var(--font-display); margin-bottom: 12px; }
 .about p { max-width: 72ch; color: var(--ink-2); margin: 0 0 10px; }
 .about p.muted { font-size: var(--step--1); color: var(--muted); }
+
+/* ---------- datasets and Spaces ---------- */
+.chip-kind { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.sp-title { display: flex; align-items: center; gap: .3em; }
+.sp-title .emo { font-size: .9em; }
+.sp-id { margin: 8px 0 0; color: var(--ink-2); font: 400 var(--step--1) var(--font-mono); overflow-wrap: anywhere; }
+.sp-id a { color: var(--ink); }
+.ub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; }
+.used-by .ub-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.used-by h3 { font: 600 var(--step-1) var(--font-display); }
+.used-by .ub-n { font: 400 var(--step--1) var(--font-mono); color: var(--ink-2); }
+.used-by .ub-n b { font: 600 var(--step-2) var(--font-display); color: var(--ink); }
+.ub-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.ub-list li + li { border-top: 1px solid var(--rule-2); }
+.ub-list a { display: flex; align-items: center; gap: 8px; padding: 7px 4px; text-decoration: none; color: var(--ink); border-radius: 6px; }
+.ub-list a:hover { background: var(--mark); }
+.ub-list .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--step--1); }
+.ub-list .nm small { color: var(--muted); font: 400 11.5px var(--font-mono); margin-left: 4px; }
+.ub-list .v { flex: none; font: 500 12px var(--font-mono); color: var(--ink-2); }
+.ub-list .emo { flex: none; width: 1.4em; text-align: center; }
+.ub-sub { display: block; padding: 0 4px 6px 4px; font: 400 11.5px var(--font-mono); color: var(--muted); }
+.kind { flex: none; font: 600 10.5px var(--font-mono); padding: 1px 7px; border-radius: 999px; border: 1.5px solid var(--ink); }
+.k-model { background: var(--signal-soft); }
+.k-dataset { background: #fde7cf; }
+.repo-tabs { margin-bottom: 18px; }
+.repo-tabs button { font-size: 14px; padding: 7px 16px; }

@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import jobs, og, seo
 from .data import Store
+from .repos import Repos
 from .wrapped import Wrapped
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -34,6 +35,7 @@ async def long_cache_for_hashed_assets(request, call_next):
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 logging.basicConfig(level=logging.INFO)
 store = Store()
+repos = store.repos = Repos(store)
 wrapped = Wrapped(store)
 def link_candidates():
     ranked = {r["id"] for rows in store.leaderboards.values() if isinstance(rows, list) for r in rows if r.get("id")}
@@ -43,12 +45,14 @@ def link_candidates():
 
 linker = jobs.Linker(lambda mid: store.model(mid) is not None,
                      lambda mid: (store.model(mid) or {}).get("dl30"),
-                     link_candidates)
+                     link_candidates,
+                     datasets=lambda: repos.top_ids("datasets", jobs.DATASET_LINK_CAP) if repos.ok else [])
 
 
 def reload_store():
-    global store, wrapped
+    global store, repos, wrapped
     store = Store()
+    repos = store.repos = Repos(store)
     wrapped = Wrapped(store)
     _hub.cache_clear()
     badge_svg.cache_clear()
@@ -57,6 +61,8 @@ def reload_store():
     _galaxies.cache_clear()
     _og_model.cache_clear()
     _og_author.cache_clear()
+    _og_dataset.cache_clear()
+    _new_spaces.cache_clear()
     threading.Thread(target=jobs.indexnow, args=(changed_urls(),), daemon=True).start()
     threading.Thread(target=warm_galaxies, daemon=True).start()
 
@@ -109,7 +115,53 @@ def model(mid: str):
     out = {"model": clean(m), "series": store.series(mid), "children": [clean(c) for c in store.children(mid, 25)]}
     if (m.get("fam_members") or 0) >= 3:
         out["family"] = store.family_series(mid)
+    if repos.ok:
+        out["spaces"] = repos.used_by("model", mid, "space")
+        out["datasets"] = repos.model_datasets(mid)
     return j(out)
+
+
+# ---------- datasets and Spaces ----------
+
+@app.get("/api/dataset/{rid:path}")
+def dataset(rid: str):
+    d = repos.dataset(rid)
+    if not d:
+        raise HTTPException(404, f"{rid} is not tracked. Datasets appear once they reach 10 downloads in 30 days or get a like.")
+    rid = d["id"]
+    return j({"dataset": clean(d), "series": repos.dataset_series(rid),
+              "models": repos.used_by("dataset", rid, "model"), "spaces": repos.used_by("dataset", rid, "space")})
+
+
+@app.get("/api/space/{rid:path}")
+def space(rid: str):
+    s = repos.space(rid)
+    if not s:
+        raise HTTPException(404, f"{rid} is not tracked. Spaces appear once they get a like.")
+    rid = s["id"]
+    return j({"space": clean(s), "series": repos.space_series(rid), "uses": repos.space_uses(rid)})
+
+
+@app.get("/api/leaderboards/{kind}")
+def leaderboards_kind(kind: str):
+    if not repos.ok or kind not in ("datasets", "spaces"):
+        raise HTTPException(404, "No such leaderboard")
+    return j(repos.lb[kind])
+
+
+@lru_cache(maxsize=1)
+def _new_spaces():
+    return repos.new_spaces()
+
+
+@app.get("/api/spaces/new")
+def new_spaces():
+    return j(_new_spaces() if repos.ok else {"sdks": [], "week": [], "sdk": [], "n": []})
+
+
+@app.get("/api/search/all")
+def search_all(q: str = Query("", max_length=120)):
+    return j({"models": store.search(q, 8), **repos.search(q, 5)})
 
 
 @app.get("/api/author/{author}")
@@ -313,6 +365,20 @@ def og_model(mid: str):
 def _og_author(name: str):
     author = store.find_author(name)
     return og.author_card(author, store.author_summary(author), store.author_models(author, 3)) if author else None
+
+
+@lru_cache(maxsize=1024)
+def _og_dataset(rid: str):
+    d = repos.dataset(rid)
+    return og.model_card(d, repos.dataset_series(d["id"])) if d else None
+
+
+@app.get("/og/dataset/{rid:path}.png")
+def og_dataset(rid: str):
+    png = _og_dataset(rid)
+    if png is None:
+        raise HTTPException(404, "Not tracked")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/og/author/{name}.png")

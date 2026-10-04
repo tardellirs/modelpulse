@@ -5,6 +5,7 @@ import {
 import { Chart, type Line, type Marker } from "./Chart";
 import { Search } from "./Search";
 import { Share } from "./Share";
+import { UsedBy } from "./UsedBy";
 
 type Metric = "weekly" | "daily" | "month" | "total" | "likes";
 type RangeKey = "1M" | "3M" | "6M" | "1Y" | "All";
@@ -131,6 +132,9 @@ export function ModelPage({ route }: { route: Route }) {
               {relWord[m.base_relation ?? ""] ?? "Based on"} {base}
             </a>
           )}
+          {data.datasets?.slice(0, 2).map((x) => (
+            <a key={x.id} class="chip" href={hrefOf({ dataset: x.id })} onClick={(e) => { e.preventDefault(); navigate({ dataset: x.id }); }}>Trained on {x.id}</a>
+          ))}
           <a class="chip" href={`https://huggingface.co/${m.id}`} target="_blank" rel="noopener">Open on Hugging Face ↗</a>
         </div>
         <h1 class="model-name">
@@ -251,6 +255,15 @@ export function ModelPage({ route }: { route: Route }) {
       )}
 
       {(m.fam_members > 0 || data.children.length > 0) && <Family data={data} />}
+
+      {!!data.spaces?.count && (
+        <section class="section">
+          <div class="wrap">
+            <div class="section-head"><div><h2>Spaces using {m.id.split("/").pop()}</h2><p>Spaces whose card lists this model, and how that number grew.</p></div></div>
+            <UsedBy title="Spaces using it" data={data.spaces} by="space" note="Counted from today's Space cards, by the month each Space was created." />
+          </div>
+        </section>
+      )}
 
       <About data={data} />
 

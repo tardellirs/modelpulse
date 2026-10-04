@@ -35,7 +35,31 @@ export type Model = {
 export type Series = { day: string[]; dl30: (number | null)[]; dl_all: (number | null)[]; likes: (number | null)[] };
 export type FamilySeries = { day: string[]; dl30: (number | null)[]; dl_all: (number | null)[]; members: number[] };
 export type Child = { id: string; relation: string; author: string; dl30: number; dl_all: number; dl_7d: number; likes: number };
-export type ModelResponse = { model: Model; series: Series; children: Child[]; family?: FamilySeries };
+/** Who uses a model or dataset: a count, new users per month, and the biggest of them. */
+export type UsedBy = {
+  count: number;
+  months: { month: string[]; n: number[] };
+  top: { id: string; title?: string | null; emoji?: string | null; sdk?: string | null; likes?: number | null; likes_7d?: number | null; pipeline_tag?: string | null; dl30?: number | null }[];
+};
+export type ModelResponse = { model: Model; series: Series; children: Child[]; family?: FamilySeries; spaces?: UsedBy; datasets?: { id: string; dl30: number | null }[] };
+export type Dataset = {
+  id: string; author: string | null; pipeline_tag: string | null; size: string | null; license: string | null; modality: string | null;
+  gated: string | null; description: string | null; created_at: string | null; last_modified: string | null;
+  dl30: number | null; dl_all: number | null; dl_7d: number | null; growth_7d: number | null; likes: number | null; likes_7d: number | null;
+  rank_dl30: number | null; rank_task: number | null; used_by_models: number; used_by_spaces: number;
+};
+export type DatasetResponse = { dataset: Dataset; series: Series; models: UsedBy; spaces: UsedBy };
+export type Space = {
+  id: string; author: string | null; sdk: string | null; title: string | null; emoji: string | null; short_description: string | null;
+  created_at: string | null; last_modified: string | null; likes: number | null; likes_7d: number | null; likes_30d: number | null;
+  trending: number | null; rank_likes: number | null; uses: number | null;
+};
+export type SpaceResponse = {
+  space: Space; series: { day: string[]; likes: (number | null)[]; trending: (number | null)[] };
+  uses: { models: { id: string; pipeline_tag: string | null; dl30: number | null }[]; datasets: { id: string; pipeline_tag: string | null; dl30: number | null }[] };
+};
+export type Kind = "model" | "dataset" | "space";
+export type Found = { models: { id: string; pipeline_tag: string | null; dl30: number | null }[]; datasets: { id: string; dl30: number | null }[]; spaces: { id: string; likes: number | null; title: string | null; emoji: string | null }[] };
 export type Row = {
   id?: string; author?: string; pipeline_tag?: string | null; params?: number | null;
   dl30?: number; dl_all?: number; dl_7d?: number; growth_7d?: number | null; likes?: number; likes_7d?: number;
@@ -74,6 +98,11 @@ export const api = {
   search: (q: string) => get<{ id: string; pipeline_tag: string | null; dl30: number | null }[]>(`/api/search?q=${encodeURIComponent(q)}`),
   leaderboards: () => get<Leaderboards>("/api/leaderboards"),
   hub: () => get<Hub>("/api/hub"),
+  dataset: (id: string) => get<DatasetResponse>(`/api/dataset/${id}`),
+  space: (id: string) => get<SpaceResponse>(`/api/space/${id}`),
+  searchAll: (q: string) => get<Found>(`/api/search/all?q=${encodeURIComponent(q)}`),
+  boards: (kind: "datasets" | "spaces") => get<Leaderboards>(`/api/leaderboards/${kind}`),
+  newSpaces: () => get<{ sdks: string[]; week: string[]; sdk: string[]; n: number[] }>("/api/spaces/new"),
   meta: () => get<{ days: number; first: string; last: string; models: number; families: number }>("/api/meta"),
 };
 
@@ -162,7 +191,7 @@ export function milestones(s: Series): Milestone[] {
 
 // ---------- url state (synced to the huggingface.co parent page) ----------
 
-export type Route = { model?: string; author?: string; compare?: string[]; view?: string };
+export type Route = { model?: string; dataset?: string; space?: string; author?: string; compare?: string[]; view?: string };
 
 /**
  * Inside the Hugging Face Space the app runs in an iframe and keeps its state in the query string, which the
@@ -174,12 +203,16 @@ export function readRoute(): Route {
   const q = new URLSearchParams(location.search);
   const r: Route = {
     model: q.get("model") || undefined,
+    dataset: q.get("dataset") || undefined,
+    space: q.get("space") || undefined,
     author: q.get("author") || undefined,
     compare: q.get("compare")?.split(",").filter(Boolean),
     view: q.get("view") || undefined,
   };
   const p = location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
   if (p[0] === "model" && p.length > 1) r.model = p.slice(1).join("/");
+  else if (p[0] === "dataset" && p.length > 1) r.dataset = p.slice(1).join("/");
+  else if (p[0] === "space" && p.length > 1) r.space = p.slice(1).join("/");
   else if (p[0] === "author" && p[1]) r.author = p[1];
   else if (p[0] === "galaxy") { r.view = "galaxy"; if (p.length > 1) r.model = p.slice(1).join("/"); }
   else if (p[0] === "wrapped") { r.view = "wrapped"; if (p[1]) r.author = p[1]; }
@@ -196,6 +229,8 @@ export function pathOf(r: Route) {
   else if (r.view === "wrapped") path = r.author ? `/wrapped/${encodeURIComponent(r.author)}` : "/wrapped";
   else if (r.view === "report") path = "/report";
   else if (r.model) path = `/model/${seg(r.model)}`;
+  else if (r.dataset) path = `/dataset/${seg(r.dataset)}`;
+  else if (r.space) path = `/space/${seg(r.space)}`;
   else if (r.author) path = `/author/${encodeURIComponent(r.author)}`;
   return path + (r.compare?.length ? `?compare=${r.compare.join(",")}` : "");
 }
@@ -208,6 +243,8 @@ export function hrefOf(r: Route) {
 export function routeToQuery(r: Route) {
   const q = new URLSearchParams();
   if (r.model) q.set("model", r.model);
+  if (r.dataset) q.set("dataset", r.dataset);
+  if (r.space) q.set("space", r.space);
   if (r.author) q.set("author", r.author);
   if (r.compare?.length) q.set("compare", r.compare.join(","));
   if (r.view) q.set("view", r.view);
@@ -237,6 +274,15 @@ export function navigate(r: Route, replace = false) {
 }
 
 /** Accepts "org/name", a full huggingface.co URL, or an hf.co URL. */
+/** A pasted Hub link or "org/name", as the kind of repo and its id. */
+export function parseHubInput(s: string): { kind: Kind; id: string } | null {
+  s = s.trim();
+  const m = s.match(/(?:huggingface\.co|hf\.co)\/(?:(spaces|datasets)\/)?([^/\s?#]+\/[^/\s?#]+)/);
+  if (m) return { kind: m[1] === "spaces" ? "space" : m[1] === "datasets" ? "dataset" : "model", id: m[2] };
+  if (/^[\w.-]+\/[\w.-]+$/.test(s)) return { kind: "model", id: s };
+  return null;
+}
+
 export function parseModelInput(s: string): string | null {
   s = s.trim();
   const m = s.match(/(?:huggingface\.co|hf\.co)\/(?!spaces\/|datasets\/)([^/\s?#]+\/[^/\s?#]+)/);

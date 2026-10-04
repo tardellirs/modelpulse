@@ -13,6 +13,22 @@ const BOARDS: { key: string; label: string; note: string; author?: boolean }[] =
   { key: "authors_7d", label: "Organizations", note: "Authors ranked by downloads across all their models this week.", author: true },
 ];
 
+type RepoKind = "models" | "datasets" | "spaces";
+const REPO_BOARDS: Record<"datasets" | "spaces", { key: string; label: string; note: string }[]> = {
+  datasets: [
+    { key: "gainers_7d", label: "Most downloaded this week", note: "Dataset downloads in the last 7 days." },
+    { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among datasets with at least 1,000 weekly downloads." },
+    { key: "breakouts", label: "New this month", note: "Datasets created in the last 30 days, by downloads this week." },
+    { key: "used_by_models", label: "Most used for training", note: "Datasets listed as training data by the most models." },
+  ],
+  spaces: [
+    { key: "likes_7d", label: "Most liked this week", note: "Likes gained in the last 7 days. The Hub doesn't publish visits for Spaces, so likes are the measure." },
+    { key: "trending", label: "Trending", note: "The Hub's own trending score, from the latest snapshot." },
+    { key: "breakouts", label: "New this month", note: "Spaces created in the last 30 days, by likes gained this week." },
+    { key: "most_liked", label: "Most liked", note: "All-time likes." },
+  ],
+};
+
 const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const PALETTE = ["--c1", "--c2", "--c3", "--c4", "--c5"];
 
@@ -21,6 +37,7 @@ export function Home() {
   const [hub, setHub] = useState<Hub | null>(null);
   const [meta, setMeta] = useState<{ models: number; first: string; last: string } | null>(null);
   const [board, setBoard] = useState(BOARDS[0].key);
+  const [repo, setRepo] = useState<RepoKind>("models");
 
   useEffect(() => {
     document.title = "Model Pulse · Download history for every Hugging Face model";
@@ -55,12 +72,12 @@ export function Home() {
         </div>
         <h1><Logo size={80} />Model <span class="hl">Pulse</span></h1>
         <p class="lede">
-          The daily download history of every model on the Hugging Face Hub. Search a model or paste its link to see how it grew, how it compares, and how far its derivatives reach.
+          The daily download history of every model and dataset on the Hugging Face Hub, and likes for every Space. Search one or paste its link to see how it grew, how it compares, and who builds on it.
         </p>
         <div class="meta">
           {meta ? `${fmtFull(meta.models)} models · daily since ${fmtDate(meta.first, { month: "short", year: "numeric" })} · updated ${fmtDate(meta.last)}` : "\u00a0"}
         </div>
-        <Search big autoFocus placeholder="Qwen/Qwen3-8B or https://huggingface.co/…" onPick={(id) => navigate({ model: id })} />
+        <Search big autoFocus all placeholder="A model, dataset or Space, or paste its link" onPick={(id, kind) => navigate({ [kind]: id })} />
         {/* always rendered, so the chips arriving later don't push the chart down */}
         <div class="examples">
           {examples.length > 0 && <span class="muted">popular this week</span>}
@@ -88,18 +105,27 @@ export function Home() {
       <section class="section">
         <div class="wrap">
          <div class="card">
-          <div class="section-head">
-            <div>
-              <h2>{cur.label}</h2>
-              <p>{cur.note}{lb ? ` Week ending ${fmtDate(lb.updated)}.` : ""}</p>
-            </div>
-          </div>
-          <div class="seg lb-tabs" role="tablist">
-            {BOARDS.map((b) => (
-              <button key={b.key} role="tab" aria-selected={board === b.key} onClick={() => setBoard(b.key)}>{b.label}</button>
+          <div class="seg repo-tabs" role="tablist" aria-label="Rankings for">
+            {(["models", "datasets", "spaces"] as RepoKind[]).map((k) => (
+              <button key={k} role="tab" aria-selected={repo === k} onClick={() => setRepo(k)}>{k[0].toUpperCase() + k.slice(1)}</button>
             ))}
           </div>
-          {lb ? <Board rows={rows} kind={board} author={!!cur.author} /> : <div class="skeleton" />}
+          {repo === "models" ? (
+            <>
+              <div class="section-head">
+                <div>
+                  <h2>{cur.label}</h2>
+                  <p>{cur.note}{lb ? ` Week ending ${fmtDate(lb.updated)}.` : ""}</p>
+                </div>
+              </div>
+              <div class="seg lb-tabs" role="tablist">
+                {BOARDS.map((b) => (
+                  <button key={b.key} role="tab" aria-selected={board === b.key} onClick={() => setBoard(b.key)}>{b.label}</button>
+                ))}
+              </div>
+              {lb ? <Board rows={rows} kind={board} author={!!cur.author} /> : <div class="skeleton" />}
+            </>
+          ) : <RepoBoards kind={repo} key={repo} />}
          </div>
         </div>
       </section>
@@ -144,6 +170,75 @@ function Board({ rows, kind, author }: { rows: Row[]; kind: string; author: bool
         </table>
       </div>
       {rows.length > n && <button class="btn" style={{ marginTop: 16 }} onClick={() => setN(n + 25)}>Show 25 more</button>}
+    </>
+  );
+}
+
+function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
+  const boards = REPO_BOARDS[kind];
+  const [lb, setLb] = useState<Leaderboards | null>(null);
+  const [board, setBoard] = useState(boards[0].key);
+  const [n, setN] = useState(25);
+  useEffect(() => { api.boards(kind).then(setLb).catch(() => {}); }, [kind]);
+  const cur = boards.find((b) => b.key === board)!;
+  const rows = ((lb?.[board] ?? []) as any[]);
+  const route = (r: any) => (kind === "datasets" ? { dataset: r.id } : { space: r.id });
+  return (
+    <>
+      <div class="section-head">
+        <div>
+          <h2>{cur.label}</h2>
+          <p>{cur.note}{lb ? ` Week ending ${fmtDate(lb.updated)}.` : ""}</p>
+        </div>
+      </div>
+      <div class="seg lb-tabs" role="tablist">
+        {boards.map((b) => <button key={b.key} role="tab" aria-selected={board === b.key} onClick={() => { setBoard(b.key); setN(25); }}>{b.label}</button>)}
+      </div>
+      {!lb ? <div class="skeleton" /> : (
+        <>
+          <div class="table-scroll">
+            <table class="list">
+              <thead>
+                {kind === "datasets" ? (
+                  <tr><th>Dataset</th><th>Last 4 weeks</th><th>This week</th><th>Change</th><th>30 days</th><th>{board === "used_by_models" ? "Models trained on it" : "All time"}</th></tr>
+                ) : (
+                  <tr><th>Space</th><th>Last 4 weeks</th><th>Likes this week</th><th>30 days</th><th>Likes</th><th>SDK</th></tr>
+                )}
+              </thead>
+              <tbody>
+                {rows.slice(0, n).map((r, i) => (
+                  <tr key={r.id}>
+                    <td class="name">
+                      <span class="rank">{i + 1}</span>
+                      <a href={hrefOf(route(r))} onClick={(e) => { e.preventDefault(); navigate(route(r)); }}>
+                        {kind === "spaces" && r.emoji ? `${r.emoji} ` : ""}{kind === "spaces" && r.title ? r.title : r.id}
+                      </a>
+                      <span class="sub" style={{ paddingLeft: "2.5em" }}>{kind === "spaces" ? r.id : taskLabel(r.pipeline_tag)}</span>
+                    </td>
+                    <td><Sparkline v={r.spark ?? []} color={kind === "spaces" ? "var(--c3)" : undefined} /></td>
+                    {kind === "datasets" ? (
+                      <>
+                        <td><b>{fmt(r.dl_7d)}</b></td>
+                        <td class={r.growth_7d == null ? "muted" : r.growth_7d >= 0 ? "up" : "down"}>{fmtPct(r.growth_7d)}</td>
+                        <td>{fmt(r.dl30)}</td>
+                        <td>{board === "used_by_models" ? fmtFull(r.used_by_models) : fmt(r.dl_all)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td><b>+{fmtFull(r.likes_7d)}</b></td>
+                        <td>+{fmtFull(r.likes_30d)}</td>
+                        <td>{fmt(r.likes)}</td>
+                        <td class="muted">{r.sdk ?? "–"}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length > n && <button class="btn" style={{ marginTop: 16 }} onClick={() => setN(n + 25)}>Show 25 more</button>}
+        </>
+      )}
     </>
   );
 }

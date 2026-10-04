@@ -15,6 +15,7 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 REFRESH_EVERY = int(os.environ.get("REFRESH_EVERY", "3600"))
 LINK_EVERY = int(os.environ.get("LINK_EVERY", str(3 * 3600)))
 LINK_CAP = int(os.environ.get("LINK_CAP", "5000"))
+DATASET_LINK_CAP = int(os.environ.get("DATASET_LINK_CAP", "5000"))
 
 
 def refresher(current_sha, on_new):
@@ -43,10 +44,11 @@ class Linker:
     least downloaded of the rest are dropped.
     """
 
-    def __init__(self, exists, popularity, candidates):
+    def __init__(self, exists, popularity, candidates, datasets=None):
         self.exists = exists            # id -> bool, model is tracked
         self.popularity = popularity    # id -> monthly downloads
         self.candidates = candidates    # () -> (ids to add, ids that must never be dropped)
+        self.datasets = datasets        # () -> dataset ids, most used first, for the card's `datasets:` list
         self.pending: set[str] = set()
         self.lock = threading.Lock()
         self.api = HfApi()
@@ -65,7 +67,11 @@ class Linker:
         meta = yaml.safe_load(front) or {}
         models = list(meta.get("models") or [])
         new = sorted(batch - set(models))
-        if not new:
+        # datasets: the most downloaded, so Model Pulse also shows up under "Spaces using this dataset"
+        old_ds = list(meta.get("datasets") or [])
+        ds = (self.datasets() or [])[:DATASET_LINK_CAP] if self.datasets else old_ds
+        ds_changed = bool(ds) and set(ds) != set(old_ds)
+        if not new and not ds_changed:
             return 0
         models = models + new
         dropped = 0
@@ -75,10 +81,12 @@ class Linker:
             dropped = len(models) - len(keep & set(models))
             models = [m for m in models if m in keep]
         meta["models"] = models
+        if ds:
+            meta["datasets"] = ds
         out = "---\n" + yaml.safe_dump(meta, sort_keys=False, allow_unicode=True, width=10_000) + "---" + body
         self.api.upload_file(path_or_fileobj=out.encode(), path_in_repo="README.md", repo_id=SITE_REPO, repo_type="space",
-                             commit_message=f"Link {len(new)} models" + (f", drop {dropped}" if dropped else ""))
-        log.info("linked %d models, dropped %d (%d total)", len(new), dropped, len(models))
+                             commit_message=f"Link {len(new)} models" + (f", drop {dropped}" if dropped else "") + (f", {len(ds)} datasets" if ds_changed else ""))
+        log.info("linked %d models, dropped %d (%d total), datasets %d%s", len(new), dropped, len(models), len(ds), " (updated)" if ds_changed else "")
         return len(new)
 
     def run(self):
@@ -104,15 +112,17 @@ def updater(work_dir: str, check_every: int = 3600):
     import subprocess
     import sys
 
-    script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pipeline", "daily.py")
+    pipeline = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pipeline")
     while True:
-        try:
-            r = subprocess.run([sys.executable, script, work_dir, "--repo", DATA_REPO],
-                               cwd=os.path.dirname(script), capture_output=True, text=True, timeout=3 * 3600)
-            tail = (r.stdout + r.stderr).strip().splitlines()[-3:]
-            log.info("daily update exit=%s %s", r.returncode, " | ".join(tail))
-        except Exception:
-            log.exception("daily update failed")
+        # models first: it leaves today's model -> dataset references for the datasets and Spaces update
+        for name in ("daily.py", "daily_repos.py"):
+            try:
+                r = subprocess.run([sys.executable, os.path.join(pipeline, name), work_dir, "--repo", DATA_REPO],
+                                   cwd=pipeline, capture_output=True, text=True, timeout=3 * 3600)
+                tail = (r.stdout + r.stderr).strip().splitlines()[-3:]
+                log.info("%s exit=%s %s", name, r.returncode, " | ".join(tail))
+            except Exception:
+                log.exception("%s failed", name)
         time.sleep(check_every)
 
 
