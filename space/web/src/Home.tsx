@@ -174,6 +174,35 @@ function Board({ rows, kind, author }: { rows: Row[]; kind: string; author: bool
   );
 }
 
+/** Spaces created each week, stacked by SDK: how people build on the Hub. */
+function NewSpaces() {
+  const [d, setD] = useState<{ sdks: string[]; week: string[]; sdk: string[]; n: number[] } | null>(null);
+  useEffect(() => { api.newSpaces().then(setD).catch(() => {}); }, []);
+  const lines: Line[] = useMemo(() => {
+    if (!d) return [];
+    const weeks = [...new Set(d.week)].filter((w) => w >= "2023-01-01").sort();
+    const idx = new Map(weeks.map((w, i) => [w, i]));
+    const cols = ["--c1", "--c2", "--c3", "--c4", "--c5"].map(css);
+    return d.sdks.map((sdk, k) => {
+      const v = new Array(weeks.length).fill(0);
+      d.week.forEach((w, i) => { if (d.sdk[i] === sdk && idx.has(w)) v[idx.get(w)!] += d.n[i]; });
+      // the week in progress is partial; leave it out
+      return { label: sdk, color: sdk === "other" ? css("--rule") : cols[k % cols.length], t: weeks.slice(0, -1).map((w) => ts(w) + 3.5 * 86400), v: v.slice(0, -1) };
+    });
+  }, [d]);
+  if (!d || !lines.length) return null;
+  return (
+    <div class="new-spaces">
+      <h3>New Spaces per week, by SDK</h3>
+      <div class="legend" style={{ marginBottom: 8 }}>
+        {lines.map((l) => <span class="chip" key={l.label}><i class="sw" style={{ background: l.color, height: 10 }} />{l.label}</span>)}
+      </div>
+      <Chart lines={lines} stacked height={220} valueLabel={(v) => fmtFull(v)} />
+      <p class="chart-note">Counted from the Spaces that exist today, by the week they were created.</p>
+    </div>
+  );
+}
+
 function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
   const boards = REPO_BOARDS[kind];
   const [lb, setLb] = useState<Leaderboards | null>(null);
@@ -185,6 +214,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
   const route = (r: any) => (kind === "datasets" ? { dataset: r.id } : { space: r.id });
   return (
     <>
+      {kind === "spaces" && <NewSpaces />}
       <div class="section-head">
         <div>
           <h2>{cur.label}</h2>

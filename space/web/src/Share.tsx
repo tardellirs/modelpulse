@@ -2,9 +2,9 @@ import { useState } from "preact/hooks";
 import { LikeCta } from "./Like";
 import { API_BASE, fmt, fmtPct, SPACE_URL, type Model } from "./api";
 
-const BADGE_HOST = "https://modelpulse.ifsp.dev";
+export const BADGE_HOST = "https://modelpulse.ifsp.dev";
 
-function Copy({ text, label = "Copy" }: { text: string; label?: string }) {
+export function Copy({ text, label = "Copy" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button class="btn" onClick={async () => {

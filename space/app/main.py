@@ -62,6 +62,8 @@ def reload_store():
     _og_model.cache_clear()
     _og_author.cache_clear()
     _og_dataset.cache_clear()
+    _og_space.cache_clear()
+    _og_galaxy.cache_clear()
     _new_spaces.cache_clear()
     threading.Thread(target=jobs.indexnow, args=(changed_urls(),), daemon=True).start()
     threading.Thread(target=warm_galaxies, daemon=True).start()
@@ -280,12 +282,12 @@ def daily_points(series, n=62):
 
 
 @lru_cache(maxsize=4096)
-def badge_svg(mid, metric, theme):
-    m = store.model(mid)
+def badge_svg(mid, metric, theme, kind="model"):
+    m = store.model(mid) if kind == "model" else repos.dataset(mid)
     if not m:
         label, value, spark, delta = "model pulse", "not tracked", [], None
     else:
-        s = store.series(m["id"])
+        s = store.series(m["id"]) if kind == "model" else repos.dataset_series(m["id"])
         spark = daily_points(s)
         if metric == "all":
             label, value = "downloads", human(m["dl_all"])
@@ -330,6 +332,12 @@ def badge_svg(mid, metric, theme):
 </g>
 {f'<path d="{path}" fill="none" stroke="{border}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="{path}" fill="none" stroke="{accent}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' if path else ''}
 </svg>"""
+
+
+@app.get("/badge/dataset/{rid:path}.svg")
+def badge_dataset(rid: str, metric: str = "month", theme: str = "light"):
+    svg = badge_svg(rid, metric if metric in ("month", "all", "likes") else "month", "dark" if theme == "dark" else "light", "dataset")
+    return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=21600", "X-Robots-Tag": "noindex"})
 
 
 @app.get("/badge/{mid:path}.svg")
@@ -392,6 +400,34 @@ def og_dataset(rid: str):
     png = _og_dataset(rid)
     if png is None:
         raise HTTPException(404, "Not tracked")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@lru_cache(maxsize=1024)
+def _og_space(rid: str):
+    s = repos.space(rid)
+    return og.space_card(s, repos.space_series(s["id"])) if s else None
+
+
+@app.get("/og/space/{rid:path}.png")
+def og_space(rid: str):
+    png = _og_space(rid)
+    if png is None:
+        raise HTTPException(404, "Not tracked")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@lru_cache(maxsize=256)
+def _og_galaxy(mid: str):
+    g = _galaxy(mid)
+    return og.galaxy_card(g) if g and g["total"] else None
+
+
+@app.get("/og/galaxy/{mid:path}.png")
+def og_galaxy(mid: str):
+    png = _og_galaxy(mid)
+    if png is None:
+        raise HTTPException(404, "No galaxy")
     return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
 
 

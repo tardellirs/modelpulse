@@ -316,7 +316,8 @@ class Pages:
                 f"<li>{a('/dataset/' + seg(x['id']), x['id'])} (dataset)</li>" for x in uses["datasets"]) + "</ul>")
         body.append(f"<p>{a('https://huggingface.co/spaces/' + rid, 'Open ' + rid + ' on Hugging Face')}</p>")
         crumb = [("Model Pulse", "/")] + ([(author, f"/author/{quote(author, safe='')}")] if author else []) + [(title, path)]
-        return Page(f"{title}: likes over time · {rid} · Model Pulse", desc, path, "".join(body), ld=[crumbs(*crumb)])
+        return Page(f"{title}: likes over time · {rid} · Model Pulse", desc, path, "".join(body),
+                    image=f"{SITE}/og/space/{seg(rid)}.png", ld=[crumbs(*crumb)])
 
     def author(self, store, name: str) -> Page:
         author = store.find_author(name)
@@ -365,7 +366,7 @@ class Pages:
         return Page(f"{mid} galaxy: {full(fam)} models built on it · Model Pulse",
                     f"Every model built on {mid}: {full(m.get('n_quantized'))} quantizations, {full(m.get('n_finetune'))} fine-tunes, "
                     f"{full(m.get('n_adapter'))} adapters and {full(m.get('n_merge'))} merges, drawn as a galaxy and sized by downloads.",
-                    path, body, image=f"{SITE}/og/model/{seg(mid)}.png", noindex=fam < 20,
+                    path, body, image=f"{SITE}/og/galaxy/{seg(mid)}.png" if fam else f"{SITE}/og/model/{seg(mid)}.png", noindex=fam < 20,
                     ld=[crumbs(("Model Pulse", "/"), ("Galaxies", "/galaxy"), (mid, path))])
 
     def wrapped(self, author: str | None) -> Page:

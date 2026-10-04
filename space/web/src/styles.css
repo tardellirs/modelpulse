@@ -560,3 +560,7 @@ main { min-height: calc(100vh - 72px); }
 .k-dataset { background: #fde7cf; }
 .repo-tabs { margin-bottom: 18px; }
 .repo-tabs button { font-size: 14px; padding: 7px 16px; }
+.ds-badge h3 { font: 600 var(--step-1) var(--font-display); margin-bottom: 6px; }
+.ds-badge p { color: var(--ink-2); margin: 0 0 12px; }
+.new-spaces { margin: 4px 0 28px; padding-bottom: 24px; border-bottom: 2px solid var(--rule-2); }
+.new-spaces h3 { font: 600 var(--step-1) var(--font-display); margin-bottom: 8px; }

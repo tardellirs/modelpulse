@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import {
-  api, daily, fmt, fmtDate, fmtFull, fmtPct, hrefOf, navigate, ord, plain, shareUrl, smooth, taskLabel, weekly, WEEK,
+  API_BASE, SPACE_URL, api, daily, fmt, fmtDate, fmtFull, fmtPct, hrefOf, navigate, ord, plain, shareUrl, smooth, taskLabel, weekly, WEEK,
   type DatasetResponse, type Route, type SpaceResponse,
 } from "./api";
 import { Chart, type Line } from "./Chart";
 import { LikeCta } from "./Like";
+import { BADGE_HOST, Copy } from "./Share";
 import { UsedBy } from "./UsedBy";
 
 type RangeKey = "3M" | "6M" | "1Y" | "All";
@@ -61,6 +62,30 @@ function Name({ id }: { id: string }) {
       {org && <a href={hrefOf({ author: org })} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>}
       <span class="hl">{name}</span>
     </h1>
+  );
+}
+
+/** The README badge for a dataset card, like the one for models. */
+function DatasetBadge({ id }: { id: string }) {
+  const [metric, setMetric] = useState<"month" | "all" | "likes">("month");
+  const badge = `${BADGE_HOST}/badge/dataset/${id}.svg${metric === "month" ? "" : `?metric=${metric}`}`;
+  const md = `[![Model Pulse](${badge})](${SPACE_URL}?dataset=${id})`;
+  return (
+    <section class="section">
+      <div class="wrap">
+        <div class="card ds-badge">
+          <h3>Badge for your dataset card</h3>
+          <p>Updates daily. Paste it into the README of {id.split("/").pop()}.</p>
+          <div class="seg badge-opts" role="group" aria-label="Badge metric">
+            <button aria-pressed={metric === "month"} onClick={() => setMetric("month")}>Monthly</button>
+            <button aria-pressed={metric === "all"} onClick={() => setMetric("all")}>All time</button>
+            <button aria-pressed={metric === "likes"} onClick={() => setMetric("likes")}>Likes</button>
+          </div>
+          <div class="badge-preview"><img src={badge.replace(BADGE_HOST, API_BASE)} alt="Model Pulse badge preview" height={22} /></div>
+          <div class="code"><code>{md}</code><Copy text={md} label="Copy markdown" /></div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -172,6 +197,7 @@ export function DatasetPage({ id }: { id: string }) {
           {x.description && <p class="muted">{x.description}{x.description.length >= 300 ? "…" : ""}</p>}
         </div>
       </section>
+      <DatasetBadge id={x.id} />
       <ShareRow route={{ dataset: x.id }} text={`${x.id} has ${fmt(x.dl_all ?? x.dl30)} downloads on Hugging Face. Full download history:`} />
     </>
   );
