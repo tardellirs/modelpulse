@@ -232,16 +232,18 @@ My pick: Draft A. It leads with a finding, carries one chart per finding, stays 
 - Only one Hub-analytics comparison post with real traction exists (SeaWolf-AI), so recommendations for this exact category extrapolate from tool and launch posts in general.
 - I could not find the second tardellirs post.
 
-## Final draft (chosen 2026-10-04: Draft A, revised)
+## Final draft (chosen 2026-10-04: Draft A, revised; hook switched from dataset counts to downloads)
 
 Post Wed 2026-10-07 around 16:00 UTC (13:00 Brazil); be around to reply for the first 2-3 hours. Refresh the numbers with the day's data before posting.
 
-Images, in order: charts/09-robotics.png, charts/10-training-data.png, charts/12-spaces-likes.png, optionally a screenshot of https://modelpulse.ifsp.dev/dataset/HuggingFaceFW/fineweb.
+Why this hook: downloads are what only Model Pulse has (repo counts anyone can get from hub-stats, and LeRobot inflates them with one dataset per recording session). Robotics went from #23 (Sep 2024, 3-month average) to #2 among dataset task categories by downloads, behind only text generation (Sep 2026: text generation 18.3M, robotics 13.7M, text classification 10.5M, question answering 8.3M). Ranking covers datasets that declare a task category (about a third of dataset downloads).
+
+Images, in order: charts/13-robotics-rank.png, charts/10-training-data.png, charts/12-spaces-likes.png, optionally a screenshot of https://modelpulse.ifsp.dev/dataset/HuggingFaceFW/fineweb.
 
 ```
-One in 7 new datasets on the Hub is now robotics data.
+Robotics is now the second most downloaded dataset category on the Hub, after text generation.
 
-6,570 were created in September, 14% of all new datasets. Robotics dataset downloads are up 16x since March 2025, and the people publishing them went from 46 in a quarter in 2024 to 2,823 in the last one. Most are LeRobot recordings: camera video plus joint positions, a few dozen demos of a task like pick-and-place on a low-cost SO-101 arm.
+Robotics datasets got 13.7M downloads in September, ahead of text classification and question answering. Two years ago the category barely registered, at 23rd. One in 7 new datasets is now robotics: most are LeRobot recordings, camera video plus joint positions from a few dozen demos of a task like pick-and-place on a low-cost SO-101 arm.
 
 I found this after adding datasets and Spaces to Model Pulse, which rebuilds daily history from @cfahlgren1's hub-stats snapshots. Two more findings:
 
@@ -256,3 +258,5 @@ Data: https://huggingface.co/datasets/modelpulse/model-pulse-data
 
 Thanks to @dipankarsarkar, whose comments on the last post fixed three data issues. If a number looks wrong, tell me.
 ```
+
+Next posts in the series (one strong finding every 1-2 weeks): downloads of 100B+ models grew 14x vs 2.6x under 10B (the mixture-of-experts shift, chart 06-model-size); the Hub's download counters stall on Wednesdays (for the data-minded).

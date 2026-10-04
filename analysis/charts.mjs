@@ -18,12 +18,12 @@ const human = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : v >= 1e6 ? `${(v /
 const mlabel = (m) => new Date(m + "T00:00:00Z").toLocaleString("en", { month: "short", timeZone: "UTC" }) + (m.slice(5, 7) === "01" || m === A.months[0].m.slice(0, 10) ? ` ${m.slice(0, 4)}` : "");
 // before March 2025 the Hub had no all-time counter: those months come from the 30-day count and are shaded
 const EST = new Set(A.months.filter((r) => !r.exact).map((r) => r.m.slice(0, 10)));
-function estBand(xs, x, T, B) {
+function estBand(xs, x, T, B, labelY = T + 2, lines = ["estimated from 30-day counts"]) {
   const last = xs.reduce((k, m, i) => (EST.has(m) ? i : k), -1);
   if (last < 0) return "";
   const x1 = last === xs.length - 1 ? x(last) : (x(last) + x(last + 1)) / 2;
   return `<rect x="${x(0)}" y="${T - 14}" width="${x1 - x(0)}" height="${B - T + 14}" fill="${RULE}" opacity="0.45"/>
-    <text x="${x(0) + 8}" y="${T + 2}" ${MONO} font-size="13" fill="${MUTED}">estimated from 30-day counts</text>`;
+    ${lines.map((l, i) => `<text x="${x(0) + 8}" y="${labelY + i * 17}" ${MONO} font-size="13" fill="${MUTED}">${l}</text>`).join("")}`;
 }
 
 function frame(title, subtitle, body, source) {
@@ -349,4 +349,41 @@ if (hubPath) {
     `Spaces created and likes given per month, indexed to ${mon(ms[0])}–${mon(ms[2])} ${yr(ms[2])} (3-month average, log scale)`,
     xs, [{ label: "New Spaces", color: C[0], values: M1, width: 5 }, { label: "Likes given", color: C[5], values: L1, width: 5 }],
     { log: [0.5, 1, 2, 4], fmt: (v) => `${v.toFixed(1)}x`, xlabel: monthTick });
+}
+
+// 13. robotics climbs the dataset categories, by downloads (rank of each task category, 3-month average)
+{
+  const months = [...new Set(R.ds_task.map((r) => r.m.slice(0, 10)))].sort();
+  const dl = {};
+  R.ds_task.forEach((r) => { if (r.task !== "none" && r.task !== "other") (dl[r.task] ??= {})[r.m.slice(0, 10)] = Number(r.dl); });
+  const xs = months.slice(2);
+  const rank = {};
+  xs.forEach((m, j) => {
+    const win = months.slice(j, j + 3);
+    Object.entries(dl).map(([t, v]) => [t, win.reduce((a, w) => a + (v[w] ?? 0), 0)]).sort((a, b) => b[1] - a[1])
+      .forEach(([t], i) => ((rank[t] ??= [])[j] = i + 1));
+  });
+  const show = [["robotics", "Robotics", C[5], 6], ["text-generation", "Text generation", C[0], 3.5], ["text-classification", "Text classification", C[2], 3.5],
+    ["question-answering", "Question answering", C[3], 3.5], ["image-to-text", "Image to text", C[4], 3.5]];
+  const L = 110, Rr = 262, T = 172, B = 538, top = 25;
+  const x = (i) => L + (i / (xs.length - 1)) * (W - L - Rr);
+  const y = (k) => T + ((Math.min(k, top) - 1) / (top - 1)) * (B - T);
+  const grid = [1, 5, 10, 15, 20, 25].map((k) => `<line x1="${L}" x2="${W - Rr}" y1="${y(k)}" y2="${y(k)}" stroke="${RULE}" stroke-width="1.5" stroke-dasharray="5 6"/>
+    <text x="${L - 12}" y="${y(k) + 5}" text-anchor="end" ${MONO} font-size="14" fill="${MUTED}">#${k}</text>`).join("");
+  const xt = xs.map((m, i) => (i % 3 === 0 || i === xs.length - 1) ? `<text x="${x(i)}" y="${B + 28}" text-anchor="middle" ${MONO} font-size="14" fill="${MUTED}">${monthTick(m, i)}</text>` : "").join("");
+  const labels = [];
+  const paths = [...show].reverse().map(([t, label, color, w]) => {
+    const v = rank[t];
+    const d = v.map((k, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(k).toFixed(1)}`).join(" ");
+    labels.push({ y: y(v.at(-1)), label, color, k: v.at(-1) });
+    return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w + 3.5}" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }).join("");
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 24) labels[i].y = labels[i - 1].y + 24;
+  const lab = labels.map((l) => `<text x="${W - Rr + 14}" y="${l.y + 6}" font-size="18" font-weight="600" fill="${l.color}">${esc(l.label)} <tspan fill="${MUTED}" font-weight="400" ${MONO} font-size="16">#${l.k}</tspan></text>`).join("");
+  const r0 = rank.robotics[0];
+  save("13-robotics-rank", frame("Robotics is now the #2 dataset category by downloads",
+    `Rank of dataset task categories by monthly downloads (3-month average), from #${r0} in ${monthTick(xs[0], 0)}`,
+    estBand(xs, x, T, B, y(13), ["estimated from", "30-day counts"]) + grid + paths + xt + lab, "Model Pulse, from daily snapshots of cfahlgren1/hub-stats · datasets that declare a task category"));
 }
