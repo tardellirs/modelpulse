@@ -16,9 +16,18 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const pct = (v, d = 0) => `${(v * 100).toFixed(d)}%`;
 const human = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M` : `${Math.round(v / 1e3)}K`);
 const mlabel = (m) => new Date(m + "T00:00:00Z").toLocaleString("en", { month: "short", timeZone: "UTC" }) + (m.slice(5, 7) === "01" || m === A.months[0].m.slice(0, 10) ? ` ${m.slice(0, 4)}` : "");
-const GAP = new Set(["2025-06-01"]); // snapshot gap month in the source; plotted as a break
+// before March 2025 the Hub had no all-time counter: those months come from the 30-day count and are shaded
+const EST = new Set(A.months.filter((r) => !r.exact).map((r) => r.m.slice(0, 10)));
+function estBand(xs, x, T, B) {
+  const last = xs.reduce((k, m, i) => (EST.has(m) ? i : k), -1);
+  if (last < 0) return "";
+  const x1 = last === xs.length - 1 ? x(last) : (x(last) + x(last + 1)) / 2;
+  return `<rect x="${x(0)}" y="${T - 14}" width="${x1 - x(0)}" height="${B - T + 14}" fill="${RULE}" opacity="0.45"/>
+    <text x="${x(0) + 8}" y="${T + 2}" ${MONO} font-size="13" fill="${MUTED}">estimated from 30-day counts</text>`;
+}
 
-function frame(title, subtitle, body, source = "Model Pulse, from daily snapshots of cfahlgren1/hub-stats") {
+function frame(title, subtitle, body, source) {
+  source ??= "Model Pulse, from daily snapshots of cfahlgren1/hub-stats";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Source Sans 3 ExtraLight">
   <rect width="${W}" height="${H}" fill="${PAPER}"/>
   <text x="44" y="70" font-family="Fredoka Light" font-weight="600" font-size="38" letter-spacing="-0.5" fill="${INK}">${esc(title)}</text>
@@ -49,13 +58,13 @@ function lines(name, title, subtitle, series, { fmt = pct, yMax, labelRight = tr
   const grid = ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${RULE}" stroke-width="1.5" stroke-dasharray="5 6"/>
     <text x="${L - 12}" y="${y(v) + 5}" text-anchor="end" ${MONO} font-size="14" fill="${MUTED}">${fmt(v)}</text>`).join("");
   const xt = months.map((m, i) => (i % 3 === 0 || i === months.length - 1) ? `<text x="${x(i)}" y="${B + 28}" text-anchor="middle" ${MONO} font-size="14" fill="${MUTED}">${mlabel(m)}</text>` : "").join("");
-  const gaps = months.map((m, i) => GAP.has(m) ? `<rect x="${x(i) - 14}" y="${T}" width="28" height="${B - T}" fill="${RULE}" opacity="0.6"/>` : "").join("");
+  const gaps = estBand(months, x, T, B);
   const labels = [];
   const paths = series.map((s) => {
     let d = "", pen = false;
     months.forEach((m, i) => {
       const v = s.values[m];
-      if (v == null || GAP.has(m)) { pen = false; return; }
+      if (v == null) { pen = false; return; }
       d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)} `; pen = true;
     });
     const last = [...months].reverse().find((m) => s.values[m] != null);
@@ -73,6 +82,67 @@ function lines(name, title, subtitle, series, { fmt = pct, yMax, labelRight = tr
   save(name, frame(title, subtitle, gaps + grid + paths + xt + lab));
 }
 
+const R = JSON.parse(readFileSync(analysisPath.replace("analysis.json", "analysis_repos.json"), "utf8"));
+const R2 = JSON.parse(readFileSync(analysisPath.replace("analysis.json", "analysis_repos2.json"), "utf8"));
+const monthTick = (m, i, all) => {
+  const mon = new Date(m + "T00:00:00Z").toLocaleString("en", { month: "short", timeZone: "UTC" });
+  return i === 0 || m.slice(5, 7) === "01" ? `${mon} ${m.slice(0, 4)}` : mon;
+};
+
+// lines over any x axis; series: [{label, color, values: [] aligned with xs, width, dash}]; log: tick values for a log2 y axis
+function xyLines(name, title, subtitle, xs, series, { fmt = pct, log, yMax, every = 3, xlabel = (x) => x, source, band = false } = {}) {
+  const L = 110, Rr = 262, T = 172, B = 538;
+  const all = series.flatMap((s) => s.values.filter((v) => v != null));
+  const x = (i) => L + (i / (xs.length - 1)) * (W - L - Rr);
+  let y, ticks;
+  if (log) {
+    const lo = Math.log2(Math.min(log[0], ...all)), hi = Math.log2(Math.max(log.at(-1), ...all));
+    y = (v) => B - ((Math.log2(v) - lo) / (hi - lo)) * (B - T); ticks = log;
+  } else {
+    const raw = yMax ?? Math.max(...all) * 1.05;
+    const step = [0.02, 0.05, 0.1, 0.2, 0.25].find((st) => raw / st <= 6) ?? 0.25;
+    const max = yMax ?? Math.ceil(raw / step) * step;
+    y = (v) => B - (v / max) * (B - T); ticks = Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => i * step);
+  }
+  const grid = ticks.map((v) => `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="${RULE}" stroke-width="1.5" stroke-dasharray="5 6"/>
+    <text x="${L - 12}" y="${y(v) + 5}" text-anchor="end" ${MONO} font-size="14" fill="${MUTED}">${fmt(v)}</text>`).join("");
+  const xt = xs.map((m, i) => (i % every === 0 || i === xs.length - 1) ? `<text x="${x(i)}" y="${B + 28}" text-anchor="middle" ${MONO} font-size="14" fill="${MUTED}">${xlabel(m, i, xs)}</text>` : "").join("");
+  const labels = [];
+  const paths = series.map((s) => {
+    const d = s.values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    labels.push({ y: y(s.values.at(-1)), s });
+    const w = s.width ?? 4;
+    if (s.dash) return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${w}" stroke-dasharray="8 7" stroke-linejoin="round" stroke-linecap="round"/>`;
+    return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w + 3.5}" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${d}" fill="none" stroke="${s.color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }).join("");
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 24) labels[i].y = labels[i - 1].y + 24;
+  const over = labels.length ? labels.at(-1).y - (B + 6) : 0;
+  if (over > 0) labels.forEach((l) => (l.y -= over));
+  const lab = labels.map(({ y: ly, s }) => `<text x="${W - Rr + 14}" y="${ly + 6}" font-size="18" font-weight="600" fill="${s.color}">${esc(s.label)} <tspan fill="${MUTED}" font-weight="400" ${MONO} font-size="16">${fmt(s.values.at(-1))}</tspan></text>`).join("");
+  save(name, frame(title, subtitle, (band ? estBand(xs, x, T, B) : "") + grid + paths + xt + lab, source));
+}
+
+// stacked bars over any x axis; stacks: [{label, color, values: [] aligned with xs}]
+function stackedBars(name, title, subtitle, xs, stacks, { fmtY = (v) => (v ? human(v) : "0"), every = 3, xlabel = (x) => x, note = "", source, legend = true } = {}) {
+  const L = 110, Rr = 70, T = legend && stacks.length > 1 ? 214 : 190, B = 530, bw = (W - L - Rr) / xs.length;
+  const tot = xs.map((_, i) => stacks.reduce((a, s) => a + (s.values[i] ?? 0), 0));
+  const raw = Math.max(...tot) * 1.05;
+  const mag = 10 ** Math.floor(Math.log10(raw / 4)), step = [1, 2, 2.5, 5, 10].map((f) => f * mag).find((st) => raw / st <= 5);
+  const max = Math.ceil(raw / step) * step;
+  const y = (v) => B - (v / max) * (B - T);
+  const bars = xs.map((_, i) => { let acc = 0; return stacks.map((s) => {
+    const v = s.values[i] ?? 0, y0 = y(acc), y1 = y(acc + v); acc += v;
+    return v ? `<rect x="${(L + i * bw + 2).toFixed(1)}" y="${y1.toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${(y0 - y1).toFixed(1)}" fill="${s.color}" stroke="${INK}" stroke-width="1.6"/>` : "";
+  }).join(""); }).join("");
+  const grid = Array.from({ length: Math.round(max / step) + 1 }, (_, i) => i * step).map((v) => `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="${RULE}" stroke-width="1.5" stroke-dasharray="5 6"/>
+    <text x="${L - 12}" y="${y(v) + 5}" text-anchor="end" ${MONO} font-size="14" fill="${MUTED}">${fmtY(v)}</text>`).join("");
+  const xt = xs.map((m, i) => (i % every === 0 || i === xs.length - 1) ? `<text x="${L + i * bw + bw / 2}" y="${B + 26}" text-anchor="middle" ${MONO} font-size="14" fill="${MUTED}">${xlabel(m, i, xs)}</text>` : "").join("");
+  const leg = legend && stacks.length > 1 ? stacks.map((s, k) => `<g transform="translate(${L + k * 170},168)"><rect width="16" height="16" rx="4" fill="${s.color}" stroke="${INK}" stroke-width="2"/><text x="24" y="13" font-size="16" fill="${INK}">${esc(s.label)}</text></g>`).join("") : "";
+  save(name, frame(title, subtitle, grid + `<line x1="${L}" x2="${W - Rr}" y1="${B}" y2="${B}" stroke="${INK}" stroke-width="3"/>` + bars + xt + leg + note, source));
+}
+
 const byMonth = (rows, key, val, filter = () => true) => {
   const o = {};
   rows.filter(filter).forEach((r) => { (o[r[key]] ??= {})[r.m.slice(0, 10)] = Number(r[val]); });
@@ -81,7 +151,7 @@ const byMonth = (rows, key, val, filter = () => true) => {
 
 // 2. Qwen vs Llama
 const tg = byMonth(A.textgen_orgs, "author", "share");
-lines("02-text-orgs", "Qwen now gets half of all open LLM downloads",
+lines("02-text-orgs", "Qwen became the default open LLM publisher",
   "Share of text and vision-language model downloads, by publisher (original repos only)",
   [["Qwen", "Qwen", C[0]], ["meta-llama", "Meta Llama", C[1]], ["google", "Google", C[2]], ["nvidia", "NVIDIA", C[3]],
    ["deepseek-ai", "DeepSeek", C[4]], ["openai", "OpenAI", C[5]]].map(([k, label, color]) => ({ label, color, values: tg[k] ?? {} })));
@@ -100,28 +170,27 @@ lines("05-concentration", "The top of the Hub is losing its grip",
   [{ label: "Top 1,000", color: C[2], values: cc.top1000 }, { label: "Top 100", color: C[0], values: cc.top100, width: 5 },
    { label: "Top 10", color: C[1], values: cc.top10 }], { yMax: 1 });
 
-// 6. model size: 100% stacked area
+// 6. model size: growth of each size band, indexed, log scale (a stacked share hides it: every band grew)
 {
-  const months = A.params.map((r) => r.m.slice(0, 10)).filter((m) => !GAP.has(m));
-  const keys = [["under2b", "Under 2B"], ["b2_10", "2B to 10B"], ["b10_40", "10B to 40B"], ["over40b", "40B and up"]];
-  const L = 110, R = 262, T = 172, B = 538;
-  const x = (i) => L + (i / (months.length - 1)) * (W - L - R);
-  const y = (v) => B - v * (B - T);
-  const row = (m) => A.params.find((r) => r.m.slice(0, 10) === m);
-  let acc = months.map(() => 0);
-  const bands = keys.map(([k, label], ki) => {
-    const lo = acc.slice(), hi = months.map((m, i) => acc[i] + Number(row(m)[k]));
-    acc = hi;
-    const up = hi.map((v, i) => `${x(i)},${y(v)}`).join(" L"), dn = lo.map((v, i) => `${x(i)},${y(v)}`).reverse().join(" L");
-    const mid = (lo[lo.length - 1] + hi[hi.length - 1]) / 2;
-    return `<path d="M${up} L${dn} Z" fill="${C[ki]}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
-      <text x="${W - R + 14}" y="${y(mid) + 6}" font-size="18" font-weight="600" fill="${C[ki]}">${label} <tspan fill="${MUTED}" font-weight="400" ${MONO} font-size="16">${pct(Number(row(months.at(-1))[k]))}</tspan></text>`;
-  }).join("");
-  const grid = [0, 0.25, 0.5, 0.75, 1].map((v) => `<text x="${L - 12}" y="${y(v) + 5}" text-anchor="end" ${MONO} font-size="14" fill="${MUTED}">${pct(v)}</text>`).join("");
-  const xt = months.map((m, i) => (i % 3 === 0 || i === months.length - 1) ? `<text x="${x(i)}" y="${B + 28}" text-anchor="middle" ${MONO} font-size="14" fill="${MUTED}">${mlabel(m)}</text>` : "").join("");
-  const g0 = Math.exp(Number(A.params[0].w_logmean)) / 1e9, g1 = Math.exp(Number(A.params.at(-1).w_logmean)) / 1e9;
-  save("06-model-size", frame(`The typical downloaded LLM grew from ${g0.toFixed(1)}B to ${g1.toFixed(1)}B`,
-    "Share of text-generation downloads by model size (parameters)", bands + grid + xt));
+  // exact months only: split into small size bands, the 30-day estimates are too noisy (one counter jump on
+  // Llama-3.1-405B in Oct 2024 alone would multiply the 100B+ band six times)
+  const rows = R.size_buckets.map((r) => ({ ...r, m: r.m.slice(0, 10) })).filter((r) => !EST.has(r.m));
+  const bands = { small: ["lt1", "b1_4", "b4_10"], b10_35: ["b10_35"], b35_100: ["b35_100"], ge100: ["ge100"] };
+  const abs = rows.map((r) => Object.fromEntries(Object.entries(bands).map(([k, ks]) => [k, ks.reduce((a, c) => a + r[c] * r.dl, 0)]).concat([["all", r.dl]])));
+  const roll = (i, k) => (abs[i - 2][k] + abs[i - 1][k] + abs[i][k]) / 3;
+  const xs = rows.slice(2).map((r) => r.m);
+  const idx = (k) => xs.map((_, j) => roll(j + 2, k) / roll(2, k));
+  const series = [
+    { label: "100B and up", color: C[5], values: idx("ge100"), width: 5 },
+    { label: "10B to 35B", color: C[1], values: idx("b10_35"), width: 5 },
+    { label: "All LLMs", color: INK, values: idx("all"), width: 2.5, dash: true },
+    { label: "Under 10B", color: C[0], values: idx("small") },
+    { label: "35B to 100B", color: C[4], values: idx("b35_100") },
+  ];
+  const big = series[0].values.at(-1), small = series[3].values.at(-1);
+  xyLines("06-model-size", `Downloads of 100B+ models grew ${Math.round(big)}x; small models ${small.toFixed(1)}x`,
+    `Monthly text-generation downloads by model size, indexed to ${monthTick(rows[0].m, 1)}–${monthTick(rows[2].m, 1)} ${rows[2].m.slice(0, 4)} (3-month average, log scale)`,
+    xs, series, { log: [1, 2, 4, 8, 16], fmt: (v) => `${v >= 9.95 ? Math.round(v) : v.toFixed(1)}x`, xlabel: monthTick });
 }
 
 // 4. quantizers dumbbell
@@ -224,4 +293,60 @@ if (hubPath) {
   const legend = order.map((t, k) => `<g transform="translate(${L + k * 196},168)"><rect width="16" height="16" rx="4" fill="${COL[t]}" stroke="${INK}" stroke-width="2"/><text x="24" y="13" font-size="16" fill="${INK}">${LABELS[t]}</text></g>`).join("");
   save("01-hub", frame("The Hub serves ~100M model downloads a day", "Weekly downloads across all public models, by task. Up from ~62M a day a year ago.",
     grid + `<line x1="${L}" x2="${W - R}" y1="${B}" y2="${B}" stroke="${INK}" stroke-width="3"/>` + bars + xt + legend));
+}
+
+// 9. robotics datasets created per month
+{
+  const xs = R.ds_robotics.map((r) => r.m.slice(0, 10)).filter((m) => m >= "2024-07-01" && m <= "2026-09-01");
+  const get = (rows, m, k) => Number((rows.find((r) => r.m.startsWith(m)) || {})[k] || 0);
+  const last = xs.at(-1), share = get(R.ds_created, last, "robotics") / get(R.ds_created, last, "n");
+  const q = R2.robotics_authors, a0 = q[0], a1 = q.at(-2);
+  stackedBars("09-robotics", `One in ${Math.round(1 / share)} new datasets is now robot data`,
+    `Robotics datasets created per month. Authors per quarter went from ${a0.authors} to ${a1.authors.toLocaleString("en")}.`,
+    xs, [{ label: "Robotics datasets", color: C[2], values: xs.map((m) => get(R.ds_robotics, m, "created_n")) }],
+    { xlabel: monthTick, fmtY: (v) => v.toLocaleString("en"), legend: false });
+}
+
+// 10. what fine-tuners say they trained on
+{
+  const rows = R2.train_themes, xs = rows.map((r) => String(r.y));
+  const sh = (k) => rows.map((r) => r[k] / r.authors);
+  xyLines("10-training-data", "Fine-tuners swapped IMDb and SQuAD for reasoning traces",
+    "Share of model authors citing each kind of training data, by the year their model was created (2026: Jan–Sep)",
+    xs, [{ label: "Classic NLP sets", color: C[0], values: sh("classic_nlp") }, { label: "Speech", color: C[3], values: sh("speech") },
+      { label: "Chat instructions", color: C[1], values: sh("chat_sft") }, { label: "Math", color: C[4], values: sh("math") },
+      { label: "Reasoning traces", color: C[5], values: sh("reasoning"), width: 5 }], { every: 1 });
+}
+
+// 11. new Spaces per month by SDK
+{
+  const xs = [...new Set(R.sp_new_by_sdk_month.map((r) => r.m.slice(0, 10)))].filter((m) => m >= "2023-01-01" && m <= "2026-09-01").sort();
+  const get = (m, sdk) => R.sp_new_by_sdk_month.filter((r) => r.m.startsWith(m) && r.sdk === sdk).reduce((a, r) => a + Number(r.n), 0);
+  const sdks = [["gradio", "Gradio", C[1]], ["docker", "Docker", C[0]], ["static", "Static", C[2]], ["streamlit", "Streamlit", C[5]], ["other", "Other", RULE]];
+  stackedBars("11-spaces-sdk", "New Spaces swung from Gradio to static sites to Docker",
+    "Spaces created per month, by SDK (Spaces that still exist today)",
+    xs, sdks.map(([k, label, color]) => ({ label, color, values: xs.map((m) => get(m, k)) })), { xlabel: monthTick });
+}
+
+// 12. Spaces created vs likes given, indexed
+{
+  const tl = R2.sp_total_likes;
+  const likes = {};
+  for (let i = 1; i < tl.length; i++) {
+    const d = (Date.parse(tl[i].day) - Date.parse(tl[i - 1].day)) / 864e5;
+    const m = tl[i].day.slice(0, 7) + "-01";
+    likes[m] = ((tl[i].likes - tl[i - 1].likes) / d) * 30.4;
+  }
+  const made = {};
+  R.sp_new_by_sdk_month.forEach((r) => { const m = r.m.slice(0, 10); made[m] = (made[m] ?? 0) + Number(r.n); });
+  const ms = Object.keys(likes).filter((m) => m <= "2026-09-01").sort();
+  const roll = (o, i) => (o[ms[i - 2]] + o[ms[i - 1]] + o[ms[i]]) / 3;
+  const xs = ms.slice(2);
+  const idx = (o) => xs.map((_, j) => roll(o, j + 2) / roll(o, 2));
+  const L1 = idx(likes), M1 = idx(made);
+  const yr = (m) => m.slice(0, 4), mon = (m) => monthTick(m, 1);
+  xyLines("12-spaces-likes", "More new Spaces than ever, half the likes",
+    `Spaces created and likes given per month, indexed to ${mon(ms[0])}–${mon(ms[2])} ${yr(ms[2])} (3-month average, log scale)`,
+    xs, [{ label: "New Spaces", color: C[0], values: M1, width: 5 }, { label: "Likes given", color: C[5], values: L1, width: 5 }],
+    { log: [0.5, 1, 2, 4], fmt: (v) => `${v.toFixed(1)}x`, xlabel: monthTick });
 }

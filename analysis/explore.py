@@ -9,6 +9,8 @@ import os
 import duckdb
 import polars as pl
 
+import monthly
+
 D = "/data"
 os.makedirs("/work/duck_tmp", exist_ok=True)
 con = duckdb.connect()
@@ -19,17 +21,10 @@ out = {}
 con.execute(f"""CREATE TABLE meta AS SELECT id, author, pipeline_tag, library_name, created_at::DATE AS created, params,
     base_relation, is_gguf, likes, dl30, dl_all, fam_members FROM read_parquet('{D}/models.parquet')""")
 
-# ---- month-end cumulative downloads per model, then monthly downloads ----
-con.execute(f"""CREATE TABLE mend AS
-    SELECT id, date_trunc('month', day)::DATE AS m, arg_max(dl_all, day) AS a
-    FROM read_parquet('{D}/series/*.parquet') WHERE dl_all IS NOT NULL GROUP BY 1, 2""")
-con.execute("""CREATE TABLE md AS
-    WITH x AS (SELECT id, m, a, lag(a) OVER (PARTITION BY id ORDER BY m) AS p FROM mend)
-    SELECT x.id, x.m, greatest(0, x.a - coalesce(x.p, CASE WHEN meta.created >= x.m THEN 0 END)) AS dl
-    FROM x JOIN meta USING (id)
-    WHERE x.m BETWEEN DATE '2025-03-01' AND DATE '2026-09-01'
-      AND (x.p IS NOT NULL OR meta.created >= x.m)""")
-out["months"] = q("SELECT m, sum(dl) AS dl, count(*) FILTER (WHERE dl > 0) AS active FROM md GROUP BY m ORDER BY m").to_dicts()
+# ---- monthly downloads per model, between month boundaries (see monthly.py): exact from Mar 2025, estimated before ----
+M = json.load(open(f"{D}/meta.json"))
+monthly.build(con, "md", f"{D}/series/*.parquet", M["days"], M["skip_days"], "meta")
+out["months"] = q("SELECT m, sum(dl) AS dl, sum(dl_est) AS dl_est, bool_and(exact) AS exact, count(*) FILTER (WHERE dl > 0) AS active FROM md GROUP BY m ORDER BY m").to_dicts()
 
 print("# 1. concentration", flush=True)
 # 1. concentration
@@ -66,9 +61,9 @@ print("# 3. text-generation", flush=True)
 # 3. text-generation by org
 out["textgen_orgs"] = q("""WITH t AS (SELECT m, author, sum(dl) AS dl FROM md JOIN meta USING (id)
         WHERE pipeline_tag IN ('text-generation', 'image-text-to-text') GROUP BY 1, 2)
-    SELECT m, author, dl, dl / sum(dl) OVER (PARTITION BY m) AS share FROM t
+    SELECT * FROM (SELECT m, author, dl, dl / sum(dl) OVER (PARTITION BY m) AS share FROM t)
     WHERE author IN ('Qwen', 'meta-llama', 'google', 'deepseek-ai', 'mistralai', 'microsoft', 'openai', 'unsloth', 'bartowski',
-                     'HuggingFaceTB', 'nvidia', 'ibm-granite', 'moonshotai', 'zai-org', 'THUDM', 'tencent', 'baidu')
+                     'HuggingFaceTB', 'nvidia', 'ibm-granite', 'moonshotai', 'zai-org', 'THUDM', 'tencent', 'baidu', 'mradermacher', 'lmstudio-community')
     ORDER BY m, dl DESC""").to_dicts()
 # family-level: downloads of anything descending from each org's base models (Qwen ecosystem incl. derivatives)
 out["textgen_top_models_sep26"] = q("""SELECT id, dl FROM md JOIN meta USING (id) WHERE m = DATE '2026-09-01'
@@ -86,7 +81,7 @@ out["oldest_in_top50_sep26"] = q("""SELECT id, created, dl FROM md JOIN meta USI
 print("# 5. libraries", flush=True)
 # 5. libraries
 out["libraries"] = q("""WITH t AS (SELECT m, coalesce(library_name, 'none') AS lib, sum(dl) AS dl FROM md JOIN meta USING (id) GROUP BY 1, 2)
-    SELECT m, lib, dl, dl / sum(dl) OVER (PARTITION BY m) AS share FROM t
+    SELECT * FROM (SELECT m, lib, dl, dl / sum(dl) OVER (PARTITION BY m) AS share FROM t)
     WHERE lib IN ('transformers', 'sentence-transformers', 'gguf', 'diffusers', 'mlx', 'timm', 'open_clip', 'onnx', 'transformers.js',
                   'peft', 'nemo', 'pyannote-audio', 'none', 'vllm', 'llama.cpp')
     ORDER BY m, dl DESC""").to_dicts()
@@ -130,14 +125,16 @@ keep = life.group_by("id").agg(pl.col("cum").max().alias("t182"), pl.col("age").
     .filter((pl.col("t182") >= 100_000) & (pl.col("maxage") >= 175))
 wk = (life.join(keep.select("id", "t182"), on="id").pivot(on="wk", index=["id", "t182"], values="cum").sort("id"))
 cols = [str(w) for w in range(26) if str(w) in wk.columns]
-# forward-fill missing weeks (snapshot gaps), treat leading gaps as 0
+# missing weeks (snapshot gaps) are interpolated; leading gaps count as 0
 wk = wk.with_columns(pl.concat_list([pl.col(c) for c in cols]).alias("v")).select("id", "t182", "v")
 rows = []
 for r in wk.iter_rows(named=True):
-    v, last = [], 0
-    for x in r["v"]:
-        last = x if x is not None else last
-        v.append(last)
+    v = list(r["v"])
+    known = [i for i, x in enumerate(v) if x is not None]
+    for i in range(len(v)):
+        if v[i] is None:
+            lo = max((k for k in known if k < i), default=None); hi = min((k for k in known if k > i), default=None)
+            v[i] = 0 if lo is None else v[lo] if hi is None else v[lo] + (v[hi] - v[lo]) * (i - lo) / (hi - lo)
     inc = [max(0, v[i] - (v[i - 1] if i else 0)) for i in range(len(v))]
     tot = sum(inc) or 1
     rows.append({"share": [x / tot for x in inc], "peak": max(range(len(inc)), key=inc.__getitem__),

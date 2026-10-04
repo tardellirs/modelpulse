@@ -4,6 +4,17 @@ import { Logo } from "./Logo";
 import { Chart, Sparkline, type Line } from "./Chart";
 import { Search } from "./Search";
 
+// on a phone the tab row scrolls sideways: once the new board has rendered, bring the tapped tab to the middle of the
+// row so its neighbours show (scrolling only the row, never the page)
+const showTab = (e: { currentTarget: EventTarget | null }) => {
+  const el = e.currentTarget as HTMLElement | null, row = el?.parentElement;
+  if (!el || !row || row.scrollWidth <= row.clientWidth) return;
+  setTimeout(() => {
+    const d = el.getBoundingClientRect().left - row.getBoundingClientRect().left;
+    row.scrollTo({ left: row.scrollLeft + d - (row.clientWidth - el.offsetWidth) / 2, behavior: "smooth" });
+  }, 0);
+};
+
 const BOARDS: { key: string; label: string; note: string; author?: boolean }[] = [
   { key: "gainers_7d", label: "Most downloaded this week", note: "Downloads in the last 7 days." },
   { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among models with at least 1,000 weekly downloads." },
@@ -120,7 +131,7 @@ export function Home() {
               </div>
               <div class="seg lb-tabs" role="tablist">
                 {BOARDS.map((b) => (
-                  <button key={b.key} role="tab" aria-selected={board === b.key} onClick={() => setBoard(b.key)}>{b.label}</button>
+                  <button key={b.key} role="tab" aria-selected={board === b.key} onClick={(e) => { setBoard(b.key); showTab(e); }}>{b.label}</button>
                 ))}
               </div>
               {lb ? <Board rows={rows} kind={board} author={!!cur.author} /> : <div class="skeleton" />}
@@ -222,7 +233,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
         </div>
       </div>
       <div class="seg lb-tabs" role="tablist">
-        {boards.map((b) => <button key={b.key} role="tab" aria-selected={board === b.key} onClick={() => { setBoard(b.key); setN(25); }}>{b.label}</button>)}
+        {boards.map((b) => <button key={b.key} role="tab" aria-selected={board === b.key} onClick={(e) => { setBoard(b.key); setN(25); showTab(e); }}>{b.label}</button>)}
       </div>
       {!lb ? <div class="skeleton" /> : (
         <>
