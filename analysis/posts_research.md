@@ -241,7 +241,7 @@ Images, in order: charts/09-robotics.png, charts/10-training-data.png, charts/12
 ```
 One in 7 new datasets on the Hub is now robotics data.
 
-6,570 were created in September, 14% of all new datasets. Robotics dataset downloads are up 16x since March 2025, and the people publishing them went from 46 in a quarter in 2024 to 2,823 in the last one.
+6,570 were created in September, 14% of all new datasets. Robotics dataset downloads are up 16x since March 2025, and the people publishing them went from 46 in a quarter in 2024 to 2,823 in the last one. Most are LeRobot recordings: camera video plus joint positions, a few dozen demos of a task like pick-and-place on a low-cost SO-101 arm.
 
 I found this after adding datasets and Spaces to Model Pulse, which rebuilds daily history from @cfahlgren1's hub-stats snapshots. Two more findings:
 
