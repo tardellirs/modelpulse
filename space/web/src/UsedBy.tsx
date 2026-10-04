@@ -31,7 +31,7 @@ export function UsedBy({ title, data, by, note }: { title: string; data: UsedByD
               <a href={hrefOf(route)} onClick={(e) => { e.preventDefault(); navigate(route); }}>
                 {by === "space" && <span class="emo" aria-hidden="true">{r.emoji || "·"}</span>}
                 <span class="nm">{by === "space" && r.title ? <>{r.title} <small>{r.id}</small></> : r.id}</span>
-                <span class="v">{by === "space" ? `${fmt(r.likes)} likes` : `${fmt(r.dl30)}/mo`}</span>
+                <span class="v">{by === "space" ? `${fmt(r.likes)} ${r.likes === 1 ? "like" : "likes"}` : `${fmt(r.dl30)}/mo`}</span>
               </a>
               {by === "model" && r.pipeline_tag && <span class="ub-sub">{taskLabel(r.pipeline_tag)}</span>}
             </li>

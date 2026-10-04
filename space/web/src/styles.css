@@ -537,11 +537,11 @@ main { min-height: calc(100vh - 72px); }
 
 /* ---------- datasets and Spaces ---------- */
 .chip-kind { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.sp-title { display: flex; align-items: center; gap: .3em; }
+.sp-title { display: flex; align-items: center; gap: .3em; font-size: clamp(1.6rem, 3.4vw, 2.4rem); }
 .sp-title .emo { font-size: .9em; }
 .sp-id { margin: 8px 0 0; color: var(--ink-2); font: 400 var(--step--1) var(--font-mono); overflow-wrap: anywhere; }
 .sp-id a { color: var(--ink); }
-.ub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; }
+.ub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; align-items: start; }
 .used-by .ub-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
 .used-by h3 { font: 600 var(--step-1) var(--font-display); }
 .used-by .ub-n { font: 400 var(--step--1) var(--font-mono); color: var(--ink-2); }

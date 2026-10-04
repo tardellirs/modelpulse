@@ -161,7 +161,7 @@ def new_spaces():
 
 @app.get("/api/search/all")
 def search_all(q: str = Query("", max_length=120)):
-    return j({"models": store.search(q, 8), **repos.search(q, 5)})
+    return j({"models": store.search(q, 5), **repos.search(q, 5)})
 
 
 @app.get("/api/author/{author}")
