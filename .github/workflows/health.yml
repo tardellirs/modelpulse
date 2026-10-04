@@ -9,13 +9,18 @@ on:
 jobs:
   health:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - name: API answers and data is fresh
+        # the route from GitHub's runners to the server sometimes drops for a few minutes while the site keeps serving
+        # everyone else, so a connection that can't be made is retried for ~12 minutes; any HTTP answer is final
         run: |
-          set -e
-          body=$(curl -sS --retry 3 --retry-delay 20 --max-time 30 -w '\n%{http_code}' https://modelpulse.ifsp.dev/api/health)
-          code=$(echo "$body" | tail -1); json=$(echo "$body" | head -1)
+          for i in 1 2 3 4 5; do
+            body=$(curl -sS --retry 2 --retry-delay 15 --connect-timeout 20 --max-time 30 -w '\n%{http_code}' https://modelpulse.ifsp.dev/api/health || true)
+            code=$(echo "$body" | tail -1); json=$(echo "$body" | head -1)
+            [ "$code" != "000" ] && [ -n "$code" ] && break
+            echo "no connection (attempt $i), retrying in 3 min"; sleep 180
+          done
           echo "HTTP $code: $json"
           [ "$code" = "200" ] || { echo "::error::Model Pulse API unhealthy (HTTP $code): $json"; exit 1; }
       - name: Dataset and Space pages answer
