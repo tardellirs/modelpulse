@@ -47,8 +47,15 @@ function ShareRow({ route, text }: { route: Route; text: string }) {
   );
 }
 
-function Loading({ id }: { id: string }) {
-  return <div class="wrap hero"><div class="crumbs" style={{ visibility: "hidden" }}><span class="chip">loading</span></div><h1 class="model-name">{id}</h1><div class="skeleton" style={{ marginTop: 24 }} /></div>;
+function Loading({ id, space }: { id: string; space?: boolean }) {
+  return (
+    <div class="wrap hero">
+      <div class="crumbs" style={{ visibility: "hidden" }}><span class="chip">loading</span></div>
+      <h1 class={`model-name${space ? " sp-title" : ""}`}>{space ? id.split("/").pop() : id}</h1>
+      {space && <p class="sp-id">{id}</p>}
+      <div class="skeleton" style={{ marginTop: 24 }} />
+    </div>
+  );
 }
 
 function NotFound({ id, err }: { id: string; err: string }) {
@@ -59,7 +66,7 @@ function Name({ id }: { id: string }) {
   const [org, name] = id.includes("/") ? [id.split("/")[0], id.split("/").slice(1).join("/")] : [null, id];
   return (
     <h1 class="model-name">
-      {org && <a href={hrefOf({ author: org })} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>}
+      {org && <a href={hrefOf({ author: org })} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>}{org && <wbr />}
       <span class="hl">{name}</span>
     </h1>
   );
@@ -233,7 +240,7 @@ export function SpacePage({ id }: { id: string }) {
   const range = useRange(lines, rangeKey, zoom);
 
   if (err) return <NotFound id={id} err={err} />;
-  if (!d) return <Loading id={id} />;
+  if (!d) return <Loading id={id} space />;
   const s = d.space;
   const uses = [...d.uses.models.map((u) => ({ ...u, kind: "model" as const })), ...d.uses.datasets.map((u) => ({ ...u, kind: "dataset" as const }))];
 

@@ -1,7 +1,23 @@
 """Datasets and Spaces: lookups over the tables written by pipeline/build_repos.py, on the Store's connection."""
 import json
 import os
+import urllib.request
 from datetime import date
+from functools import lru_cache
+
+
+@lru_cache(maxsize=4096)
+def legacy_id(kind: str, rid: str):
+    """Old names without an org ("imdb", "gpt2"): ask the Hub where they live now. kind is "models" or "datasets"."""
+    if "/" in rid or not rid.replace("-", "").replace("_", "").replace(".", "").isalnum():
+        return None
+    try:
+        req = urllib.request.Request(f"https://huggingface.co/api/{kind}/{rid}", headers={"User-Agent": "modelpulse"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            new = json.loads(r.read()).get("id")
+        return new if new and new != rid else None
+    except Exception:
+        return None
 
 
 class Repos:

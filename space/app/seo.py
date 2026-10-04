@@ -208,6 +208,9 @@ class Pages:
 
     def model(self, store, mid: str) -> Page:
         m = store.model(mid)
+        if not m and "/" not in mid:
+            from .repos import legacy_id
+            m = store.model(legacy_id("models", mid) or "")
         if not m:
             return self.not_found(f"{mid} is not tracked. Models appear once they reach 10 downloads in 30 days or get a like.")
         if m["id"] != mid:
@@ -258,6 +261,9 @@ class Pages:
     def dataset(self, store, rid: str) -> Page:
         repos = getattr(store, "repos", None)
         d = repos.dataset(rid) if repos else None
+        if not d and repos and "/" not in rid:
+            from .repos import legacy_id
+            d = repos.dataset(legacy_id("datasets", rid) or "")
         if not d:
             return self.not_found(f"{rid} is not tracked. Datasets appear once they reach 10 downloads in 30 days or get a like.")
         if d["id"] != rid:

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import jobs, og, seo
 from .data import Store
-from .repos import Repos
+from .repos import Repos, legacy_id
 from .wrapped import Wrapped
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -118,7 +118,7 @@ def meta():
 
 @app.get("/api/model/{mid:path}")
 def model(mid: str):
-    m = store.model(mid)
+    m = store.model(mid) or (store.model(legacy_id("models", mid) or "") if "/" not in mid else None)
     if not m:
         raise HTTPException(404, f"{mid} is not tracked. Models appear once they reach 10 downloads in 30 days or get a like.")
     mid = m["id"]
@@ -136,7 +136,7 @@ def model(mid: str):
 
 @app.get("/api/dataset/{rid:path}")
 def dataset(rid: str):
-    d = repos.dataset(rid)
+    d = repos.dataset(rid) or (repos.dataset(legacy_id("datasets", rid) or "") if "/" not in rid else None)
     if not d:
         raise HTTPException(404, f"{rid} is not tracked. Datasets appear once they reach 10 downloads in 30 days or get a like.")
     rid = d["id"]

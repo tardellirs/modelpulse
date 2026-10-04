@@ -634,7 +634,7 @@ export function Galaxy({ model }: { model?: string }) {
           {top && <a class="chip chip-hot" href={hrefOf({ view: "galaxy", model: top })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: top }); }}>Part of the {short(top)} galaxy</a>}
           <a class="chip" href={hrefOf({ model })} onClick={(e) => { e.preventDefault(); navigate({ model }); }}>Download history</a>
         </div>
-        <h1 class="model-name">{org && <span class="org">{org}/</span>}<span class="hl">{name}</span></h1>
+        <h1 class="model-name">{org && <><span class="org">{org}/</span><wbr /></>}<span class="hl">{name}</span></h1>
         <p class="g-lede">
           {!g ? "Mapping every model built on it…"
             : g.total ? <><b>{fmtFull(g.total)}</b> models are built on {name}, directly or through other derivatives. Together with the original they were downloaded <b>{fmt(root!.fam_dl30)}</b> times in the last 30 days.</>

@@ -140,7 +140,7 @@ export function ModelPage({ route }: { route: Route }) {
         <h1 class="model-name">
           {org && (
             <a href={hrefOf({ author: org })} onClick={(e) => { e.preventDefault(); navigate({ author: org }); }} class="org">{org}/</a>
-          )}
+          )}{org && <wbr />}
           <span class="hl">{name}</span>
         </h1>
 
