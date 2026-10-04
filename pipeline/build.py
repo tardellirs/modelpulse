@@ -188,7 +188,7 @@ def family_series(pairs, fam_ids, source=None):
 
 
 def author_series(models, source=None):
-    authors = (models.group_by("author").agg(pl.col("dl_all").sum()).filter(pl.col("dl_all") >= AUTHOR_MIN_ALL)
+    authors = (models.group_by("author").agg(pl.coalesce("dl_all", "dl30").sum().alias("tot")).filter(pl.col("tot") >= AUTHOR_MIN_ALL)
                .select("author"))
     idauth = models.select("id", "author").join(authors, on="author", how="semi")
     n = 0
@@ -220,13 +220,15 @@ def hub_series(models, days):
                 out.append(d.with_columns(pl.lit(day - dt.timedelta(days=k)).alias("day")))
         if cur.height:
             prev = (day, cur.select("id", "dl_all"))
+    if not out:  # no all-time totals in these snapshots yet
+        pl.DataFrame(schema={"day": pl.Date, "pipeline_tag": pl.String, "dl": pl.Int64}).write_parquet(os.path.join(OUT, "hub_series.parquet"))
+        return []
     hub = pl.concat(out).select("day", "pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)).sort("day", "pipeline_tag")
     wins = stalls.windows(hub)
     hub = stalls.smooth(hub, wins)
     hub.write_parquet(os.path.join(OUT, "hub_series.parquet"))
     log("stalls", len(wins))
     return stalls.skip_days(wins)
-    log("hub_series", hub.height)
 
 
 SKIP: set[str] = set()  # days whose snapshot is ignored (see stalls.py); set by the caller from meta.json

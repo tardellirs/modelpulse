@@ -1,0 +1,135 @@
+"""Daily update of the datasets and Spaces parts, run after the models update.
+
+    HF_TOKEN=... python daily_repos.py WORKDIR [--repo modelpulse/model-pulse-data] [--no-upload] [--force]
+
+Appends the newest hub-stats snapshot of datasets.parquet and spaces.parquet to this month's partitions, recomputes
+metrics, usage and rankings, and uploads what changed. Model -> dataset references come from WORKDIR/model_refs.parquet,
+written by daily.py from the same day's models snapshot (kept from the last run if it's missing).
+"""
+import argparse
+import datetime as dt
+import json
+import os
+import shutil
+
+import polars as pl
+import pyarrow.parquet as pq
+from huggingface_hub import HfApi, hf_hub_download, snapshot_download
+
+import build
+import build_repos as br
+import stalls
+from daily import months_back
+
+SRC = "cfahlgren1/hub-stats"
+
+
+def latest_commit(api, kind):
+    for c in api.list_repo_commits(SRC, repo_type="dataset"):  # newest first
+        if f"{kind}.parquet" in (c.title or ""):
+            return c.created_at.date(), c.commit_id
+    raise RuntimeError(f"no {kind}.parquet commit found")
+
+
+def append_month(path, today):
+    cur = pl.read_parquet(path).filter(pl.col("day") != today["day"][0]) if os.path.exists(path) else today.clear()
+    df = pl.concat([cur, today.cast(cur.schema) if cur.height else today]).sort("id", "day")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df.write_parquet(path, compression="zstd", compression_level=9, row_group_size=200_000, statistics=True)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("workdir")
+    ap.add_argument("--repo", default="modelpulse/model-pulse-data")
+    ap.add_argument("--no-upload", action="store_true")
+    ap.add_argument("--force", action="store_true")
+    a = ap.parse_args()
+    api = HfApi()
+    out = os.path.join(a.workdir, "repos")
+    cache = os.path.join(a.workdir, "cache_repos")
+    ds_day, ds_sha = latest_commit(api, "datasets")
+    sp_day, sp_sha = latest_commit(api, "spaces")
+
+    rmeta = json.load(open(hf_hub_download(a.repo, "repos_meta.json", repo_type="dataset", local_dir=out)))
+    if str(ds_day) in rmeta["datasets_days"] and str(sp_day) <= rmeta["spaces_last"] and not a.force:
+        print(f"datasets {ds_day} and spaces {sp_day} already in dataset, nothing to do")
+        return
+    months = months_back(max(ds_day, sp_day), 3)
+    patterns = ["datasets/datasets.parquet", "datasets/hub_series.parquet", "spaces/spaces.parquet", "uses.parquet"] + [
+        f"{d}/{m}.parquet" for d in ("datasets/series", "datasets/author_series", "spaces/series") for m in months]
+    snapshot_download(a.repo, repo_type="dataset", local_dir=out, allow_patterns=patterns)
+    changed = ["repos_meta.json", "uses.parquet"]
+
+    # ---- datasets ----
+    build.OUT = os.path.join(out, "datasets")
+    ds_path = hf_hub_download(SRC, "datasets.parquet", repo_type="dataset", revision=ds_sha, cache_dir=cache)
+    snap = pl.from_arrow(pq.read_table(ds_path, columns=["id", "downloads", "downloadsAllTime", "likes"]))
+    meta = br.dataset_meta(ds_path)
+    today = (snap.rename({"downloads": "dl30", "downloadsAllTime": "dl_all"})
+             .with_columns(pl.lit(ds_day).alias("day"), pl.col("dl30").cast(pl.Int32), pl.col("likes").cast(pl.Int32))
+             .select("id", "day", "dl30", "dl_all", "likes"))
+    old = pl.read_parquet(os.path.join(build.OUT, "datasets.parquet"), columns=["id", "first_seen"])
+    active = today.filter((pl.col("dl30") >= 10) | (pl.col("likes") >= 1) | (pl.col("dl_all") >= 50)).select("id")
+    today = today.join(pl.concat([old.select("id"), active]).unique(), on="id", how="semi")
+    m = ds_day.strftime("%Y-%m")
+    sp_month = os.path.join(build.OUT, "series", f"{m}.parquet")
+    prev_day = dt.date.fromisoformat(rmeta["datasets_days"][-1])
+    append_month(sp_month, today)
+    days = [(dt.date.fromisoformat(d), None) for d in rmeta["datasets_days"] if d != str(ds_day)] + [(ds_day, None)]
+    first = pl.concat([old.drop_nulls("first_seen"), today.select("id", pl.col("day").alias("first_seen"))]).group_by("id").agg(pl.col("first_seen").min())
+    ds = build.derived(days, meta, first=first).sort("id")
+    build.author_series(ds, source=pl.scan_parquet(sp_month))
+    # Hub-wide dataset downloads for the days since the previous snapshot, then settle any stalled counters
+    prev = pl.scan_parquet(os.path.join(build.OUT, "series", "*.parquet")).filter(pl.col("day") == prev_day).select("id", "dl_all").collect()
+    gap = max(1, (ds_day - prev_day).days)
+    tags = ds.select("id", pl.col("pipeline_tag").fill_null("other"))
+    inc = (today.select("id", "dl_all").drop_nulls().join(prev, on="id", suffix="_p")
+           .with_columns(((pl.col("dl_all") - pl.col("dl_all_p")).clip(0) / gap).alias("dl"))
+           .join(tags, on="id", how="left").with_columns(pl.col("pipeline_tag").fill_null("other"))
+           .group_by("pipeline_tag").agg(pl.col("dl").sum()).select("pipeline_tag", pl.col("dl").round(0).cast(pl.Int64)))
+    span = [prev_day + dt.timedelta(days=k) for k in range(1, gap + 1)]
+    hp = os.path.join(build.OUT, "hub_series.parquet")
+    hub = pl.concat([pl.read_parquet(hp).filter(~pl.col("day").is_in(span))] + [inc.with_columns(pl.lit(d).alias("day")).select("day", "pipeline_tag", "dl") for d in span]).sort("day", "pipeline_tag")
+    wins = stalls.windows(hub)
+    skip = sorted(set(rmeta.get("skip_days", [])) | set(stalls.skip_days(wins)))
+    stalls.smooth(hub, wins).write_parquet(hp)
+    build.SKIP = set(skip)
+    ds_days = [(d, None) for d, _ in days]
+    changed += ["datasets/datasets.parquet", "datasets/hub_series.parquet", "datasets/leaderboards.json",
+                f"datasets/series/{m}.parquet", f"datasets/author_series/{m}.parquet"]
+
+    # ---- Spaces ----
+    sdir = os.path.join(out, "spaces")
+    sp_path = hf_hub_download(SRC, "spaces.parquet", repo_type="dataset", revision=sp_sha, cache_dir=cache)
+    stoday = br.read_space_day(sp_day, sp_path).select("id", "day", "likes", "trending")
+    old_sp = pl.read_parquet(os.path.join(sdir, "spaces.parquet"), columns=["id", "first_seen"])
+    stoday = stoday.join(pl.concat([old_sp.select("id"), stoday.filter(pl.col("likes") >= br.SPACE_MIN_LIKES).select("id")]).unique(), on="id", how="semi")
+    sm = sp_day.strftime("%Y-%m")
+    append_month(os.path.join(sdir, "series", f"{sm}.parquet"), stoday)
+    sfirst = pl.concat([old_sp.drop_nulls("first_seen"), stoday.select("id", pl.col("day").alias("first_seen"))]).group_by("id").agg(pl.col("first_seen").min())
+    sp = br.space_metrics(sdir, sp_day, br.space_meta(sp_path), first=sfirst)
+    br.new_by_sdk(sdir, sp_path)
+    changed += ["spaces/spaces.parquet", "spaces/new_by_sdk.parquet", "spaces/leaderboards.json", f"spaces/series/{sm}.parquet"]
+
+    # ---- who uses what ----
+    refs_path = os.path.join(a.workdir, "model_refs.parquet")
+    if os.path.exists(refs_path):
+        refs = pl.read_parquet(refs_path)
+    else:  # keep yesterday's model -> dataset references
+        refs = pl.read_parquet(os.path.join(out, "uses.parquet")).filter(pl.col("src_kind") == "model").with_columns(
+            pl.col("created").cast(pl.Datetime))
+    uses = br.build_uses(out, sp_path, refs)
+    shutil.rmtree(cache, ignore_errors=True)
+    br.finish(out, ds, sp, uses, ds_days, sp_day, skip)
+
+    if a.no_upload:
+        build.log("done (no upload)")
+        return
+    api.upload_folder(repo_id=a.repo, repo_type="dataset", folder_path=out, allow_patterns=changed,
+                      commit_message=f"Daily update: datasets {ds_day}, spaces {sp_day}")
+    build.log("uploaded datasets", ds_day, "spaces", sp_day)
+
+
+if __name__ == "__main__":
+    main()

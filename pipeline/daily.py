@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 
 import build
+import build_repos
 import stalls
 
 SRC = "cfahlgren1/hub-stats"
@@ -65,6 +66,8 @@ def main():
                            cache_dir=os.path.join(a.workdir, "cache"))
     snap = pl.from_arrow(pq.read_table(path, columns=["id", "downloads", "downloadsAllTime", "likes"]))
     meta_df = build.latest_meta(path).rename({"createdAt": "created_at", "lastModified": "last_modified", "trendingScore": "trending"})
+    # the datasets each model lists as training data, for daily_repos.py
+    build_repos.model_refs(path).write_parquet(os.path.join(a.workdir, "model_refs.parquet"))
     shutil.rmtree(os.path.join(a.workdir, "cache"), ignore_errors=True)  # 1.5 GB per day otherwise
     today = (snap.rename({"downloads": "dl30", "downloadsAllTime": "dl_all"})
              .with_columns(pl.lit(day).alias("day"), pl.col("dl30").cast(pl.Int32), pl.col("likes").cast(pl.Int32))
