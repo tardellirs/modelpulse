@@ -208,14 +208,15 @@ def hub_series(models, days, min_frozen=stalls.FROZEN):
     """Hub-wide daily downloads per pipeline_tag: sum of positive dl_all deltas between consecutive snapshots."""
     tags = models.select("id", pl.col("pipeline_tag").fill_null("other"))
     snaps = ((day, read_day(day, path).select("id", "dl_all", "dl30")) for day, path in days)
-    raw, frozen, aside, state = stalls.measure(snaps, tags)
+    raw, frozen, aside, state, partial = stalls.measure(snaps, tags)
     if not raw.height:  # no all-time totals in these snapshots yet
         raw.write_parquet(os.path.join(OUT, "hub_series.parquet"))
         return [], []
-    hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in aside}, min_frozen)
+    snaps = [d for d, _ in days if d not in set(partial)]
+    hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in aside}, min_frozen, snaps)
     hub.write_parquet(os.path.join(OUT, "hub_series.parquet"))
     log("stalls", len(wins), "rollbacks", [str(d) for d in aside])
-    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside}), stalls.low_days(hub)
+    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside + partial}), stalls.low_days(hub)
 
 
 SKIP: set[str] = set()  # days whose snapshot is ignored (see stalls.py); set by the caller from meta.json

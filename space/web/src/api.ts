@@ -69,11 +69,12 @@ export type Leaderboards = Record<string, Row[]> & { updated: string };
 export type Hub = { tags: string[]; day: string[]; tag: string[]; dl: number[]; low_days?: string[] };
 export type AuthorResponse = {
   author: string;
-  series: { day: string[]; dl30: number[]; dl_all: number[]; likes: number[]; models: number[] };
+  series: { day: string[]; dl30: number[]; dl_all: (number | null)[]; likes: number[]; models: number[] };
   models: (Row & { id: string })[];
   datasets?: { id: string; pipeline_tag: string | null; size: string | null; dl30: number | null; dl_all: number | null; dl_7d: number | null; growth_7d: number | null; likes: number | null; used_by_models: number | null }[];
   spaces?: { id: string; title: string | null; emoji: string | null; sdk: string | null; likes: number | null; likes_7d: number | null; likes_30d: number | null }[];
   totals?: { datasets: number; datasets_dl30: number; spaces: number; spaces_likes: number };
+  model_totals?: { models: number; dl30: number | null; dl_all: number | null; dl_7d: number | null; likes: number | null } | null;
 };
 
 export const API_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";

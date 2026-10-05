@@ -41,16 +41,20 @@ export function AuthorPage({ route }: { route: Route }) {
   // same shape as the loaded page (a row of chips above the name) so nothing jumps when data arrives
   if (!d) return <div class="wrap hero"><div class="crumbs" style={{ visibility: "hidden" }}><span class="chip">loading</span></div><h1 class="model-name">{a}</h1><div class="skeleton" style={{ marginTop: 24 }} /></div>;
 
-  const tot = d.models.reduce(
-    (acc, m) => ({ all: acc.all + (m.dl_all ?? 0), m30: acc.m30 + (m.dl30 ?? 0), w: acc.w + (m.dl_7d ?? 0), likes: acc.likes + (m.likes ?? 0) }),
-    { all: 0, m30: 0, w: 0, likes: 0 },
-  );
+  // totals over every model of the author, not just the listed ones
+  const mt = d.model_totals;
+  const tot = mt
+    ? { all: mt.dl_all ?? 0, m30: mt.dl30 ?? 0, w: mt.dl_7d ?? 0, likes: mt.likes ?? 0, n: mt.models }
+    : d.models.reduce(
+      (acc, m) => ({ ...acc, all: acc.all + (m.dl_all ?? 0), m30: acc.m30 + (m.dl30 ?? 0), w: acc.w + (m.dl_7d ?? 0), likes: acc.likes + (m.likes ?? 0) }),
+      { all: 0, m30: 0, w: 0, likes: 0, n: d.models.length },
+    );
 
   return (
     <>
       <div class="wrap hero">
         <div class="crumbs">
-          {d.models.length > 0 && <span class="chip">{d.models.length >= 200 ? "200+" : d.models.length} tracked models</span>}
+          {d.models.length > 0 && <span class="chip">{fmtFull(tot.n)} tracked models</span>}
           {!!d.totals?.datasets && <span class="chip">{fmtFull(d.totals.datasets)} datasets</span>}
           {!!d.totals?.spaces && <span class="chip">{fmtFull(d.totals.spaces)} Spaces</span>}
           <a class="chip" href={`https://huggingface.co/${a}`} target="_blank" rel="noopener">Open on Hugging Face ↗</a>

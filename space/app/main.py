@@ -183,7 +183,7 @@ def author(author: str):
     rr = repos.author_repos(author)
     if not models and not rr["datasets"] and not rr["spaces"]:
         raise HTTPException(404, f"No tracked models, datasets or Spaces for {author}.")
-    return j({"author": author, "series": s, "models": models, **rr})
+    return j({"author": author, "series": s, "models": models, "model_totals": clean(store.author_totals(author)) if models else None, **rr})
 
 
 @app.get("/api/search")

@@ -9,6 +9,10 @@ import duckdb
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 
 
+
+DL_ALL_FROM = "2025-02-27"
+DL_ALL = f"CASE WHEN day < DATE '{DL_ALL_FROM}' THEN NULL ELSE dl_all END"
+
 class Store:
     def __init__(self, root: str = DATA_DIR):
         self.root = root
@@ -56,11 +60,18 @@ class Store:
     def series(self, mid: str):
         return self._columns("SELECT day, dl30, dl_all, likes FROM series WHERE id = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [mid])
 
+    # all-time counters start on DL_ALL_FROM; the summed series store 0 before it, which reads as a jump on that day
     def family_series(self, mid: str):
-        return self._columns("SELECT day, dl30, dl_all, members FROM family_series WHERE id = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [mid])
+        return self._columns(f"SELECT day, dl30, {DL_ALL} AS dl_all, members FROM family_series WHERE id = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [mid])
 
     def author_series(self, author: str):
-        return self._columns("SELECT day, dl30, dl_all, likes, models FROM author_series WHERE author = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [author])
+        return self._columns(f"SELECT day, dl30, {DL_ALL} AS dl_all, likes, models FROM author_series WHERE author = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [author])
+
+    def author_totals(self, author: str):
+        """Sums over every model of the author (the page lists only the top ones)."""
+        r = self._rows("SELECT count(*) AS models, sum(dl30) AS dl30, sum(dl_all) AS dl_all, sum(dl_7d) AS dl_7d, sum(likes) AS likes "
+                       "FROM models WHERE author = ?", [author])
+        return r[0] if r else None
 
     def children(self, mid: str, limit: int = 50):
         return self._rows("SELECT id, base_relation AS relation, author, dl30, dl_all, dl_7d, likes FROM children "

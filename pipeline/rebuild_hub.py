@@ -54,24 +54,28 @@ if "--from-raw" in sys.argv:  # windows only, from a previous run's measurements
     m = json.load(open(os.path.join(out, "measured.json")))
     frozen = {dt.date.fromisoformat(d): v for d, v in m["frozen"].items()}
     set_aside, state = [dt.date.fromisoformat(d) for d in m["aside"]], m["state"]
+    partial = [dt.date.fromisoformat(d) for d in m.get("partial", [])]
 else:
-    raw, frozen, set_aside, state = stalls.measure(snapshots(), tags)
+    raw, frozen, set_aside, state, partial = stalls.measure(snapshots(), tags)
     raw.write_parquet(os.path.join(out, "hub_series_raw.parquet"))
-    json.dump({"frozen": {d.isoformat(): v for d, v in frozen.items()}, "aside": [d.isoformat() for d in set_aside], "state": state},
-              open(os.path.join(out, "measured.json"), "w"))
+    json.dump({"frozen": {d.isoformat(): v for d, v in frozen.items()}, "aside": [d.isoformat() for d in set_aside], "state": state,
+               "partial": [d.isoformat() for d in partial]}, open(os.path.join(out, "measured.json"), "w"))
 for d in set_aside:
     print(f"{d} set aside: counters went down", flush=True)
+for d in partial:
+    print(f"{d} left out: partial snapshot", flush=True)
 min_frozen = stalls.FROZEN if kind == "models" else stalls.FROZEN_DATASETS
-hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in set_aside}, min_frozen)  # a rollback's catch-up joins its window
-skip = sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in set_aside})
+snaps = [d for d in days if d not in set(partial)]
+hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in set_aside}, min_frozen, snaps)  # a rollback's catch-up joins its window
+skip = sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in set_aside + partial})
 
 # settled history must not reopen in the daily job
-meta2 = dict(meta, skip_days=skip, low_days=stalls.low_days(hub), frozen={d.isoformat(): v for d, v in frozen.items() if d >= days[-1] - dt.timedelta(days=30)})
+meta2 = dict(meta, skip_days=skip, low_days=stalls.low_days(hub), partial=[d.isoformat() for d in partial], frozen={d.isoformat(): v for d, v in frozen.items() if d >= days[-1] - dt.timedelta(days=30)})
 if state:
     meta2["rollback"] = state
 else:
     meta2.pop("rollback", None)
-_, again = stalls.settle(hub, json.loads(json.dumps(meta2)), days[-1], min_frozen)
+_, again = stalls.settle(hub, json.loads(json.dumps(meta2)), days[-1], min_frozen, snaps)
 assert not again, f"settled history reopens: {again}"
 
 hub.write_parquet(os.path.join(out, "hub_series.parquet"))

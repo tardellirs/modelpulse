@@ -18,7 +18,18 @@ only positive changes would then count the recovery as new downloads. When more 
 snapshots are set aside until the counters are back (the shortfall against the last good snapshot falls under
 RECOVERED of what it was), and the downloads in between are measured from the last good snapshot to the first good one.
 The Hub books part of them a day later, so the set-aside days then count as a stall and the window takes in the catch-up.
+
+Partial snapshots. A few snapshots hold only part of the repos (2025-11-24: 289k of 1.13M models). Under PARTIAL of the
+previous snapshot's rows, a snapshot is treated as missing: nothing is measured from or to it, and it goes into the
+skip days so per-repo series ignore it too.
+
+Gaps. Days without a snapshot share the per-day average of the next one. A window that reaches into such a stretch takes
+all of it, up to the snapshot that closes it, so a catch-up booked across a gap is spread with the stall it belongs to.
+
+Low days. After all this, a few days are still well under their local median and nothing around them makes up for it.
+They keep their measured values and are only listed (see low_days).
 """
+import bisect
 import datetime as dt
 
 import polars as pl
@@ -35,6 +46,10 @@ MEDIAN_DAYS = 15
 BACK = 0.05          # share of repos whose all-time counter went down: a rollback
 RECOVERED = 0.1      # a rollback ends when the shortfall falls under this share of where it started
 MAX_ROLLBACK = 8     # snapshots; a drop still there after this many is a lasting correction
+PARTIAL = 0.5        # a snapshot with fewer rows than this share of the previous one is incomplete
+LOW_DAY = 0.7        # low day: under this share of its local median, adjusted for the day of the week...
+MADE_UP = 0.5        # ...in a run whose shortfall the days around it don't make up by at least this share
+MADE_UP_DAYS = 3     # days on each side that can make it up
 
 
 # ---------- signals between two snapshots (id, dl_all, dl30) ----------
@@ -87,6 +102,11 @@ class Rollbacks:
         return "hold"
 
 
+def is_partial(prev: pl.DataFrame, cur: pl.DataFrame) -> bool:
+    """An incomplete snapshot: far fewer repos with a counter than the one before."""
+    return cur.height < PARTIAL * prev.height
+
+
 def increment(frm: tuple, to: tuple, tags: pl.DataFrame) -> pl.DataFrame:
     """Downloads per pipeline_tag between two (day, snapshot) pairs, one row per calendar day they span, each the
     per-day average; repos whose counter went down add nothing."""
@@ -102,10 +122,11 @@ def increment(frm: tuple, to: tuple, tags: pl.DataFrame) -> pl.DataFrame:
 def measure(snapshots, tags: pl.DataFrame):
     """Daily series per pipeline_tag from snapshots in order, as (day, frame of id/dl_all/dl30) pairs.
 
-    Returns (raw series, frozen share by day, snapshots set aside as rollbacks, open rollback state or None). Downloads
-    between two usable snapshots g days apart are written as their per-day average on each of those days.
+    Returns (raw series, frozen share by day, snapshots set aside as rollbacks, open rollback state or None, partial
+    snapshots left out). Downloads between two usable snapshots g days apart are written as their per-day average on
+    each of those days.
     """
-    rows, frozen, aside = [], {}, []
+    rows, frozen, aside, partial = [], {}, [], []
     rb = Rollbacks()
     prev = base = None
     held = {}
@@ -116,6 +137,9 @@ def measure(snapshots, tags: pl.DataFrame):
     for day, cur in snapshots:
         cur = cur.drop_nulls("dl_all")
         if not cur.height:
+            continue
+        if prev is not None and is_partial(prev[1], cur):
+            partial.append(day)
             continue
         if prev is None:
             prev = base = (day, cur)
@@ -137,9 +161,9 @@ def measure(snapshots, tags: pl.DataFrame):
             held, base = {}, (day, cur)
         prev = (day, cur)
     if not rows:
-        return pl.DataFrame(schema={"day": pl.Date, "pipeline_tag": pl.String, "dl": pl.Int64}), frozen, aside, rb.state
+        return pl.DataFrame(schema={"day": pl.Date, "pipeline_tag": pl.String, "dl": pl.Int64}), frozen, aside, rb.state, partial
     raw = pl.concat(rows).sort("day", "pipeline_tag")
-    return raw, frozen, aside, rb.state
+    return raw, frozen, aside, rb.state, partial
 
 
 # ---------- windows over a daily series ----------
@@ -151,11 +175,12 @@ def _totals(hub: pl.DataFrame):
 
 
 def windows(hub: pl.DataFrame, frozen: dict | None = None, settled_before: dt.date | None = None,
-            min_frozen: float = FROZEN) -> list[list[dt.date]]:
+            min_frozen: float = FROZEN, snaps=None) -> list[list[dt.date]]:
     """Stall episodes in a daily series (day, pipeline_tag, dl), as lists of consecutive days.
 
     `frozen` maps snapshot days to the frozen share of big repos (see signals). Episodes that touch the last two days
-    are left alone until the catch-up has had time to arrive.
+    are left alone until the catch-up has had time to arrive. `snaps` are the days with a usable snapshot: a window
+    that reaches into the days without one around it takes all of them (see whole_gaps).
     """
     days, r = _totals(hub)
     frozen = frozen or {}
@@ -189,6 +214,7 @@ def windows(hub: pl.DataFrame, frozen: dict | None = None, settled_before: dt.da
                 if r[j] > HIGH and PAIR_SUM[0] <= r[i] + r[j] <= PAIR_SUM[1]:
                     out.append((min(days[i], days[j]), max(days[i], days[j])))
                     break
+    out = whole_gaps(out, days, snaps)
     # episodes a day or two apart are one episode
     merged = []
     for a, b in sorted(out):
@@ -200,6 +226,26 @@ def windows(hub: pl.DataFrame, frozen: dict | None = None, settled_before: dt.da
     if settled_before:
         wins = [w for w in wins if w[-1] < settled_before]
     return wins
+
+
+def whole_gaps(spans, days, snaps):
+    """Widen (first, last) spans so that none cuts through days without a snapshot: those days and the snapshot after
+    them share one measured average, so a span takes the whole stretch or none of it. A span that then reaches the
+    last day waits, like any other, until the days after it are known."""
+    if not snaps:
+        return spans
+    snaps = sorted(set(snaps))
+    out = []
+    for a, b in spans:
+        i = bisect.bisect_left(snaps, b)        # the snapshot that closes b's stretch
+        if i < len(snaps):
+            b = max(b, snaps[i])
+        j = bisect.bisect_left(snaps, a)        # a's stretch starts the day after the snapshot before it
+        if j > 0:
+            a = min(a, snaps[j - 1] + dt.timedelta(days=1))
+        if b < days[-1]:
+            out.append((a, b))
+    return out
 
 
 def smooth(hub: pl.DataFrame, wins: list[list[dt.date]]) -> pl.DataFrame:
@@ -217,13 +263,13 @@ def smooth(hub: pl.DataFrame, wins: list[list[dt.date]]) -> pl.DataFrame:
     return pl.concat([h.filter(pl.col("win").is_null()).select(hub.columns), spread.select(hub.columns)]).sort("day", "pipeline_tag")
 
 
-def settle_history(raw: pl.DataFrame, frozen: dict, min_frozen: float = FROZEN) -> tuple[pl.DataFrame, list[list[dt.date]]]:
+def settle_history(raw: pl.DataFrame, frozen: dict, min_frozen: float = FROZEN, snaps=None) -> tuple[pl.DataFrame, list[list[dt.date]]]:
     """Find and spread windows until none is left. Spreading a big episode moves the local median of its neighbours,
     which can reveal a smaller one next to it; settling to a fixed point keeps the daily job from reopening history."""
     hub, wins = raw, []
     for _ in range(10):
         settled = {d for w in wins for d in w[:-1]}
-        new = [w for w in windows(hub, {d: v for d, v in frozen.items() if d not in settled}, min_frozen=min_frozen)
+        new = [w for w in windows(hub, {d: v for d, v in frozen.items() if d not in settled}, min_frozen=min_frozen, snaps=snaps)
                if not all(d in settled for d in w[:-1])]
         if not new:
             break
@@ -233,13 +279,36 @@ def settle_history(raw: pl.DataFrame, frozen: dict, min_frozen: float = FROZEN) 
 
 
 def low_days(hub: pl.DataFrame) -> list[str]:
-    """Days still below PAIR_LOW of their local median after stalls and rollbacks are handled.
+    """Days still under LOW_DAY of their local median after stalls, rollbacks and gaps are handled, in runs that the
+    MADE_UP_DAYS on each side don't make up by at least MADE_UP of their shortfall.
 
-    Nothing makes these up later, so they are left as they are and only listed, for charts to mark. The last two days
-    wait, like windows do, until their neighbours are known.
+    The median is adjusted for the day of the week (weekends run a little lower), so ordinary weekend dips don't
+    count. These days keep their measured values and are only listed, for charts to mark. The last two days wait,
+    like windows do, until their neighbours are known.
     """
-    days, r = _totals(hub)
-    return sorted(d.isoformat() for d, x in zip(days[:-2], r[:-2]) if x < PAIR_LOW)
+    t = hub.group_by("day").agg(pl.col("dl").sum().alias("tot")).sort("day")
+    t = t.with_columns(pl.col("tot").rolling_median(window_size=MEDIAN_DAYS, center=True, min_samples=5).alias("med"))
+    t = t.with_columns(pl.col("day").dt.weekday().alias("wd"), (pl.col("tot") / pl.col("med")).alias("r"))
+    week = t.group_by("wd").agg(pl.col("r").median().alias("f"))
+    t = t.join(week, on="wd", how="left").sort("day").with_columns((pl.col("med") * pl.col("f")).alias("exp"))
+    days, tot, exp = t["day"].to_list(), t["tot"].to_list(), t["exp"].to_list()
+    n = len(days) - 2
+    low = [exp[i] is not None and exp[i] > 0 and tot[i] < LOW_DAY * exp[i] for i in range(n)]
+    out, i = [], 0
+    while i < n:
+        if not low[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n and low[j + 1] and (days[j + 1] - days[j]).days == 1:
+            j += 1
+        short = sum(exp[k] - tot[k] for k in range(i, j + 1))
+        around = [k for k in range(max(0, i - MADE_UP_DAYS), min(len(days), j + 1 + MADE_UP_DAYS)) if not i <= k <= j]
+        back = sum(max(0.0, tot[k] - exp[k]) for k in around if exp[k] is not None)
+        if back < MADE_UP * short:
+            out += [days[k].isoformat() for k in range(i, j + 1)]
+        i = j + 1
+    return out
 
 
 def skip_days(wins: list[list[dt.date]]) -> list[str]:
@@ -247,7 +316,7 @@ def skip_days(wins: list[list[dt.date]]) -> list[str]:
     return sorted({d.isoformat() for w in wins for d in w[:-1]})
 
 
-def settle(hub: pl.DataFrame, meta: dict, today: dt.date, min_frozen: float = FROZEN) -> tuple[pl.DataFrame, list[list[dt.date]]]:
+def settle(hub: pl.DataFrame, meta: dict, today: dt.date, min_frozen: float = FROZEN, snaps=None) -> tuple[pl.DataFrame, list[list[dt.date]]]:
     """Daily step: find new windows among the days not yet settled, spread them, and record their skip days in meta.
 
     Days already inside a window are smoothed and stay as they are; only `meta["frozen"]` days not yet skipped can open
@@ -257,7 +326,7 @@ def settle(hub: pl.DataFrame, meta: dict, today: dt.date, min_frozen: float = FR
     pending = set(meta.get("pending", []))       # days of a rollback that ended, not yet in a window
     frozen = {dt.date.fromisoformat(d): v for d, v in meta.get("frozen", {}).items() if d not in skip and v is not None}
     frozen |= {dt.date.fromisoformat(d): 1.0 for d in pending}
-    wins = [w for w in windows(hub, frozen, min_frozen=min_frozen) if not all(d.isoformat() in skip - pending for d in w[:-1])]
+    wins = [w for w in windows(hub, frozen, min_frozen=min_frozen, snaps=snaps) if not all(d.isoformat() in skip - pending for d in w[:-1])]
     if wins:
         hub = smooth(hub, wins)
         meta["skip_days"] = sorted(skip | set(skip_days(wins)))
