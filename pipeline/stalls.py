@@ -281,13 +281,14 @@ def settle_history(raw: pl.DataFrame, frozen: dict, min_frozen: float = FROZEN, 
     return hub, wins
 
 
-def low_days(hub: pl.DataFrame, short=()) -> list[str]:
+def low_days(hub: pl.DataFrame, short=(), snaps=None) -> list[str]:
     """Days still under LOW_DAY of their local median after stalls, rollbacks and gaps are handled, in runs that the
     MADE_UP_DAYS on each side don't make up by at least MADE_UP of their shortfall.
 
     The median is adjusted for the day of the week (weekends run a little lower), so ordinary weekend dips don't
     count. These days keep their measured values and are only listed, for charts to mark. The last two days wait,
-    like windows do, until their neighbours are known.
+    like windows do, until their neighbours are known. Days without a snapshot share one measurement with the snapshot
+    that closes them, so they are judged together: low all of them or none (2026-01-31 and 02-01 are one average).
     """
     t = hub.group_by("day").agg(pl.col("dl").sum().alias("tot")).sort("day")
     t = t.with_columns(pl.col("tot").rolling_median(window_size=MEDIAN_DAYS, center=True, min_samples=5).alias("med"))
@@ -297,7 +298,15 @@ def low_days(hub: pl.DataFrame, short=()) -> list[str]:
     days, tot, exp = t["day"].to_list(), t["tot"].to_list(), t["exp"].to_list()
     shorts = {str(d) for d in short}
     n = len(days) - 2
-    low = [exp[i] is not None and exp[i] > 0 and tot[i] < LOW_DAY * exp[i] for i in range(n)]
+    # one block per measurement: a snapshot day and the days without a snapshot just before it
+    snaps = sorted(set(snaps)) if snaps else None
+    block = [days[i] if not snaps else snaps[min(bisect.bisect_left(snaps, days[i]), len(snaps) - 1)] for i in range(len(days))]
+    sums = {}
+    for i in range(len(days)):
+        if exp[i] is not None:
+            a, b = sums.get(block[i], (0.0, 0.0))
+            sums[block[i]] = (a + tot[i], b + exp[i])
+    low = [exp[i] is not None and sums[block[i]][1] > 0 and sums[block[i]][0] < LOW_DAY * sums[block[i]][1] for i in range(n)]
     out, i = [], 0
     while i < n:
         if not low[i]:
@@ -342,5 +351,5 @@ def settle(hub: pl.DataFrame, meta: dict, today: dt.date, min_frozen: float = FR
     # keep the last few weeks of signals: a window settles within a few days
     keep = (today - dt.timedelta(days=30)).isoformat()
     meta["frozen"] = {d: v for d, v in meta.get("frozen", {}).items() if d >= keep}
-    meta["low_days"] = low_days(hub, meta.get("short_days", []))
+    meta["low_days"] = low_days(hub, meta.get("short_days", []), snaps)
     return hub, wins

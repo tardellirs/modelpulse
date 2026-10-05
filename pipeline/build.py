@@ -315,7 +315,7 @@ def hub_series(models, days, min_frozen=stalls.FROZEN):
     hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in aside}, min_frozen, snaps)
     hub.write_parquet(os.path.join(OUT, "hub_series.parquet"))
     log("stalls", len(wins), "rollbacks", [str(d) for d in aside])
-    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside + partial}), stalls.low_days(hub)
+    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside + partial}), stalls.low_days(hub, (), snaps)
 
 
 SKIP: set[str] = set()  # days whose snapshot is ignored (see stalls.py); set by the caller from meta.json
