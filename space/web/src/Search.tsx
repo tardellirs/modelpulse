@@ -50,10 +50,8 @@ export function Search({ onPick, big, placeholder, autoFocus, hotkey, exclude = 
             r.datasets.map((h): Hit => ({ id: h.id, kind: "dataset", meta: `${fmt(h.dl30)}/mo` })),
             r.spaces.map((h): Hit => ({ id: h.id, kind: "space", title: h.title, meta: `${h.emoji ?? ""} ${fmt(h.likes)} likes`.trim() })),
           ];
-          // a kind with an exact name match goes first ("fineweb" is a dataset before it's any model)
-          const t = term.toLowerCase().split("/").pop();
-          const exact = (g: Hit[]) => g.some((h) => h.id.toLowerCase() === term.toLowerCase() || h.id.toLowerCase().split("/").pop() === t);
-          done([...groups.filter(exact), ...groups.filter((g) => !exact(g))].flat());
+          // always models, then datasets, then Spaces
+          done(groups.flat());
         }).catch(() => {});
       } else {
         api.search(term).then((r) => done(r.map((h): Hit => ({ id: h.id, kind: "model", meta: `${taskLabel(h.pipeline_tag)} · ${fmt(h.dl30)}/mo` })))).catch(() => {});

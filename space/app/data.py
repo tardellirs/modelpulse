@@ -196,9 +196,11 @@ class Store:
         if not q:
             return []
         return self._rows(
-            "SELECT id, pipeline_tag, dl30 FROM search_ix WHERE lid LIKE ? "
-            "ORDER BY (lid = ?) DESC, starts_with(lid, ?) DESC, starts_with(split_part(lid,'/',2), ?) DESC, dl30 DESC NULLS LAST LIMIT ?",
-            [f"%{q}%", q, q, q, limit])
+            "SELECT id, pipeline_tag, dl30 FROM (SELECT id, lid, pipeline_tag, dl30, max(dl30) OVER () AS top FROM search_ix WHERE lid LIKE ?) "
+            "ORDER BY (lid = ?) DESC, (split_part(lid,'/',1) = ?) DESC, (split_part(lid,'/',2) = ? AND dl30 >= 0.05 * top) DESC, "
+            "(split_part(lid,'/',1) <> ? AND (contains(split_part(lid,'/',2), ?) OR (starts_with(split_part(lid,'/',1), ?) AND dl30 >= 0.05 * top))) DESC, "
+            "dl30 DESC NULLS LAST LIMIT ?",
+            [f"%{q}%", q, q, q, q, q, q, limit])
 
     def hub(self, top: int = 7):
         tags = [r["pipeline_tag"] for r in self._rows(

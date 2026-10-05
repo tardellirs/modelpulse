@@ -111,12 +111,20 @@ class Repos:
         q = q.strip().lower()
         if not q or not self.ok:
             return {"datasets": [], "spaces": []}
-        # the repo name matters more than the org: "fineweb" should find HuggingFaceFW/fineweb before fineweb-x/whatever
-        ds = self.s._rows("SELECT id, dl30 FROM ds_search WHERE lid LIKE ? ORDER BY (lid = ? OR split_part(lid,'/',2) = ?) DESC, "
-                          "starts_with(split_part(lid,'/',2), ?) DESC, dl30 DESC NULLS LAST LIMIT ?", [f"%{q}%", q, q, q, limit])
-        sp = self.s._rows("SELECT s.id, s.likes, sp.title, sp.emoji FROM sp_search s JOIN spaces sp USING (id) "
-                          "WHERE s.lid LIKE ? OR s.ltitle LIKE ? ORDER BY (s.lid = ? OR split_part(s.lid,'/',2) = ? OR s.ltitle = ?) DESC, "
-                          "s.likes DESC NULLS LAST LIMIT ?", [f"%{q}%", f"%{q}%", q, q, q, limit])
+        # the exact id first, then the org's own repos ("qwen" -> Qwen/...), then a repo named exactly like the query if
+        # it counts among the matches (5% of the top one: "fineweb" -> HuggingFaceFW/fineweb, not a small copy called
+        # fineweb), then popularity
+        ds = self.s._rows("SELECT id, dl30 FROM (SELECT id, lid, dl30, max(dl30) OVER () AS top FROM ds_search WHERE lid LIKE ?) "
+                          "ORDER BY (lid = ?) DESC, (split_part(lid,'/',1) = ?) DESC, (split_part(lid,'/',2) = ? AND dl30 >= 0.05 * top) DESC, "
+                          "(split_part(lid,'/',1) <> ? AND (contains(split_part(lid,'/',2), ?) OR (starts_with(split_part(lid,'/',1), ?) AND dl30 >= 0.05 * top))) DESC, "
+                          "dl30 DESC NULLS LAST LIMIT ?", [f"%{q}%", q, q, q, q, q, q, limit])
+        sp = self.s._rows("SELECT id, likes, title, emoji FROM (SELECT s.id, s.lid, s.ltitle, s.likes, sp.title, sp.emoji, max(s.likes) OVER () AS top "
+                          "FROM sp_search s JOIN spaces sp USING (id) WHERE s.lid LIKE ? OR s.ltitle LIKE ?) "
+                          "ORDER BY (lid = ?) DESC, (split_part(lid,'/',1) = ?) DESC, "
+                          "((split_part(lid,'/',2) = ? OR ltitle = ?) AND likes >= 0.05 * top) DESC, "
+                          "(split_part(lid,'/',1) <> ? AND (contains(split_part(lid,'/',2), ?) OR contains(ltitle, ?) "
+                          "OR (starts_with(split_part(lid,'/',1), ?) AND likes >= 0.05 * top))) DESC, likes DESC NULLS LAST LIMIT ?",
+                          [f"%{q}%", f"%{q}%", q, q, q, q, q, q, q, q, limit])
         return {"datasets": ds, "spaces": sp}
 
     def new_spaces(self):
