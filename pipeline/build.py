@@ -145,6 +145,7 @@ def derived(days, meta, first=None):
     w1 = at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("dl_all").alias("all_7"), pl.col("likes").alias("likes_7"), pl.col("day").alias("d7"))
     w2 = at_or_before(recent, last - dt.timedelta(days=14)).select("id", pl.col("dl_all").alias("all_14"), pl.col("day").alias("d14"))
     w4 = at_or_before(recent, last - dt.timedelta(days=28)).select("id", pl.col("dl_all").alias("all_28"), pl.col("day").alias("d28"))
+    w31 = at_or_before(recent, last - dt.timedelta(days=31)).select("id", pl.col("dl_all").alias("all_31"))
     if first is None:
         first = scan_series().group_by("id").agg(pl.col("day").min().alias("first_seen")).collect(engine="streaming")
 
@@ -155,7 +156,11 @@ def derived(days, meta, first=None):
 
     new = pl.col("first_seen") > last - dt.timedelta(days=7)   # all of a new repo's downloads fall in this week
     m = (now.join(w1, on="id", how="left").join(w2, on="id", how="left").join(w4, on="id", how="left")
-         .join(first, on="id", how="left")
+         .join(w31, on="id", how="left").join(first, on="id", how="left")
+         # an all-time counter that hasn't moved in 31 days means no downloads in the last 30, whatever the Hub's
+         # stale 30-day count still says
+         .with_columns(pl.when(pl.col("all_31").is_not_null() & (pl.col("dl_all") == pl.col("all_31"))).then(0)
+                       .otherwise(pl.col("dl30")).alias("dl30"))
          .with_columns(
              # a week can't hold more downloads than the 30-day window that contains it; guards against recounts.
              # No reference snapshot and not new: unknown, not the 30-day count
@@ -169,7 +174,7 @@ def derived(days, meta, first=None):
              # growth vs the average of the three weeks before, robust to one stalled or backlogged week
              pl.when(pl.col("dl_base7d") >= 100).then(pl.col("dl_7d") / pl.col("dl_base7d") - 1).alias("growth_7d"))
          .join(peak_share(recent, w1), on="id", how="left")
-         .drop("all_7", "all_14", "all_28", "likes_7", "d7", "d14", "d28"))
+         .drop("all_7", "all_14", "all_28", "all_31", "likes_7", "d7", "d14", "d28"))
     m = m.join(meta, on="id", how="left")
     m = m.with_columns(
         pl.col("dl30").rank("min", descending=True).cast(pl.Int32).alias("rank_dl30"),
@@ -208,13 +213,73 @@ def families(models):
     return pairs, stats
 
 
+# ---------- renamed repos ----------
+# A repo renamed on the Hub gets a new id: its series ends under the old one and starts again under the new one at
+# the same all-time count. renames.parquet (old, new, gone, came) links them, so the new id keeps its history.
+
+def find_renames(prev: pl.DataFrame, cur: pl.DataFrame, min_all: int = 1000) -> pl.DataFrame:
+    """Pairs (old, new) between two snapshots of (id, dl_all): an id gone from cur and one new in cur, with the same
+    name under another owner or the same owner under another name, at the same all-time count (within 1%)."""
+    gone = prev.join(cur.select("id"), on="id", how="anti").filter(pl.col("dl_all") >= min_all)
+    came = cur.join(prev.select("id"), on="id", how="anti").filter(pl.col("dl_all") >= min_all * 0.99)
+    if not gone.height or not came.height:
+        return pl.DataFrame(schema={"old": pl.String, "new": pl.String})
+    part = lambda df, c, p: df.select(pl.col("id").alias(c), pl.col("dl_all").alias(p + "all"),
+                                      pl.col("id").str.split("/").list.first().str.to_lowercase().alias(p + "org"),
+                                      pl.col("id").str.split("/").list.last().str.to_lowercase().alias(p + "name"))
+    o, n = part(gone, "old", "o"), part(came, "new", "n")
+    pairs = pl.concat([o.join(n, left_on="oname", right_on="nname"), o.join(n, left_on="oorg", right_on="norg")], how="diagonal")
+    pairs = (pairs.filter(((pl.col("nall") - pl.col("oall")).abs() <= 0.01 * pl.col("oall")))
+             .unique(["old", "new"]).filter(pl.len().over("old") == 1).filter(pl.len().over("new") == 1))
+    return pairs.select("old", "new")
+
+
+def renames() -> pl.DataFrame | None:
+    """Known renames (OUT/renames.parquet), each old id pointing at the id the repo has now, with the day it came."""
+    p = os.path.join(OUT, "renames.parquet")
+    if not os.path.exists(p):
+        return None
+    r = pl.read_parquet(p, columns=["old", "new", "came"])
+    step = dict(zip(r["old"].to_list(), r["new"].to_list()))
+    final = []
+    for old in r["old"].to_list():
+        new, seen = step[old], {old}
+        while new in step and new not in seen:
+            seen.add(new)
+            new = step[new]
+        final.append(new)
+    return r.with_columns(pl.Series("new", final))
+
+
+def add_renamed(df: pl.DataFrame, key: str, rn: pl.DataFrame | None) -> pl.DataFrame:
+    """Rows of df for current ids, repeated for the old ids that are the same repo."""
+    if rn is None or not rn.height:
+        return df
+    old = rn.select("old", "new").join(df, left_on="new", right_on=key).drop("new").rename({"old": key}).select(df.columns)
+    return pl.concat([df, old]).unique()
+
+
+def before_rename(src: pl.LazyFrame, rn: pl.DataFrame | None) -> pl.LazyFrame:
+    """Drop an old id's rows from the day its new id appears (the two can overlap a day)."""
+    if rn is None or not rn.height:
+        return src
+    cut = rn.select(pl.col("old").alias("id"), pl.col("came").alias("_cut")).lazy()
+    return src.join(cut, on="id", how="left").filter(pl.col("_cut").is_null() | (pl.col("day") < pl.col("_cut"))).drop("_cut")
+
+
+# all-time counters start on 2025-02-27: before that a sum of nothing is no data, not 0
+DL_ALL_SUM = pl.when(pl.col("dl_all").count() > 0).then(pl.col("dl_all").sum()).alias("dl_all")
+
+
 def family_series(pairs, fam_ids, source=None):
     p = pairs.filter(pl.col("anc").is_in(fam_ids))
     p = pl.concat([p, pl.DataFrame({"member": fam_ids, "anc": fam_ids})])  # include the base itself
+    rn = renames()
+    p = add_renamed(p, "member", rn)
     n = 0
     for src in month_sources(source):
-        out = (src.join(p.lazy(), left_on="id", right_on="member")
-               .group_by("anc", "day").agg(pl.col("dl30").cast(pl.Int64).sum(), pl.col("dl_all").sum(), pl.len().alias("members"))
+        out = (before_rename(src, rn).join(p.lazy(), left_on="id", right_on="member")
+               .group_by("anc", "day").agg(pl.col("dl30").cast(pl.Int64).sum(), DL_ALL_SUM, pl.len().alias("members"))
                .rename({"anc": "id"}).collect(engine="streaming"))
         write_months(out, "family_series", "id")
         n += out.height
@@ -225,10 +290,12 @@ def author_series(models, source=None):
     authors = (models.group_by("author").agg(pl.coalesce("dl_all", "dl30").sum().alias("tot")).filter(pl.col("tot") >= AUTHOR_MIN_ALL)
                .select("author"))
     idauth = models.select("id", "author").join(authors, on="author", how="semi")
+    rn = renames()
+    idauth = add_renamed(idauth, "id", rn)
     n = 0
     for src in month_sources(source):
-        out = (src.join(idauth.lazy(), on="id")
-               .group_by("author", "day").agg(pl.col("dl30").cast(pl.Int64).sum(), pl.col("dl_all").sum(),
+        out = (before_rename(src, rn).join(idauth.lazy(), on="id")
+               .group_by("author", "day").agg(pl.col("dl30").cast(pl.Int64).sum(), DL_ALL_SUM,
                                               pl.col("likes").cast(pl.Int64).sum(), pl.len().alias("models"))
                .collect(engine="streaming"))
         write_months(out, "author_series", "author")
@@ -265,7 +332,17 @@ def sparks(ids, last):
     return dict(zip(s["id"].to_list(), s["d"].to_list()))
 
 
-def leaderboards(models, last):
+def family_roots(fams: pl.DataFrame, pairs, n: int = 300) -> pl.DataFrame:
+    """The biggest families, leaving out those that sit inside a bigger one on the same board (a base model's
+    family already counts its fine-tunes' families)."""
+    if pairs is None:
+        return fams
+    cand = fams.sort("fam_dl30", descending=True, nulls_last=True).head(n)
+    inner = pairs.filter(pl.col("member").is_in(cand["id"].implode()) & pl.col("anc").is_in(cand["id"].implode()))["member"]
+    return cand.filter(~pl.col("id").is_in(inner.implode()))
+
+
+def leaderboards(models, last, pairs=None):
     cols = ["id", "author", "pipeline_tag", "params", "dl30", "dl_all", "dl_7d", "dl_prev7d", "dl_base7d", "growth_7d",
             "likes", "likes_7d", "created_at", "fam_members", "fam_dl30", "peak_share", "steps"]
     m = models.select([c for c in cols if c in models.columns])
@@ -289,7 +366,7 @@ def leaderboards(models, last):
         "growth_7d": top(steady(m.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000))), "growth_7d"),
         "breakouts": top(steady(m.filter(pl.col("created_at") >= dt.datetime.combine(last - dt.timedelta(days=30), dt.time())), SPIKY_NEW, 3), "dl_7d"),
         "likes_7d": top(m.filter(pl.col("dl30") >= 1_000), "likes_7d"),
-        "families": top(m.filter(pl.col("fam_members") >= 10), "fam_dl30"),
+        "families": top(family_roots(m.filter(pl.col("fam_members") >= 10), pairs), "fam_dl30"),
         "authors_dl30": top(authors, "dl30"),
         "authors_7d": top(authors, "dl_7d"),
     }
@@ -327,7 +404,7 @@ def main():
     log("families >=", FAMILY_MIN_MEMBERS, len(fam_ids))
     family_series(pairs, fam_ids)
     author_series(models)
-    leaderboards(models, days[-1][0])
+    leaderboards(models, days[-1][0], pairs)
     skip, low = hub_series(models, days)
     json.dump({"days": [str(d) for d, _ in days], "built": dt.datetime.utcnow().isoformat() + "Z",
                "models": models.height, "families": len(fam_ids), "skip_days": skip, "low_days": low},

@@ -56,7 +56,7 @@ def main():
         print(f"datasets {ds_day} and spaces {sp_day} already in dataset, nothing to do")
         return
     months = months_back(max(ds_day, sp_day), 3)
-    patterns = ["datasets/datasets.parquet", "datasets/hub_series.parquet", "spaces/spaces.parquet", "uses.parquet"] + [
+    patterns = ["datasets/datasets.parquet", "datasets/hub_series.parquet", "datasets/renames.parquet", "spaces/spaces.parquet", "uses.parquet"] + [
         f"{d}/{m}.parquet" for d in ("datasets/series", "datasets/author_series", "spaces/series") for m in months]
     snapshot_download(a.repo, repo_type="dataset", local_dir=out, allow_patterns=patterns)
     changed = ["repos_meta.json", "uses.parquet"]
@@ -71,7 +71,7 @@ def main():
              .select("id", "day", "dl30", "dl_all", "likes"))
     old = pl.read_parquet(os.path.join(build.OUT, "datasets.parquet"), columns=["id", "first_seen"])
     active = today.filter((pl.col("dl30") >= 10) | (pl.col("likes") >= 1) | (pl.col("dl_all") >= 50)).select("id")
-    today = today.join(pl.concat([old.select("id"), active]).unique(), on="id", how="semi")
+    today = today.join(pl.concat([old.select("id"), active]).unique(), on="id", how="semi").unique("id", keep="last")
     m = ds_day.strftime("%Y-%m")
     sp_month = os.path.join(build.OUT, "series", f"{m}.parquet")
     partial = set(rmeta.get("partial", []))  # incomplete snapshots are never measured from (see stalls.py)
@@ -111,6 +111,16 @@ def main():
         chain = [] if verdict == "hold" else [(base_day, base)] + [(dt.date.fromisoformat(d), snap(dt.date.fromisoformat(d))) for d in rb.released] + [(ds_day, today)]
     rmeta["skip_days"] = sorted(skip)
     build.SKIP = skip
+    # datasets renamed since the last snapshot keep their history under the new id (see build.find_renames)
+    if chain:
+        new_rn = build.find_renames(prev.select("id", "dl_all").drop_nulls(), today.select("id", "dl_all").drop_nulls())
+        if new_rn.height:
+            rp = os.path.join(build.OUT, "renames.parquet")
+            add = new_rn.with_columns(pl.lit(prev_day).alias("gone"), pl.lit(ds_day).alias("came"))
+            old_rn = pl.read_parquet(rp) if os.path.exists(rp) else None
+            (pl.concat([old_rn.select(add.columns), add]) if old_rn is not None else add).unique("old", keep="last").write_parquet(rp)
+            build.log("datasets renamed:", new_rn.height, new_rn.head(5).rows())
+            changed.append("datasets/renames.parquet")
     days = [(dt.date.fromisoformat(d), None) for d in rmeta["datasets_days"] if d != str(ds_day)] + [(ds_day, None)]
     first = pl.concat([old.drop_nulls("first_seen"), today.select("id", pl.col("day").alias("first_seen"))]).group_by("id").agg(pl.col("first_seen").min())
     ds = build.derived(days, meta, first=first).sort("id")
@@ -137,11 +147,16 @@ def main():
     old_sp = pl.read_parquet(os.path.join(sdir, "spaces.parquet"), columns=["id", "first_seen"])
     stoday = stoday.join(pl.concat([old_sp.select("id"), stoday.filter(pl.col("likes") >= br.SPACE_MIN_LIKES).select("id")]).unique(), on="id", how="semi")
     sm = sp_day.strftime("%Y-%m")
-    append_month(os.path.join(sdir, "series", f"{sm}.parquet"), stoday)
-    sfirst = pl.concat([old_sp.drop_nulls("first_seen"), stoday.select("id", pl.col("day").alias("first_seen"))]).group_by("id").agg(pl.col("first_seen").min())
-    sp = br.space_metrics(sdir, sp_day, br.space_meta(sp_path), first=sfirst)
-    br.new_by_sdk(sdir, sp_path)
-    changed += ["spaces/spaces.parquet", "spaces/new_by_sdk.parquet", "spaces/leaderboards.json", f"spaces/series/{sm}.parquet"]
+    if stoday.height < stalls.PARTIAL * old_sp.height:
+        # a truncated snapshot (2026-01-17..22 held 1,000 Spaces): keep yesterday's Spaces as they are
+        build.log("partial Spaces snapshot:", stoday.height, "rows against", old_sp.height, "tracked; Spaces left as they were")
+        sp = pl.read_parquet(os.path.join(sdir, "spaces.parquet"))
+    else:
+        append_month(os.path.join(sdir, "series", f"{sm}.parquet"), stoday)
+        sfirst = pl.concat([old_sp.drop_nulls("first_seen"), stoday.select("id", pl.col("day").alias("first_seen"))]).group_by("id").agg(pl.col("first_seen").min())
+        sp = br.space_metrics(sdir, sp_day, br.space_meta(sp_path), first=sfirst)
+        br.new_by_sdk(sdir, sp_path)
+        changed += ["spaces/spaces.parquet", "spaces/new_by_sdk.parquet", "spaces/leaderboards.json", f"spaces/series/{sm}.parquet"]
 
     # ---- who uses what ----
     refs_path = os.path.join(a.workdir, "model_refs.parquet")

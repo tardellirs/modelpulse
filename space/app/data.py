@@ -13,6 +13,37 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 DL_ALL_FROM = "2025-02-27"
 DL_ALL = f"CASE WHEN day < DATE '{DL_ALL_FROM}' THEN NULL ELSE dl_all END"
 
+def load_renames(con, path: str, table: str):
+    """Repos renamed on the Hub (pipeline/build.py find_renames): old id -> the id it lives under now, chains
+    followed to the end. Old pages redirect there and the new id's history starts where the old one began."""
+    import polars as pl
+    con.execute(f"CREATE TABLE {table} (old VARCHAR, new VARCHAR)")
+    if not os.path.exists(path):
+        return
+    pairs = dict(pl.read_parquet(path, columns=["old", "new"]).iter_rows())
+    final = {}
+    for old in pairs:
+        new, seen = pairs[old], {old}
+        while new in pairs and new not in seen:
+            seen.add(new)
+            new = pairs[new]
+        final[old] = new
+    df = pl.DataFrame({"old": list(final), "new": list(final.values())}, schema={"old": pl.String, "new": pl.String})
+    con.register("renames_df", df)
+    con.execute(f"INSERT INTO {table} SELECT old, new FROM renames_df")
+    con.unregister("renames_df")
+
+
+def stitched(store, view: str, rid: str, cols: list[str], skip: str, renames: str):
+    """A repo's series with the history it had under its old names (the current id wins on days both exist)."""
+    olds = [r[0] for r in store.con().execute(f"SELECT old FROM {renames} WHERE new = ?", [rid]).fetchall()]
+    ids = [rid] + olds
+    marks = ",".join("?" * len(ids))
+    pick = ", ".join(f"arg_min({c}, pri) AS {c}" for c in cols)
+    return store._columns(f"""SELECT day, {pick} FROM (SELECT *, CASE WHEN id = ? THEN 0 ELSE 1 END AS pri FROM {view}
+        WHERE id IN ({marks}) AND day NOT IN (SELECT day FROM {skip})) GROUP BY day ORDER BY day""", [rid, *ids])
+
+
 class Store:
     def __init__(self, root: str = DATA_DIR):
         self.root = root
@@ -39,6 +70,7 @@ class Store:
         con.execute("CREATE TABLE skip_days (day DATE)")
         for d in self.meta.get("skip_days", []):
             con.execute("INSERT INTO skip_days VALUES (?)", [d])
+        load_renames(con, os.path.join(root, "renames.parquet"), "renames")
 
     def con(self):
         c = getattr(self.local, "c", None)
@@ -55,10 +87,12 @@ class Store:
         rows = self._rows("SELECT * FROM models WHERE id = ?", [mid])
         if not rows:
             rows = self._rows("SELECT * FROM models WHERE lower(id) = lower(?)", [mid])
+        if not rows:  # renamed: the model under its current name
+            rows = self._rows("SELECT m.* FROM renames r JOIN models m ON m.id = r.new WHERE lower(r.old) = lower(?) LIMIT 1", [mid])
         return rows[0] if rows else None
 
     def series(self, mid: str):
-        return self._columns("SELECT day, dl30, dl_all, likes FROM series WHERE id = ? AND day NOT IN (SELECT day FROM skip_days) ORDER BY day", [mid])
+        return stitched(self, "series", mid, ["dl30", "dl_all", "likes"], "skip_days", "renames")
 
     # all-time counters start on DL_ALL_FROM; the summed series store 0 before it, which reads as a jump on that day
     def family_series(self, mid: str):

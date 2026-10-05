@@ -55,7 +55,7 @@ def main():
     if str(day) in meta["days"] and not a.force:
         print(f"{day} already in dataset, nothing to do")
         return
-    patterns = ["models.parquet", "hub_series.parquet"] + [
+    patterns = ["models.parquet", "hub_series.parquet", "renames.parquet"] + [
         f"{d}/{m}.parquet" for d in ("series", "family_series", "author_series") for m in months]
     snapshot_download(a.repo, repo_type="dataset", local_dir=out, allow_patterns=patterns)
     partial = set(meta.get("partial", []))  # incomplete snapshots are never measured from (see stalls.py)
@@ -76,7 +76,7 @@ def main():
     old_models = pl.read_parquet(os.path.join(out, "models.parquet"), columns=["id", "first_seen"])
     active = today.filter((pl.col("dl30") >= 10) | (pl.col("likes") >= 1) | (pl.col("dl_all") >= 50)).select("id")
     uni = pl.concat([old_models.select("id"), active]).unique()
-    today = today.join(uni, on="id", how="semi")
+    today = today.join(uni, on="id", how="semi").unique("id", keep="last")
 
     # 3. append to this month's series partition
     m = day.strftime("%Y-%m")
@@ -122,6 +122,16 @@ def main():
     meta["skip_days"] = sorted(skip)
     build.SKIP = skip
 
+    # 3c. repos renamed since the last snapshot: the new id keeps the old one's history (see build.find_renames)
+    if chain:
+        new_rn = build.find_renames(prev.select("id", "dl_all").drop_nulls(), today.select("id", "dl_all").drop_nulls())
+        if new_rn.height:
+            rp = os.path.join(out, "renames.parquet")
+            add = new_rn.with_columns(pl.lit(prev_day).alias("gone"), pl.lit(day).alias("came"))
+            old_rn = pl.read_parquet(rp) if os.path.exists(rp) else None
+            (pl.concat([old_rn.select(add.columns), add]) if old_rn is not None else add).unique("old", keep="last").write_parquet(rp)
+            build.log("renamed:", new_rn.height, new_rn.head(5).rows())
+
     # 4. models, families, children
     days = [(dt.date.fromisoformat(d), None) for d in meta["days"]] + [(day, None)]
     first = pl.concat([old_models.drop_nulls("first_seen"),
@@ -162,7 +172,7 @@ def main():
 
     # 7. leaderboards + meta
     build.SKIP = set(meta.get("skip_days", []))
-    build.leaderboards(models, day)
+    build.leaderboards(models, day, pairs)
     meta["days"] = sorted(set(meta["days"]) | {str(day)})
     meta.update(built=dt.datetime.now(dt.timezone.utc).isoformat(), models=models.height, families=len(fam_ids))
     json.dump(meta, open(os.path.join(out, "meta.json"), "w"))
@@ -170,7 +180,7 @@ def main():
     if a.no_upload:
         build.log("done (no upload)")
         return
-    changed = ["meta.json", "models.parquet", "children.parquet", "hub_series.parquet", "leaderboards.json",
+    changed = ["meta.json", "models.parquet", "children.parquet", "hub_series.parquet", "leaderboards.json", "renames.parquet",
                f"series/{m}.parquet", f"family_series/{m}.parquet", f"author_series/{m}.parquet"]
     api.upload_folder(repo_id=a.repo, repo_type="dataset", folder_path=out, allow_patterns=changed,
                       commit_message=f"Daily update {day}")

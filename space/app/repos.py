@@ -5,6 +5,8 @@ import urllib.request
 from datetime import date
 from functools import lru_cache
 
+from .data import load_renames, stitched
+
 
 @lru_cache(maxsize=4096)
 def legacy_id(kind: str, rid: str):
@@ -42,6 +44,7 @@ class Repos:
         con.execute("CREATE TABLE ds_skip_days (day DATE)")
         for d in self.meta.get("skip_days", []):
             con.execute("INSERT INTO ds_skip_days VALUES (?)", [d])
+        load_renames(con, p('datasets/renames.parquet').replace("''", "'"), "ds_renames")
         con.execute("CREATE TABLE ds_search AS SELECT id, lower(id) AS lid, dl30 FROM datasets")
         con.execute("CREATE TABLE sp_search AS SELECT id, lower(id) AS lid, lower(coalesce(title, '')) AS ltitle, likes FROM spaces")
 
@@ -52,13 +55,19 @@ class Repos:
         return rows[0] if rows else None
 
     def dataset(self, rid: str):
-        return self._one("datasets", rid) if self.ok else None
+        if not self.ok:
+            return None
+        d = self._one("datasets", rid)
+        if d is None:  # renamed: the dataset under its current name
+            rows = self.s._rows("SELECT d.* FROM ds_renames r JOIN datasets d ON d.id = r.new WHERE lower(r.old) = lower(?) LIMIT 1", [rid])
+            d = rows[0] if rows else None
+        return d
 
     def space(self, rid: str):
         return self._one("spaces", rid) if self.ok else None
 
     def dataset_series(self, rid: str):
-        return self.s._columns("SELECT day, dl30, dl_all, likes FROM ds_series WHERE id = ? AND day NOT IN (SELECT day FROM ds_skip_days) ORDER BY day", [rid])
+        return stitched(self.s, "ds_series", rid, ["dl30", "dl_all", "likes"], "ds_skip_days", "ds_renames")
 
     def space_series(self, rid: str):
         return self.s._columns("SELECT day, likes, trending FROM sp_series WHERE id = ? ORDER BY day", [rid])
