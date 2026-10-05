@@ -53,6 +53,10 @@ function App() {
   const isWrapped = route.view === "wrapped";
   const isGalaxy = route.view === "galaxy";
   const isHome = !route.model && !route.dataset && !route.space && !route.author && !isReport && !isWrapped && !isGalaxy;
+  // Galaxy and Wrapped open on what is on screen: the model's galaxy, and the Wrapped of its owner (or of the author)
+  const ctxAuthor = route.author ?? (route.model?.includes("/") ? route.model.split("/")[0] : undefined);
+  const galaxyTo: Route = route.model ? { view: "galaxy", model: route.model } : { view: "galaxy" };
+  const wrappedTo: Route = ctxAuthor ? { view: "wrapped", author: ctxAuthor } : { view: "wrapped" };
 
   return (
     <>
@@ -64,8 +68,8 @@ function App() {
           {!isHome && <Search hotkey all onPick={(id, kind) => navigate({ [kind]: id })} />}
           <nav>
             {!isHome && <a class="btn nav-btn hide-sm" href={hrefOf({})} onClick={(e) => { e.preventDefault(); navigate({}); }}>Rankings</a>}
-            <a class="btn nav-btn" aria-current={isGalaxy ? "page" : undefined} href={hrefOf({ view: "galaxy" })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy" }); }}>Galaxy</a>
-            <a class="btn nav-btn" aria-current={isWrapped ? "page" : undefined} href={hrefOf({ view: "wrapped" })} onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Wrapped</a>
+            <a class="btn nav-btn" aria-current={isGalaxy ? "page" : undefined} href={hrefOf(galaxyTo)} onClick={(e) => { e.preventDefault(); navigate(galaxyTo); }}>Galaxy</a>
+            <a class="btn nav-btn" aria-current={isWrapped ? "page" : undefined} href={hrefOf(wrappedTo)} onClick={(e) => { e.preventDefault(); navigate(wrappedTo); }}>Wrapped</a>
             <a class={`btn nav-btn${isHome || isReport ? "" : " hide-sm"}`} aria-current={isReport ? "page" : undefined} href={hrefOf({ view: "report" })} onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>
           </nav>
         </div>
