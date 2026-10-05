@@ -2,6 +2,7 @@
 import json
 import os
 import threading
+import time
 from datetime import date
 
 import duckdb
@@ -78,8 +79,19 @@ class Store:
             c = self.local.c = self._con.cursor()
         return c
 
+    def _exec(self, sql, args=()):
+        """Run a query; while the hourly refresh swaps the parquet files a view can briefly find none, so wait a
+        moment and try again rather than answer 500."""
+        for attempt in range(4):
+            try:
+                return self.con().execute(sql, args)
+            except duckdb.IOException:
+                if attempt == 3:
+                    raise
+                time.sleep(2)
+
     def _rows(self, sql, args=()):
-        cur = self.con().execute(sql, args)
+        cur = self._exec(sql, args)
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
 
@@ -198,7 +210,7 @@ class Store:
         return {"tags": tags + ["other"], **data, "low_days": self.meta.get("low_days", [])}
 
     def _columns(self, sql, args):
-        cur = self.con().execute(sql, args)
+        cur = self._exec(sql, args)
         cols = [d[0] for d in cur.description]
         data = {c: [] for c in cols}
         for r in cur.fetchall():
