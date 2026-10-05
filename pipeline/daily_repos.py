@@ -144,7 +144,7 @@ def main():
             pl.col("created").cast(pl.Datetime))
     uses = br.build_uses(out, sp_path, refs)
     shutil.rmtree(cache, ignore_errors=True)
-    br.finish(out, ds, sp, uses, ds_days, sp_day, {k: rmeta[k] for k in ("skip_days", "frozen", "rollback", "pending") if k in rmeta})
+    br.finish(out, ds, sp, uses, ds_days, sp_day, {k: rmeta[k] for k in ("skip_days", "low_days", "frozen", "rollback", "pending") if k in rmeta})
 
     if a.no_upload:
         build.log("done (no upload)")

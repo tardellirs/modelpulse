@@ -22,6 +22,8 @@ type Props = {
   onZoom?: (r: [number, number] | null) => void;
   valueLabel?: (v: number) => string;
   tipDate?: (t: number) => string;
+  /** days (timestamps at 00:00 UTC) to grey out behind the series, with a note for the tooltip */
+  shade?: { days: number[]; note: string };
 };
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -34,7 +36,7 @@ function alpha(color: string, a: number) {
   return color;
 }
 
-export function Chart({ lines, range, log, markers = [], height = 360, stacked, bars, partialLast, endLabel, onZoom, valueLabel, tipDate }: Props) {
+export function Chart({ lines, range, log, markers = [], height = 360, stacked, bars, partialLast, endLabel, onZoom, valueLabel, tipDate, shade }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
   const plot = useRef<uPlot | null>(null);
@@ -186,6 +188,18 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
       series: seriesOpts,
       bands: stacked ? lines.slice(1).map((_, i) => ({ series: [i + 2, i + 1] as [number, number] })) : undefined,
       hooks: {
+        drawClear: [(u: uPlot) => {
+          if (!shade?.days.length) return;
+          const { ctx } = u;
+          ctx.save();
+          ctx.fillStyle = alpha(css("--ink") || "#1b1b1f", 0.09);
+          for (const d of shade.days) {
+            const x0 = u.valToPos(d - 43200, "x", true), x1 = u.valToPos(d + 43200, "x", true);
+            if (x1 < u.bbox.left || x0 > u.bbox.left + u.bbox.width) continue;
+            ctx.fillRect(x0, u.bbox.top, Math.max(x1 - x0, 2 * dpr), u.bbox.height);
+          }
+          ctx.restore();
+        }],
         draw: [drawHook],
         setCursor: [
           (u) => {
@@ -196,7 +210,8 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
             if (!rows.length) { t.style.display = "none"; return; }
             const ts = data[0][idx] as number;
             const day = tipDate ? tipDate(ts) : fmtDate(new Date(ts * 1000), { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-            t.innerHTML = `<div class="d">${day}</div>` + rows.map((r) =>
+            const low = shade?.days.includes(ts) ? `<div class="d">${escapeHtml(shade.note)}</div>` : "";
+            t.innerHTML = `<div class="d">${day}</div>` + low + rows.map((r) =>
               `<div class="r"><span><i class="sw" style="background:${r.l.color}"></i>${lines.length > 1 ? escapeHtml(r.l.label) : ""}</span><b>${valueLabel ? valueLabel(r.v as number) : fmtFull(r.v)}</b></div>`).join("");
             t.style.display = "block";
             const x = u.cursor.left + u.bbox.left / dpr;
@@ -228,7 +243,7 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
     const leave = () => (tip.current!.style.display = "none");
     el.addEventListener("mouseleave", leave);
     return () => { ro.disconnect(); el.removeEventListener("mouseleave", leave); u.destroy(); plot.current = null; };
-  }, [lines, log, markers, height, stacked, bars, partialLast, endLabel]);
+  }, [lines, log, markers, height, stacked, bars, partialLast, endLabel, shade]);
 
   useEffect(() => {
     const u = plot.current;

@@ -91,9 +91,9 @@ def build_datasets(raw, out, meta_path):
     meta = dataset_meta(meta_path)
     ds = build.derived(days, meta).sort("id")
     build.author_series(ds)
-    skip = build.hub_series(ds, days, min_frozen=stalls.FROZEN_DATASETS)
+    skip, low = build.hub_series(ds, days, min_frozen=stalls.FROZEN_DATASETS)
     build.SKIP = set(skip)
-    return ds, days, skip
+    return ds, days, skip, low
 
 
 # ---------- Spaces ----------
@@ -244,7 +244,7 @@ def leaderboards(out, ds, sp, last_ds, last_sp):
 def finish(out, ds, sp, uses, ds_days, last_sp, counters):
     """Usage counts, tables, rankings and meta: shared by the full build and the daily update.
 
-    `counters` is the stall state kept in repos_meta.json: skip_days, and frozen / rollback when known (see stalls.py).
+    `counters` is the stall state kept in repos_meta.json: skip_days, low_days, and frozen / rollback when known (see stalls.py).
     """
     ds = (ds.drop("used_by_models", "used_by_spaces", strict=False)
             .join(count_uses(uses, "dataset", "model", "used_by_models"), on="id", how="left")
@@ -265,10 +265,10 @@ def main():
     raw_ds, raw_sp, out = sys.argv[1], sys.argv[2], sys.argv[3]
     os.makedirs(out, exist_ok=True)
     ds_path, sp_path, md_path = latest("datasets"), latest("spaces"), latest("models")
-    ds, ds_days, skip = build_datasets(raw_ds, out, ds_path)
+    ds, ds_days, skip, low = build_datasets(raw_ds, out, ds_path)
     sp, last_sp = build_spaces(raw_sp, out, sp_path)
     uses = build_uses(out, sp_path, model_refs(md_path))
-    finish(out, ds, sp, uses, ds_days, last_sp, {"skip_days": skip})
+    finish(out, ds, sp, uses, ds_days, last_sp, {"skip_days": skip, "low_days": low})
 
 
 if __name__ == "__main__":

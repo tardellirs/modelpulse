@@ -70,6 +70,9 @@ export function Home() {
     return order.map((o, i) => ({ label: taskLabel(o.tag), color: o.tag === "other" ? css("--rule") : colors[i], t, v: o.v }));
   }, [hub]);
 
+  // days the counters ran low and nothing made them up later: greyed out, not smoothed away
+  const hubShade = useMemo(() => hub?.low_days?.length ? { days: hub.low_days.map(ts), note: "Low day: the Hub's counters fell behind and never caught up" } : undefined, [hub]);
+
   const examples = lb?.gainers_7d.slice(0, 5).map((r) => r.id!) ?? [];
   const cur = BOARDS.find((b) => b.key === board)!;
   const rows: Row[] = lb?.[board] ?? [];
@@ -101,13 +104,13 @@ export function Home() {
       <div class="wrap hub-chart">
        <div class="card">
         <h2>Daily downloads across the Hub</h2>
-        <p class="muted" style={{ margin: "4px 0 14px" }}>All public models, by task, 7-day average.</p>
+        <p class="muted" style={{ margin: "4px 0 14px" }}>All public models, by task, 7-day average.{hubShade ? " Grey: days the Hub's counters fell behind and never caught up." : ""}</p>
         {hubLines.length ? (
           <>
             <div class="legend" style={{ marginBottom: 10 }}>
               {hubLines.map((l) => <span class="chip" key={l.label}><i class="sw" style={{ background: l.color, height: 10 }} />{l.label}</span>)}
             </div>
-            <Chart lines={hubLines} stacked height={300} valueLabel={(v) => fmtFull(v)} />
+            <Chart lines={hubLines} stacked height={300} valueLabel={(v) => fmtFull(v)} shade={hubShade} />
           </>
         ) : <div class="skeleton" style={{ height: 300 }} />}
        </div>

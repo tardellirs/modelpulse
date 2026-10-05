@@ -66,7 +66,7 @@ export type Row = {
   created_at?: string; fam_members?: number; fam_dl30?: number; models?: number; spark?: number[];
 };
 export type Leaderboards = Record<string, Row[]> & { updated: string };
-export type Hub = { tags: string[]; day: string[]; tag: string[]; dl: number[] };
+export type Hub = { tags: string[]; day: string[]; tag: string[]; dl: number[]; low_days?: string[] };
 export type AuthorResponse = {
   author: string;
   series: { day: string[]; dl30: number[]; dl_all: number[]; likes: number[]; models: number[] };

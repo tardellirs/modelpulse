@@ -232,6 +232,16 @@ def settle_history(raw: pl.DataFrame, frozen: dict, min_frozen: float = FROZEN) 
     return hub, wins
 
 
+def low_days(hub: pl.DataFrame) -> list[str]:
+    """Days still below PAIR_LOW of their local median after stalls and rollbacks are handled.
+
+    Nothing makes these up later, so they are left as they are and only listed, for charts to mark. The last two days
+    wait, like windows do, until their neighbours are known.
+    """
+    days, r = _totals(hub)
+    return sorted(d.isoformat() for d, x in zip(days[:-2], r[:-2]) if x < PAIR_LOW)
+
+
 def skip_days(wins: list[list[dt.date]]) -> list[str]:
     """Snapshots to ignore in per-model series: every day of a window but its last."""
     return sorted({d.isoformat() for w in wins for d in w[:-1]})
@@ -259,4 +269,5 @@ def settle(hub: pl.DataFrame, meta: dict, today: dt.date, min_frozen: float = FR
     # keep the last few weeks of signals: a window settles within a few days
     keep = (today - dt.timedelta(days=30)).isoformat()
     meta["frozen"] = {d: v for d, v in meta.get("frozen", {}).items() if d >= keep}
+    meta["low_days"] = low_days(hub)
     return hub, wins

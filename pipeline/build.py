@@ -211,11 +211,11 @@ def hub_series(models, days, min_frozen=stalls.FROZEN):
     raw, frozen, aside, state = stalls.measure(snaps, tags)
     if not raw.height:  # no all-time totals in these snapshots yet
         raw.write_parquet(os.path.join(OUT, "hub_series.parquet"))
-        return []
+        return [], []
     hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in aside}, min_frozen)
     hub.write_parquet(os.path.join(OUT, "hub_series.parquet"))
     log("stalls", len(wins), "rollbacks", [str(d) for d in aside])
-    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside})
+    return sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in aside}), stalls.low_days(hub)
 
 
 SKIP: set[str] = set()  # days whose snapshot is ignored (see stalls.py); set by the caller from meta.json
@@ -295,9 +295,9 @@ def main():
     family_series(pairs, fam_ids)
     author_series(models)
     leaderboards(models, days[-1][0])
-    skip = hub_series(models, days)
+    skip, low = hub_series(models, days)
     json.dump({"days": [str(d) for d, _ in days], "built": dt.datetime.utcnow().isoformat() + "Z",
-               "models": models.height, "families": len(fam_ids), "skip_days": skip},
+               "models": models.height, "families": len(fam_ids), "skip_days": skip, "low_days": low},
               open(os.path.join(OUT, "meta.json"), "w"))
     log("done")
 

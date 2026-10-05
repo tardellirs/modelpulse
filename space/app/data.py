@@ -150,7 +150,7 @@ class Store:
         data = self._columns(
             "SELECT day, CASE WHEN list_contains(?, pipeline_tag) THEN pipeline_tag ELSE 'other' END AS tag, sum(dl)::BIGINT AS dl "
             "FROM hub GROUP BY ALL ORDER BY day", [tags])
-        return {"tags": tags + ["other"], **data}
+        return {"tags": tags + ["other"], **data, "low_days": self.meta.get("low_days", [])}
 
     def _columns(self, sql, args):
         cur = self.con().execute(sql, args)
