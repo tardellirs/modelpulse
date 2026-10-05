@@ -80,6 +80,7 @@ function App() {
             refreshed every day. An independent project, not affiliated with Hugging Face.
           </span>
           <span>Download counts follow the <a href="https://huggingface.co/docs/hub/models-download-stats" target="_blank" rel="noopener">Hub's own counting rules</a>.</span>
+          <span>Sister project: <a href="https://paperpulse.ifsp.dev" target="_blank" rel="noopener">Paper Pulse</a>, the upvote history of every Hugging Face Daily Paper.</span>
           <span class="maker">
             Made by <a href="https://huggingface.co/tardellirs" target="_blank" rel="noopener">Tardelli Stekel</a>
             {" "}(<a href="https://huggingface.co/tardellirs" target="_blank" rel="noopener">@tardellirs</a> on Hugging Face,{" "}

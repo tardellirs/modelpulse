@@ -116,7 +116,9 @@ class Pages:
         for d in p.ld:
             head.append('<script type="application/ld+json">' + json.dumps(d).replace("</", "<\\/") + "</script>")
         t = self.template().replace("</head>", "    " + "\n    ".join(head) + "\n  </head>", 1)
-        return t.replace('<div id="app"></div>', f'<div id="app"><main class="wrap ssr">{p.body}</main></div>', 1)
+        foot = ('<p>Sister project: <a href="https://paperpulse.ifsp.dev/">Paper Pulse</a>,'
+                ' the upvote history of every Hugging Face Daily Paper.</p>')
+        return t.replace('<div id="app"></div>', f'<div id="app"><main class="wrap ssr">{p.body}{foot}</main></div>', 1)
 
     # ---------- routing ----------
 
