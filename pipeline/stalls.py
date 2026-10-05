@@ -210,12 +210,19 @@ def windows(hub: pl.DataFrame, frozen: dict | None = None, settled_before: dt.da
             break
         out.append((days[a], days[e]))
         k = e + 1
-    # half-depth dips made up by a neighbour, with no frozen counters to show for it
+    # half-depth dips made up by a neighbour, with no frozen counters to show for it. A measurement that spans days
+    # without a snapshot is one value spread over them, so it pairs as a whole, its days weighed in the sum
+    span = measurements(days, snaps)
+    rr = [sum(r[k] for k in span[i]) / len(span[i]) for i in range(n)]
     for i in range(1, n - 2):
-        if LOW <= r[i] < PAIR_LOW:
-            for j in (i - 1, i + 1):
-                if r[j] > HIGH and PAIR_SUM[0] <= r[i] + r[j] <= PAIR_SUM[1]:
-                    out.append((min(days[i], days[j]), max(days[i], days[j])))
+        if LOW <= rr[i] < PAIR_LOW:
+            for j in (span[i][0] - 1, span[i][-1] + 1):
+                if not 0 <= j < n - 1:
+                    continue
+                w_i, w_j = len(span[i]), len(span[j])
+                if rr[j] > HIGH and PAIR_SUM[0] <= 2 * (rr[i] * w_i + rr[j] * w_j) / (w_i + w_j) <= PAIR_SUM[1]:
+                    lo, hi = min(span[i][0], span[j][0]), max(span[i][-1], span[j][-1])
+                    out.append((days[lo], days[hi]))
                     break
     out = whole_gaps(out, days, snaps)
     # episodes a day or two apart are one episode
@@ -229,6 +236,19 @@ def windows(hub: pl.DataFrame, frozen: dict | None = None, settled_before: dt.da
     if settled_before:
         wins = [w for w in wins if w[-1] < settled_before]
     return wins
+
+
+def measurements(days, snaps):
+    """For each day, the indexes of the days that share its measurement: a snapshot day and the days without a
+    snapshot just before it (they all get the same per-day average). Without snapshots, each day is its own."""
+    if not snaps:
+        return [[i] for i in range(len(days))]
+    snaps = sorted(set(snaps))
+    key = [snaps[min(bisect.bisect_left(snaps, d), len(snaps) - 1)] for d in days]
+    groups, out = {}, []
+    for i, k in enumerate(key):
+        groups.setdefault(k, []).append(i)
+    return [groups[k] for k in key]
 
 
 def whole_gaps(spans, days, snaps):
@@ -293,7 +313,9 @@ def low_days(hub: pl.DataFrame, short=(), snaps=None) -> list[str]:
     t = hub.group_by("day").agg(pl.col("dl").sum().alias("tot")).sort("day")
     t = t.with_columns(pl.col("tot").rolling_median(window_size=MEDIAN_DAYS, center=True, min_samples=5).alias("med"))
     t = t.with_columns(pl.col("day").dt.weekday().alias("wd"), (pl.col("tot") / pl.col("med")).alias("r"))
-    week = t.group_by("wd").agg(pl.col("r").median().alias("f"))
+    # the weekday pattern from days measured on their own (a value spread over missing days mixes weekdays)
+    one = [len(s) == 1 for s in measurements(t["day"].to_list(), snaps)]
+    week = t.filter(pl.Series(one)).group_by("wd").agg(pl.col("r").median().alias("f"))
     t = t.join(week, on="wd", how="left").sort("day").with_columns((pl.col("med") * pl.col("f")).alias("exp"))
     days, tot, exp = t["day"].to_list(), t["tot"].to_list(), t["exp"].to_list()
     shorts = {str(d) for d in short}
