@@ -105,6 +105,7 @@ export const api = {
   dataset: (id: string) => get<DatasetResponse>(`/api/dataset/${id}`),
   space: (id: string) => get<SpaceResponse>(`/api/space/${id}`),
   searchAll: (q: string) => get<Found>(`/api/search/all?q=${encodeURIComponent(q)}`),
+  searchAuthors: (q: string) => get<{ author: string; models: number; dl30: number | null }[]>(`/api/search/authors?q=${encodeURIComponent(q)}`),
   boards: (kind: "datasets" | "spaces") => get<Leaderboards>(`/api/leaderboards/${kind}`),
   newSpaces: () => get<{ sdks: string[]; week: string[]; sdk: string[]; n: number[] }>("/api/spaces/new"),
   meta: () => get<{ days: number; first: string; last: string; models: number; families: number }>("/api/meta"),

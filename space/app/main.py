@@ -186,6 +186,11 @@ def author(author: str):
     return j({"author": author, "series": s, "models": models, "model_totals": clean(store.author_totals(author)) if models else None, **rr})
 
 
+@app.get("/api/search/authors")
+def search_authors(q: str = Query("", max_length=120)):
+    return j(store.search_authors(q))
+
+
 @app.get("/api/search")
 def search(q: str = Query("", max_length=120)):
     return j(store.search(q))

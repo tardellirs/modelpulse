@@ -90,6 +90,9 @@ class Store:
         con.execute(f"CREATE TABLE models AS SELECT * FROM read_parquet('{p('models.parquet')}')")
         con.execute(f"CREATE TABLE hub AS SELECT * FROM read_parquet('{p('hub_series.parquet')}')")
         con.execute("CREATE TABLE search_ix AS SELECT id, lower(id) AS lid, author, pipeline_tag, dl30 FROM models")
+        # authors and orgs, for the Wrapped name box
+        con.execute("CREATE TABLE author_ix AS SELECT author, lower(author) AS la, count(*) AS models, sum(dl30) AS dl30 "
+                    "FROM models WHERE author IS NOT NULL GROUP BY author")
         # snapshots from days when the Hub's counters stood still or went backwards (see pipeline/stalls.py); leaving
         # them out spreads the catch-up evenly
         con.execute("CREATE TABLE skip_days (day DATE)")
@@ -187,6 +190,18 @@ class Store:
                           "ORDER BY fam_members DESC LIMIT ?", [limit])
 
     # ---------- pages and sitemap ----------
+
+    def search_authors(self, q: str, limit: int = 8):
+        """Authors and orgs whose name has every word of the query: the exact name, then names starting with it,
+        then by downloads in the last 30 days."""
+        words = q.strip().lower().split()
+        if not words:
+            return []
+        where = " AND ".join("la LIKE ?" for _ in words)
+        full = "".join(words)
+        return self._rows(f"SELECT author, models, dl30 FROM author_ix WHERE {where} "
+                          "ORDER BY (la = ?) DESC, starts_with(la, ?) DESC, dl30 DESC NULLS LAST LIMIT ?",
+                          [*[f"%{w}%" for w in words], full, words[0], limit])
 
     def find_author(self, name: str):
         r = self.con().execute("SELECT author FROM models WHERE author = ? LIMIT 1", [name]).fetchone() or \

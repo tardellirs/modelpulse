@@ -251,6 +251,17 @@ async function shareImage(d: WrappedData) {
 
 function Entry({ initial }: { initial?: string }) {
   const [v, setV] = useState(initial ?? "");
+  // names on the Hub as you type, like the other search boxes
+  const [hits, setHits] = useState<{ author: string; models: number; dl30: number | null }[]>([]);
+  const [sel, setSel] = useState(-1);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const t = v.trim().replace(/^https?:\/\/huggingface\.co\//, "").split("/")[0];
+    if (t.length < 2) { setHits([]); return; }
+    let live = true;
+    const h = setTimeout(() => api.searchAuthors(t).then((r) => { if (live) { setHits(r); setSel(-1); } }).catch(() => {}), 120);
+    return () => { live = false; clearTimeout(h); };
+  }, [v]);
   const [lb, setLb] = useState<Leaderboards | null>(null);
   useEffect(() => { api.leaderboards().then(setLb).catch(() => {}); }, []);
   const go = (a: string) => { const t = a.trim().replace(/^https?:\/\/huggingface\.co\//, "").split("/")[0]; if (t) navigate({ view: "wrapped", author: t }); };
@@ -258,8 +269,29 @@ function Entry({ initial }: { initial?: string }) {
     <div class="wrap w-entry">
       <h1><Logo size={72} />Model Pulse <span class="hl">Wrapped</span></h1>
       <p class="lede">Your last 12 months on the Hugging Face Hub, in six cards: total downloads, your #1 model, your biggest week, the models built on yours, and where you rank.</p>
-      <form class="w-form" onSubmit={(e) => { e.preventDefault(); go(v); }}>
-        <div class="search big"><input value={v} onInput={(e) => setV((e.target as HTMLInputElement).value)} placeholder="Username or org, e.g. Qwen" aria-label="Username or organization" autoFocus spellcheck={false} /></div>
+      <form class="w-form" onSubmit={(e) => { e.preventDefault(); go(sel >= 0 && hits[sel] ? hits[sel].author : v); }}>
+        <div class="search big">
+          <input value={v} onInput={(e) => { setV((e.target as HTMLInputElement).value); setOpen(true); }} placeholder="Username or org, e.g. Qwen"
+            aria-label="Username or organization" autoFocus spellcheck={false} autocomplete="off" role="combobox"
+            aria-expanded={open && hits.length > 0} aria-controls="wrapped-results"
+            onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, hits.length - 1)); }
+              else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, -1)); }
+              else if (e.key === "Escape") setOpen(false);
+            }} />
+          {open && hits.length > 0 && (
+            <ul class="results" id="wrapped-results" role="listbox">
+              {hits.map((h, i) => (
+                <li key={h.author} role="option" aria-selected={i === sel} onMouseEnter={() => setSel(i)}
+                  onMouseDown={(e) => { e.preventDefault(); go(h.author); }}>
+                  <span class="rid">{h.author}</span>
+                  <span class="rmeta">{fmtFull(h.models)} model{h.models === 1 ? "" : "s"} · {fmt(h.dl30 ?? 0)}/mo</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <button class="btn primary" type="submit">Get my Wrapped</button>
       </form>
       {lb && (
