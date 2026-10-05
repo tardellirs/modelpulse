@@ -17,8 +17,8 @@ const showTab = (e: { currentTarget: EventTarget | null }) => {
 
 const BOARDS: { key: string; label: string; note: string; author?: boolean }[] = [
   { key: "gainers_7d", label: "Most downloaded this week", note: "Downloads in the last 7 days." },
-  { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among models with at least 1,000 weekly downloads." },
-  { key: "breakouts", label: "New this month", note: "Models created in the last 30 days, by downloads this week." },
+  { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among models with at least 1,000 weekly downloads. Models whose week came mostly from a single day are left out." },
+  { key: "breakouts", label: "New this month", note: "Models created in the last 30 days, by downloads this week, leaving out those whose week came almost all from a single day." },
   { key: "likes_7d", label: "Most liked this week", note: "Likes gained in the last 7 days, among models with at least 1,000 downloads this month." },
   { key: "families", label: "Biggest families", note: "Base models ranked by the 30-day downloads of the model plus all its derivatives." },
   { key: "authors_7d", label: "Organizations", note: "Authors ranked by downloads across all their models this week.", author: true },
@@ -28,8 +28,8 @@ type RepoKind = "models" | "datasets" | "spaces";
 const REPO_BOARDS: Record<"datasets" | "spaces", { key: string; label: string; note: string }[]> = {
   datasets: [
     { key: "gainers_7d", label: "Most downloaded this week", note: "Dataset downloads in the last 7 days." },
-    { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among datasets with at least 1,000 weekly downloads." },
-    { key: "breakouts", label: "New this month", note: "Datasets created in the last 30 days, by downloads this week." },
+    { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among datasets with at least 1,000 weekly downloads. Datasets whose week came mostly from a single day are left out." },
+    { key: "breakouts", label: "New this month", note: "Datasets created in the last 30 days, by downloads this week, leaving out those whose week came almost all from a single day." },
     { key: "used_by_models", label: "Most used for training", note: "Datasets listed as training data by the most models." },
   ],
   spaces: [

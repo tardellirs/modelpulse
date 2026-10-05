@@ -115,29 +115,61 @@ def at_or_before(series_last, ref_day, max_back=10):
             .sort("day").group_by("id").last())
 
 
+def peak_share(recent, w1):
+    """Share of a repo's downloads this week that came in its single biggest step between snapshots (a CI job or a
+    bot pulling one repo for a day shows up as a share near 1)."""
+    wk = (recent.join(w1.select("id", "d7"), on="id", how="left")
+          .filter(pl.col("d7").is_null() | (pl.col("day") >= pl.col("d7"))).sort("id", "day")
+          .with_columns((pl.col("dl_all") - pl.col("dl_all").shift(1).over("id")).clip(0).alias("step"))
+          .group_by("id").agg(pl.col("step").max().alias("peak"), pl.col("step").sum().alias("gain"), pl.col("step").count().alias("steps")))
+    return wk.select("id", pl.when(pl.col("gain") > 0).then(pl.col("peak") / pl.col("gain")).alias("peak_share"), "steps")
+
+
+SPIKY = 0.6          # growth boards leave out repos whose week came mostly from one step...
+SPIKY_NEW = 0.8      # ...or, for repos created this month, almost all of it once they have a few steps to judge
+
+
+def steady(df, share=SPIKY, min_steps=0):
+    """Rows whose week isn't one spike (unknown shares stay)."""
+    return df.filter(pl.col("peak_share").is_null() | (pl.col("steps") < min_steps) | (pl.col("peak_share") <= share))
+
+
 def derived(days, meta, first=None):
     last = days[-1][0]
     skip = [dt.date.fromisoformat(d) for d in SKIP]
     recent = scan_series().filter((pl.col("day") >= last - dt.timedelta(days=40))
                                   & (~pl.col("day").is_in(skip) | (pl.col("day") == last))).collect()
     now = recent.filter(pl.col("day") == last).select("id", "dl30", "dl_all", "likes")
-    w1 = at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("dl_all").alias("all_7"), pl.col("likes").alias("likes_7"))
-    w2 = at_or_before(recent, last - dt.timedelta(days=14)).select("id", pl.col("dl_all").alias("all_14"))
-    w4 = at_or_before(recent, last - dt.timedelta(days=28)).select("id", pl.col("dl_all").alias("all_28"))
+    # the reference snapshots can be more than 7, 14, 28 days back (skipped stall days, missing days): every change
+    # is turned into a rate per 7 days over the days it really spans
+    w1 = at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("dl_all").alias("all_7"), pl.col("likes").alias("likes_7"), pl.col("day").alias("d7"))
+    w2 = at_or_before(recent, last - dt.timedelta(days=14)).select("id", pl.col("dl_all").alias("all_14"), pl.col("day").alias("d14"))
+    w4 = at_or_before(recent, last - dt.timedelta(days=28)).select("id", pl.col("dl_all").alias("all_28"), pl.col("day").alias("d28"))
     if first is None:
         first = scan_series().group_by("id").agg(pl.col("day").min().alias("first_seen")).collect(engine="streaming")
+
+    def per_week(a, b, d_a, d_b):
+        # null when both ends are the same snapshot (two references fell on one day across a gap)
+        span = ((pl.lit(d_a) if isinstance(d_a, dt.date) else pl.col(d_a)) - pl.col(d_b)).dt.total_days()
+        return pl.when(span > 0).then((pl.col(a) - pl.col(b)).clip(0) * 7 / span)
+
+    new = pl.col("first_seen") > last - dt.timedelta(days=7)   # all of a new repo's downloads fall in this week
     m = (now.join(w1, on="id", how="left").join(w2, on="id", how="left").join(w4, on="id", how="left")
          .join(first, on="id", how="left")
          .with_columns(
-             # a week can't hold more downloads than the 30-day window that contains it; guards against recounts
-             pl.min_horizontal((pl.col("dl_all") - pl.col("all_7")).clip(0), pl.col("dl30")).alias("dl_7d"),
-             (pl.col("all_7") - pl.col("all_14")).clip(0).alias("dl_prev7d"),
-             ((pl.col("all_7") - pl.col("all_28")).clip(0) / 3).alias("dl_base7d"),
-             (pl.col("likes") - pl.col("likes_7")).alias("likes_7d"))
+             # a week can't hold more downloads than the 30-day window that contains it; guards against recounts.
+             # No reference snapshot and not new: unknown, not the 30-day count
+             pl.when(pl.col("all_7").is_not_null()).then(pl.min_horizontal(per_week("dl_all", "all_7", last, "d7"), pl.col("dl30")))
+             .when(new).then(pl.min_horizontal(pl.col("dl_all"), pl.col("dl30"))).round(0).cast(pl.Int64).alias("dl_7d"),
+             per_week("all_7", "all_14", "d7", "d14").round(0).cast(pl.Int64).alias("dl_prev7d"),
+             per_week("all_7", "all_28", "d7", "d28").alias("dl_base7d"),
+             pl.when(pl.col("likes_7").is_not_null()).then((pl.col("likes") - pl.col("likes_7")) * 7 / (pl.lit(last) - pl.col("d7")).dt.total_days())
+             .when(new).then(pl.col("likes")).round(0).cast(pl.Int64).alias("likes_7d"))
          .with_columns(
              # growth vs the average of the three weeks before, robust to one stalled or backlogged week
              pl.when(pl.col("dl_base7d") >= 100).then(pl.col("dl_7d") / pl.col("dl_base7d") - 1).alias("growth_7d"))
-         .drop("all_7", "all_14", "all_28", "likes_7"))
+         .join(peak_share(recent, w1), on="id", how="left")
+         .drop("all_7", "all_14", "all_28", "likes_7", "d7", "d14", "d28"))
     m = m.join(meta, on="id", how="left")
     m = m.with_columns(
         pl.col("dl30").rank("min", descending=True).cast(pl.Int32).alias("rank_dl30"),
@@ -235,7 +267,7 @@ def sparks(ids, last):
 
 def leaderboards(models, last):
     cols = ["id", "author", "pipeline_tag", "params", "dl30", "dl_all", "dl_7d", "dl_prev7d", "dl_base7d", "growth_7d",
-            "likes", "likes_7d", "created_at", "fam_members", "fam_dl30"]
+            "likes", "likes_7d", "created_at", "fam_members", "fam_dl30", "peak_share", "steps"]
     m = models.select([c for c in cols if c in models.columns])
 
     def top(df, by, n=100):
@@ -254,8 +286,8 @@ def leaderboards(models, last):
     lb = {
         "updated": str(last),
         "gainers_7d": top(m, "dl_7d"),
-        "growth_7d": top(m.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000)), "growth_7d"),
-        "breakouts": top(m.filter(pl.col("created_at") >= dt.datetime.combine(last - dt.timedelta(days=30), dt.time())), "dl_7d"),
+        "growth_7d": top(steady(m.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000))), "growth_7d"),
+        "breakouts": top(steady(m.filter(pl.col("created_at") >= dt.datetime.combine(last - dt.timedelta(days=30), dt.time())), SPIKY_NEW, 3), "dl_7d"),
         "likes_7d": top(m.filter(pl.col("dl30") >= 1_000), "likes_7d"),
         "families": top(m.filter(pl.col("fam_members") >= 10), "fam_dl30"),
         "authors_dl30": top(authors, "dl30"),

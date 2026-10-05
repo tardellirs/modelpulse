@@ -142,14 +142,19 @@ def space_metrics(sdir, last, meta, first=None):
     series = pl.scan_parquet(os.path.join(sdir, "series", "*.parquet"))
     recent = series.filter(pl.col("day") >= last - dt.timedelta(days=40)).collect()
     now = recent.filter(pl.col("day") == last).select("id", "likes")
-    w7 = build.at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("likes").alias("likes_7"))
-    w30 = build.at_or_before(recent, last - dt.timedelta(days=30)).select("id", pl.col("likes").alias("likes_30"))
+    w7 = build.at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("likes").alias("likes_7"), pl.col("day").alias("d7"))
+    w30 = build.at_or_before(recent, last - dt.timedelta(days=30)).select("id", pl.col("likes").alias("likes_30"), pl.col("day").alias("d30"))
     if first is None:
         first = series.group_by("id").agg(pl.col("day").min().alias("first_seen")).collect(engine="streaming")
+
+    def gained(ref, d_ref, n, new):
+        # per n days over the days really spanned; no reference and not new: unknown, not all-time likes
+        return (pl.when(pl.col(ref).is_not_null()).then((pl.col("likes") - pl.col(ref)).clip(0) * n / (pl.lit(last) - pl.col(d_ref)).dt.total_days())
+                .when(new).then(pl.col("likes")).round(0).cast(pl.Int64))
     return (now.join(w7, on="id", how="left").join(w30, on="id", how="left").join(first, on="id", how="left")
-            .with_columns((pl.col("likes") - pl.col("likes_7").fill_null(0)).clip(0).alias("likes_7d"),
-                          (pl.col("likes") - pl.col("likes_30").fill_null(0)).clip(0).alias("likes_30d"))
-            .drop("likes_7", "likes_30")
+            .with_columns(gained("likes_7", "d7", 7, pl.col("first_seen") > last - dt.timedelta(days=7)).alias("likes_7d"),
+                          gained("likes_30", "d30", 30, pl.col("first_seen") > last - dt.timedelta(days=30)).alias("likes_30d"))
+            .drop("likes_7", "likes_30", "d7", "d30")
             .join(meta.drop("likes"), on="id", how="left")
             .with_columns(pl.col("likes").rank("min", descending=True).cast(pl.Int32).alias("rank_likes"),
                           pl.col("likes_7d").rank("min", descending=True).cast(pl.Int32).alias("rank_7d"))
@@ -223,8 +228,8 @@ def leaderboards(out, ds, sp, last_ds, last_sp):
     dlb = {
         "updated": str(last_ds),
         "gainers_7d": top(ds, "dl_7d", cols=dcols, spark=spark),
-        "growth_7d": top(ds.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000)), "growth_7d", cols=dcols, spark=spark),
-        "breakouts": top(ds.filter(pl.col("created_at") >= since(last_ds)), "dl_7d", cols=dcols, spark=spark),
+        "growth_7d": top(build.steady(ds.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000))), "growth_7d", cols=dcols, spark=spark),
+        "breakouts": top(build.steady(ds.filter(pl.col("created_at") >= since(last_ds)), build.SPIKY_NEW, 3), "dl_7d", cols=dcols, spark=spark),
         "used_by_models": top(ds, "used_by_models", cols=dcols, spark=spark),
     }
     json.dump(dlb, open(os.path.join(out, "datasets", "leaderboards.json"), "w"), default=str)
