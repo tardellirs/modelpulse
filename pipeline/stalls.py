@@ -27,7 +27,9 @@ Gaps. Days without a snapshot share the per-day average of the next one. A windo
 all of it, up to the snapshot that closes it, so a catch-up booked across a gap is spread with the stall it belongs to.
 
 Low days. After all this, a few days are still well under their local median and nothing around them makes up for it.
-They keep their measured values and are only listed (see low_days).
+They keep their measured values and are only listed (see low_days). A day whose snapshot came under SHORT_HOURS after
+the one before (hub-stats moved its collection time: 2025-03-04 came 10.3 hours after 03-03) is short, not low: the
+counters' daily update simply lands in the next snapshot. Those days are listed in short_days and never count as low.
 """
 import bisect
 import datetime as dt
@@ -50,6 +52,7 @@ PARTIAL = 0.5        # a snapshot with fewer rows than this share of the previou
 LOW_DAY = 0.7        # low day: under this share of its local median, adjusted for the day of the week...
 MADE_UP = 0.5        # ...in a run whose shortfall the days around it don't make up by at least this share
 MADE_UP_DAYS = 3     # days on each side that can make it up
+SHORT_HOURS = 18     # a snapshot taken this soon after the one before (the collection moved) makes a short day
 
 
 # ---------- signals between two snapshots (id, dl_all, dl30) ----------
@@ -278,7 +281,7 @@ def settle_history(raw: pl.DataFrame, frozen: dict, min_frozen: float = FROZEN, 
     return hub, wins
 
 
-def low_days(hub: pl.DataFrame) -> list[str]:
+def low_days(hub: pl.DataFrame, short=()) -> list[str]:
     """Days still under LOW_DAY of their local median after stalls, rollbacks and gaps are handled, in runs that the
     MADE_UP_DAYS on each side don't make up by at least MADE_UP of their shortfall.
 
@@ -292,6 +295,7 @@ def low_days(hub: pl.DataFrame) -> list[str]:
     week = t.group_by("wd").agg(pl.col("r").median().alias("f"))
     t = t.join(week, on="wd", how="left").sort("day").with_columns((pl.col("med") * pl.col("f")).alias("exp"))
     days, tot, exp = t["day"].to_list(), t["tot"].to_list(), t["exp"].to_list()
+    shorts = {str(d) for d in short}
     n = len(days) - 2
     low = [exp[i] is not None and exp[i] > 0 and tot[i] < LOW_DAY * exp[i] for i in range(n)]
     out, i = [], 0
@@ -305,7 +309,7 @@ def low_days(hub: pl.DataFrame) -> list[str]:
         short = sum(exp[k] - tot[k] for k in range(i, j + 1))
         around = [k for k in range(max(0, i - MADE_UP_DAYS), min(len(days), j + 1 + MADE_UP_DAYS)) if not i <= k <= j]
         back = sum(max(0.0, tot[k] - exp[k]) for k in around if exp[k] is not None)
-        if back < MADE_UP * short:
+        if back < MADE_UP * short and not any(days[k].isoformat() in shorts for k in range(i, j + 1)):
             out += [days[k].isoformat() for k in range(i, j + 1)]
         i = j + 1
     return out
@@ -338,5 +342,5 @@ def settle(hub: pl.DataFrame, meta: dict, today: dt.date, min_frozen: float = FR
     # keep the last few weeks of signals: a window settles within a few days
     keep = (today - dt.timedelta(days=30)).isoformat()
     meta["frozen"] = {d: v for d, v in meta.get("frozen", {}).items() if d >= keep}
-    meta["low_days"] = low_days(hub)
+    meta["low_days"] = low_days(hub, meta.get("short_days", []))
     return hub, wins

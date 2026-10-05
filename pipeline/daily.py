@@ -26,7 +26,7 @@ def latest_snapshot(api):
     commits = api.list_repo_commits(SRC, repo_type="dataset")
     for c in commits:  # newest first
         if "models.parquet" in c.title:
-            return c.created_at.date(), c.commit_id
+            return c.created_at.date(), c.commit_id, c.created_at
     raise RuntimeError("no models.parquet commit found")
 
 
@@ -47,7 +47,7 @@ def main():
     a = ap.parse_args()
     api = HfApi()
     out = build.OUT = os.path.join(a.workdir, "data")
-    day, sha = latest_snapshot(api)
+    day, sha, taken = latest_snapshot(api)
     months = months_back(day, 3)
 
     # 1. bail out early if the dataset already has this day, then fetch current state
@@ -174,6 +174,13 @@ def main():
     build.SKIP = set(meta.get("skip_days", []))
     build.leaderboards(models, day, pairs)
     meta["days"] = sorted(set(meta["days"]) | {str(day)})
+    # a snapshot taken soon after the one before makes a short day, never a low one (see stalls.py)
+    if meta.get("snapshot_at"):
+        hours = (taken - dt.datetime.fromisoformat(meta["snapshot_at"])).total_seconds() / 3600
+        if hours < stalls.SHORT_HOURS:
+            meta["short_days"] = sorted(set(meta.get("short_days", [])) | {str(day)})
+            build.log("short day:", day, f"{hours:.1f}h after the previous snapshot")
+    meta["snapshot_at"] = taken.isoformat()
     meta.update(built=dt.datetime.now(dt.timezone.utc).isoformat(), models=models.height, families=len(fam_ids))
     json.dump(meta, open(os.path.join(out, "meta.json"), "w"))
 

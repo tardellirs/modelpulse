@@ -70,7 +70,7 @@ hub, wins = stalls.settle_history(raw, frozen | {d: 1.0 for d in set_aside}, min
 skip = sorted(set(stalls.skip_days(wins)) | {d.isoformat() for d in set_aside + partial})
 
 # settled history must not reopen in the daily job
-meta2 = dict(meta, skip_days=skip, low_days=stalls.low_days(hub), partial=[d.isoformat() for d in partial], frozen={d.isoformat(): v for d, v in frozen.items() if d >= days[-1] - dt.timedelta(days=30)})
+meta2 = dict(meta, skip_days=skip, low_days=stalls.low_days(hub, meta.get("short_days", [])), partial=[d.isoformat() for d in partial], frozen={d.isoformat(): v for d, v in frozen.items() if d >= days[-1] - dt.timedelta(days=30)})
 if state:
     meta2["rollback"] = state
 else:

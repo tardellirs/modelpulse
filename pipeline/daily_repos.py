@@ -27,7 +27,7 @@ SRC = "cfahlgren1/hub-stats"
 def latest_commit(api, kind):
     for c in api.list_repo_commits(SRC, repo_type="dataset"):  # newest first
         if f"{kind}.parquet" in (c.title or ""):
-            return c.created_at.date(), c.commit_id
+            return c.created_at.date(), c.commit_id, c.created_at
     raise RuntimeError(f"no {kind}.parquet commit found")
 
 
@@ -48,8 +48,8 @@ def main():
     api = HfApi()
     out = os.path.join(a.workdir, "repos")
     cache = os.path.join(a.workdir, "cache_repos")
-    ds_day, ds_sha = latest_commit(api, "datasets")
-    sp_day, sp_sha = latest_commit(api, "spaces")
+    ds_day, ds_sha, ds_taken = latest_commit(api, "datasets")
+    sp_day, sp_sha, _ = latest_commit(api, "spaces")
 
     rmeta = json.load(open(hf_hub_download(a.repo, "repos_meta.json", repo_type="dataset", local_dir=out)))
     if str(ds_day) in rmeta["datasets_days"] and str(sp_day) <= rmeta["spaces_last"] and not a.force:
@@ -111,6 +111,13 @@ def main():
         chain = [] if verdict == "hold" else [(base_day, base)] + [(dt.date.fromisoformat(d), snap(dt.date.fromisoformat(d))) for d in rb.released] + [(ds_day, today)]
     rmeta["skip_days"] = sorted(skip)
     build.SKIP = skip
+    # a snapshot taken soon after the one before makes a short day, never a low one (see stalls.py)
+    if rmeta.get("snapshot_at"):
+        hours = (ds_taken - dt.datetime.fromisoformat(rmeta["snapshot_at"])).total_seconds() / 3600
+        if hours < stalls.SHORT_HOURS:
+            rmeta["short_days"] = sorted(set(rmeta.get("short_days", [])) | {str(ds_day)})
+            build.log("short dataset day:", ds_day, f"{hours:.1f}h after the previous snapshot")
+    rmeta["snapshot_at"] = ds_taken.isoformat()
     # datasets renamed since the last snapshot keep their history under the new id (see build.find_renames)
     if chain:
         new_rn = build.find_renames(prev.select("id", "dl_all").drop_nulls(), today.select("id", "dl_all").drop_nulls())
@@ -167,7 +174,7 @@ def main():
             pl.col("created").cast(pl.Datetime))
     uses = br.build_uses(out, sp_path, refs)
     shutil.rmtree(cache, ignore_errors=True)
-    br.finish(out, ds, sp, uses, ds_days, sp_day, {k: rmeta[k] for k in ("skip_days", "low_days", "partial", "frozen", "rollback", "pending") if k in rmeta})
+    br.finish(out, ds, sp, uses, ds_days, sp_day, {k: rmeta[k] for k in ("skip_days", "low_days", "short_days", "snapshot_at", "partial", "frozen", "rollback", "pending") if k in rmeta})
 
     if a.no_upload:
         build.log("done (no upload)")
