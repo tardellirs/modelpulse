@@ -45,6 +45,30 @@ def stitched(store, view: str, rid: str, cols: list[str], skip: str, renames: st
         WHERE id IN ({marks}) AND day NOT IN (SELECT day FROM {skip})) GROUP BY day ORDER BY day""", [rid, *ids])
 
 
+def ranked_search(store, table: str, cols: list[str], pop: str, q: str, limit: int, title: bool = False):
+    """Search ids (and titles) by every word of the query, in any order ("qwen 0.6b" -> Qwen/Qwen3-0.6B), ranked by
+    whom the query means, then popularity: the exact id; the org's own repos ("qwen" -> Qwen/...); a repo named exactly
+    like the query if it has 5% of the top match's `pop` (not a small copy with that name); the words in the repo name
+    or a well-used org starting with the first word; then `pop`."""
+    words = q.strip().lower().split()
+    if not words:
+        return []
+    hay = lambda: "(lid LIKE ?" + (" OR ltitle LIKE ?" if title else "") + ")"
+    where = " AND ".join(hay() for _ in words)
+    wargs = [a for w in words for a in ([f"%{w}%"] * (2 if title else 1))]
+    full = " ".join(words)
+    org, name = "split_part(lid,'/',1)", "split_part(lid,'/',2)"
+    in_name = " AND ".join(f"(contains({name}, ?)" + (" OR contains(ltitle, ?))" if title else ")") for _ in words)
+    nargs = [a for w in words for a in ([w] * (2 if title else 1))]
+    same = f"({name} = ?" + (" OR ltitle = ?" if title else "") + ")"
+    sargs = [full] * (2 if title else 1)
+    sql = (f"SELECT {', '.join(cols)} FROM (SELECT *, max({pop}) OVER () AS top FROM {table} WHERE {where}) "
+           f"ORDER BY (lid = ?) DESC, list_contains(?, {org}) DESC, ({same} AND {pop} >= 0.05 * top) DESC, "
+           f"(NOT list_contains(?, {org}) AND (({in_name}) OR (starts_with({org}, ?) AND {pop} >= 0.05 * top))) DESC, "
+           f"{pop} DESC NULLS LAST LIMIT ?")
+    return store._rows(sql, [*wargs, full, words, *sargs, words, *nargs, words[0], limit])
+
+
 class Store:
     def __init__(self, root: str = DATA_DIR):
         self.root = root
@@ -192,15 +216,7 @@ class Store:
         return [r[0] for r in self.con().execute("SELECT id FROM models ORDER BY dl30 DESC NULLS LAST LIMIT ?", [n]).fetchall()]
 
     def search(self, q: str, limit: int = 12):
-        q = q.strip().lower()
-        if not q:
-            return []
-        return self._rows(
-            "SELECT id, pipeline_tag, dl30 FROM (SELECT id, lid, pipeline_tag, dl30, max(dl30) OVER () AS top FROM search_ix WHERE lid LIKE ?) "
-            "ORDER BY (lid = ?) DESC, (split_part(lid,'/',1) = ?) DESC, (split_part(lid,'/',2) = ? AND dl30 >= 0.05 * top) DESC, "
-            "(split_part(lid,'/',1) <> ? AND (contains(split_part(lid,'/',2), ?) OR (starts_with(split_part(lid,'/',1), ?) AND dl30 >= 0.05 * top))) DESC, "
-            "dl30 DESC NULLS LAST LIMIT ?",
-            [f"%{q}%", q, q, q, q, q, q, limit])
+        return ranked_search(self, "search_ix", ["id", "pipeline_tag", "dl30"], "dl30", q, limit)
 
     def hub(self, top: int = 7):
         tags = [r["pipeline_tag"] for r in self._rows(

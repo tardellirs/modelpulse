@@ -5,7 +5,7 @@ import urllib.request
 from datetime import date
 from functools import lru_cache
 
-from .data import load_renames, stitched
+from .data import load_renames, ranked_search, stitched
 
 
 @lru_cache(maxsize=4096)
@@ -47,6 +47,7 @@ class Repos:
         load_renames(con, p('datasets/renames.parquet').replace("''", "'"), "ds_renames")
         con.execute("CREATE TABLE ds_search AS SELECT id, lower(id) AS lid, dl30 FROM datasets")
         con.execute("CREATE TABLE sp_search AS SELECT id, lower(id) AS lid, lower(coalesce(title, '')) AS ltitle, likes FROM spaces")
+        con.execute("CREATE VIEW sp_view AS SELECT s.id, s.lid, s.ltitle, s.likes, sp.title, sp.emoji FROM sp_search s JOIN spaces sp USING (id)")
 
     # ---------- lookups ----------
 
@@ -108,24 +109,10 @@ class Repos:
             "WHERE u.src_kind = 'model' AND u.src = ? AND u.dst_kind = 'dataset' ORDER BY d.dl30 DESC NULLS LAST LIMIT 20", [mid])
 
     def search(self, q: str, limit: int = 6):
-        q = q.strip().lower()
-        if not q or not self.ok:
+        if not q.strip() or not self.ok:
             return {"datasets": [], "spaces": []}
-        # the exact id first, then the org's own repos ("qwen" -> Qwen/...), then a repo named exactly like the query if
-        # it counts among the matches (5% of the top one: "fineweb" -> HuggingFaceFW/fineweb, not a small copy called
-        # fineweb), then popularity
-        ds = self.s._rows("SELECT id, dl30 FROM (SELECT id, lid, dl30, max(dl30) OVER () AS top FROM ds_search WHERE lid LIKE ?) "
-                          "ORDER BY (lid = ?) DESC, (split_part(lid,'/',1) = ?) DESC, (split_part(lid,'/',2) = ? AND dl30 >= 0.05 * top) DESC, "
-                          "(split_part(lid,'/',1) <> ? AND (contains(split_part(lid,'/',2), ?) OR (starts_with(split_part(lid,'/',1), ?) AND dl30 >= 0.05 * top))) DESC, "
-                          "dl30 DESC NULLS LAST LIMIT ?", [f"%{q}%", q, q, q, q, q, q, limit])
-        sp = self.s._rows("SELECT id, likes, title, emoji FROM (SELECT s.id, s.lid, s.ltitle, s.likes, sp.title, sp.emoji, max(s.likes) OVER () AS top "
-                          "FROM sp_search s JOIN spaces sp USING (id) WHERE s.lid LIKE ? OR s.ltitle LIKE ?) "
-                          "ORDER BY (lid = ?) DESC, (split_part(lid,'/',1) = ?) DESC, "
-                          "((split_part(lid,'/',2) = ? OR ltitle = ?) AND likes >= 0.05 * top) DESC, "
-                          "(split_part(lid,'/',1) <> ? AND (contains(split_part(lid,'/',2), ?) OR contains(ltitle, ?) "
-                          "OR (starts_with(split_part(lid,'/',1), ?) AND likes >= 0.05 * top))) DESC, likes DESC NULLS LAST LIMIT ?",
-                          [f"%{q}%", f"%{q}%", q, q, q, q, q, q, q, q, limit])
-        return {"datasets": ds, "spaces": sp}
+        return {"datasets": ranked_search(self.s, "ds_search", ["id", "dl30"], "dl30", q, limit),
+                "spaces": ranked_search(self.s, "sp_view", ["id", "likes", "title", "emoji"], "likes", q, limit, title=True)}
 
     def new_spaces(self):
         """Spaces created per week, by SDK (the five biggest, the rest as other)."""
