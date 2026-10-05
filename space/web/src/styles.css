@@ -570,3 +570,6 @@ main { min-height: calc(100vh - 72px); }
 .ds-badge p { color: var(--ink-2); margin: 0 0 12px; }
 .new-spaces { margin: 4px 0 28px; padding-bottom: 24px; border-bottom: 2px solid var(--rule-2); }
 .new-spaces h3 { font: 600 var(--step-1) var(--font-display); margin-bottom: 8px; }
+
+/* a chart with fewer than two points */
+.chart-empty { display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 24px; color: var(--muted); font: 400 13px/1.5 var(--font-mono); border: 2px dashed var(--rule); border-radius: 12px; }

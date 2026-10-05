@@ -43,11 +43,17 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
   const padRef = useRef(0);
   // uPlot reports scale changes asynchronously, so remember the last range we set ourselves and ignore its echo
   const lastSet = useRef<[number, number] | null>(null);
-  const setX = (u: uPlot, min: number, max: number) => { lastSet.current = [min, max]; u.setScale("x", { min, max }); };
+  const setX = (u: uPlot, min: number, max: number) => {
+    // an empty or zero-width range would send uPlot looking for ticks forever and freeze the page
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return;
+    lastSet.current = [min, max]; u.setScale("x", { min, max });
+  };
+  // a chart needs two points; a repo tracked since yesterday has one
+  const enough = lines.some((l) => l.v.filter((x) => x != null).length >= 2);
 
   useEffect(() => {
     const el = box.current!;
-    if (!lines.length) return;
+    if (!lines.length || !enough) return;
     const rule = css("--rule-2"), ink = css("--ink"), mark = css("--mark"), surface = css("--surface");
     const mono = css("--font-mono");
     const font = `12px ${mono}`;
@@ -247,7 +253,7 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
 
   useEffect(() => {
     const u = plot.current;
-    if (!u) return;
+    if (!u || !(u.data[0] as number[]).length) return;
     const t = u.data[0] as number[];
     const p = padRef.current;
     if (range) setX(u, range[0] - p, range[1] + p);
@@ -256,6 +262,7 @@ export function Chart({ lines, range, log, markers = [], height = 360, stacked, 
 
   return (
     <div class="chart-box">
+      {!enough && <div class="chart-empty" style={{ height }}>Not enough days yet: the chart fills in as new daily snapshots come in.</div>}
       <div ref={box} onDblClick={() => onZoom?.(null)} />
       <div ref={tip} class="tip" style={{ display: "none" }} />
     </div>
