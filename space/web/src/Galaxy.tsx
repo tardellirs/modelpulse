@@ -132,7 +132,10 @@ function layout(g: GalaxyData): Layout {
 }
 
 type View = { k: number; cx: number; cy: number };
-type DrawOpts = { p: number; hidden: boolean[]; hover: number; sel: number; kFit: number; labelHits?: number[][]; labels?: number };
+/** A model shown inside its base model's galaxy: `mark` is 1 for it and everything built on it, 2 for the models between it
+ * and the sun; `ids` lists the first group, most downloaded first. */
+type Focus = { mark: Uint8Array; ids: Int32Array };
+type DrawOpts = { p: number; hidden: boolean[]; hover: number; sel: number; kFit: number; focus?: Focus | null; labelHits?: number[][]; labels?: number };
 
 const zoomFactor = (k: number, kFit: number) => Math.min(2.6, Math.max(1, Math.sqrt(k / kFit)));
 const sunRadius = (zf: number) => 22 + 6 * (zf - 1);
@@ -154,22 +157,33 @@ function draw(c: CanvasRenderingContext2D, W: number, H: number, v: View, g: Gal
   for (const r of L.rings) { c.beginPath(); c.arc(ox, oy, r * v.k * e, 0, TAU); c.stroke(); }
   c.setLineDash([]);
 
-  // lines from the most used derivatives to the model they come from
-  c.strokeStyle = INK; c.lineWidth = 1; c.globalAlpha = 0.16 * e; c.beginPath();
+  // lines from the most used derivatives to the model they come from; with a focus, the rest of the galaxy steps back
+  const fm = o.focus?.mark;
+  c.strokeStyle = INK; c.lineWidth = 1; c.globalAlpha = (fm ? 0.06 : 0.16) * e; c.beginPath();
   for (const i of L.links) {
     const p = g.nodes.parent[i];
-    if (o.hidden[relOf(g, i)]) continue;
+    if (o.hidden[relOf(g, i)] || fm?.[i] === 1) continue;
     c.moveTo(sx(x[p] * e), sy(y[p] * e)); c.lineTo(sx(x[i] * e), sy(y[i] * e));
   }
   c.stroke(); c.globalAlpha = 1;
+  if (o.focus) {
+    // the most used of them only: a big family drawn line by line turns into a solid fan
+    c.strokeStyle = INK; c.lineWidth = 1.2; c.globalAlpha = 0.35 * e; c.beginPath();
+    for (const i of o.focus.ids.subarray(1, 300)) {
+      if (o.hidden[relOf(g, i)]) continue;
+      const p = g.nodes.parent[i];
+      c.moveTo(sx(x[p] * e), sy(y[p] * e)); c.lineTo(sx(x[i] * e), sy(y[i] * e));
+    }
+    c.stroke(); c.globalAlpha = 1;
+  }
 
   // the belt: small models as soft dots, one pass per kind
   for (let r = 0; r < 4; r++) {
     if (o.hidden[r]) continue;
-    c.fillStyle = REL[r].color; c.globalAlpha = 0.5;
+    c.fillStyle = REL[r].color; c.globalAlpha = fm ? 0.14 : 0.5;
     const path = new Path2D();
     for (const i of L.byRel[r]) {
-      if (size[i] >= 5) continue;
+      if (size[i] >= 5 || fm?.[i] === 1) continue;
       const px = sx(x[i] * e), py = sy(y[i] * e), s = size[i] * zf;
       if (px < -s || py < -s || px > W + s || py > H + s) continue;
       if (s < 1.6) path.rect(px - s, py - s, s * 2, s * 2);
@@ -183,9 +197,25 @@ function draw(c: CanvasRenderingContext2D, W: number, H: number, v: View, g: Gal
     const i = L.order[k];
     if (i === 0 || size[i] < 5 || o.hidden[relOf(g, i)]) continue;
     const px = sx(x[i] * e), py = sy(y[i] * e), s = size[i] * zf;
+    c.globalAlpha = fm && !fm[i] ? 0.25 : 1;
     c.beginPath(); c.arc(px, py, s, 0, TAU);
     c.fillStyle = REL[relOf(g, i)].color; c.fill();
     c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
+  }
+  c.globalAlpha = 1;
+  // the focused model's own family on top, small ones outlined so they read against the faded belt
+  if (o.focus) {
+    // outlines only for a small family: thousands of them would merge into one dark mass
+    const outline = o.focus.ids.length <= 600;
+    c.lineWidth = 1; c.strokeStyle = INK;
+    for (const i of o.focus.ids) {
+      if (size[i] >= 5 || o.hidden[relOf(g, i)]) continue;
+      const px = sx(x[i] * e), py = sy(y[i] * e), s = Math.max(outline ? 2.6 : 1.8, size[i] * zf);
+      if (px < -s || py < -s || px > W + s || py > H + s) continue;
+      c.beginPath(); c.arc(px, py, s, 0, TAU);
+      c.fillStyle = REL[relOf(g, i)].color; c.fill();
+      if (outline) c.stroke();
+    }
   }
 
   // the sun, with the site's hard shadow
@@ -241,7 +271,8 @@ function draw(c: CanvasRenderingContext2D, W: number, H: number, v: View, g: Gal
   c.font = "600 13px 'Source Sans 3', system-ui, sans-serif";
   let drawn = 0;
   const label = (i: number, force = false) => {
-    const t = short(g.nodes.id[i]);
+    // the selected model by its full name: a fine-tune often shares its short name with the model it comes from
+    const t = force && o.focus ? g.nodes.id[i] : short(g.nodes.id[i]);
     if (!force && said.has(t)) return;
     const px = sx(x[i]), py = sy(y[i]), s = size[i] * zf;
     const right = Math.cos(L.ang[i]) >= -0.1;
@@ -256,6 +287,10 @@ function draw(c: CanvasRenderingContext2D, W: number, H: number, v: View, g: Gal
     drawn++;
   };
   if (o.sel > 0) label(o.sel, true);
+  if (o.focus) {
+    for (let j = g.nodes.parent[o.focus.ids[0]]; j > 0; j = g.nodes.parent[j]) label(j);
+    for (const i of o.focus.ids.subarray(0, 200)) if (drawn < max && !o.hidden[relOf(g, i)]) label(i);
+  }
   for (let k = 0; k < Math.min(L.n, 800) && drawn < max; k++) {
     const i = L.order[k];
     if (i > 0 && (g.nodes.dl30[i] || 0) > 0 && !o.hidden[relOf(g, i)]) label(i);
@@ -280,8 +315,9 @@ function highlight(c: CanvasRenderingContext2D, W: number, H: number, v: View, g
 
 const fitView = (L: Layout, W: number, H: number): View => ({ k: (Math.min(W, H) / 2 - 8) / L.extent, cx: 0, cy: 0 });
 
-function Orrery({ g, L, hidden, sel, hoverExt, onSel, flyTo }: {
-  g: GalaxyData; L: Layout; hidden: boolean[]; sel: number; hoverExt: number; onSel: (i: number) => void; flyTo: { i: number; n: number } | null;
+function Orrery({ g, L, focus, hidden, sel, hoverExt, onSel, flyTo }: {
+  g: GalaxyData; L: Layout; focus: Focus | null; hidden: boolean[]; sel: number; hoverExt: number; onSel: (i: number) => void;
+  flyTo: { i: number; n: number; zoom?: number } | null;
 }) {
   const box = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null);
   const st = useRef({ W: 0, H: 0, dpr: 1, view: { k: 1, cx: 0, cy: 0 } as View, kFit: 1, p: reduceMotion() ? 1 : 0, hover: -1, raf: 0, labels: [] as number[][] });
@@ -301,7 +337,7 @@ function Orrery({ g, L, hidden, sel, hoverExt, onSel, flyTo }: {
     c.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
     s.labels = [];
     const t0 = performance.now();
-    draw(c, s.W, s.H, s.view, g, L, { p: s.p, hidden: props.current.hidden, hover: -1, sel: props.current.sel, kFit: s.kFit, labelHits: s.labels });
+    draw(c, s.W, s.H, s.view, g, L, { p: s.p, hidden: props.current.hidden, hover: -1, sel: props.current.sel, kFit: s.kFit, focus, labelHits: s.labels });
     if (s.p >= 1) {
       const img = snap.current?.img ?? document.createElement("canvas");
       if (img.width !== cv.current!.width || img.height !== cv.current!.height) { img.width = cv.current!.width; img.height = cv.current!.height; }
@@ -361,6 +397,7 @@ function Orrery({ g, L, hidden, sel, hoverExt, onSel, flyTo }: {
       s.view = first ? fit : { ...s.view, k: s.view.k * (fit.k / s.kFit) };
       s.kFit = fit.k;
       paint();
+      if (first && pendingFly.current) { const f = pendingFly.current; pendingFly.current = null; fly(f); }
     };
     const ro = new ResizeObserver(resize);
     ro.observe(box.current!);
@@ -371,15 +408,19 @@ function Orrery({ g, L, hidden, sel, hoverExt, onSel, flyTo }: {
   useEffect(request, [hidden, sel]);
   useEffect(hoverChanged, [hoverExt]);
 
-  useEffect(() => {
-    if (!flyTo) return;
-    const s = st.current, from = { ...s.view };
-    const to = { k: Math.max(from.k, s.kFit * 3.5), cx: L.x[flyTo.i], cy: L.y[flyTo.i] };
+  /** Glide to a model; before the first layout (a big galaxy can keep the page busy that long) it waits for the size. */
+  const pendingFly = useRef<{ i: number; zoom?: number } | null>(null);
+  const fly = (f: { i: number; zoom?: number }) => {
+    const s = st.current;
+    if (!s.W) { pendingFly.current = f; return; }
+    const from = { ...s.view };
+    const to = { k: Math.max(from.k, s.kFit * (f.zoom ?? 3.5)), cx: L.x[f.i], cy: L.y[f.i] };
     animate(700, (u) => {
       const e = u < 0.5 ? 4 * u ** 3 : 1 - (-2 * u + 2) ** 3 / 2;
       s.view = { k: from.k * (to.k / from.k) ** e, cx: from.cx + (to.cx - from.cx) * e, cy: from.cy + (to.cy - from.cy) * e };
     }, true);
-  }, [flyTo]);
+  };
+  useEffect(() => { if (flyTo) fly(flyTo); }, [flyTo]);
 
   const zoomAt = (px: number, py: number, f: number) => {
     const s = st.current, v = s.view;
@@ -489,13 +530,13 @@ function Orrery({ g, L, hidden, sel, hoverExt, onSel, flyTo }: {
   );
 }
 
-async function shareImage(g: GalaxyData, L: Layout) {
+async function shareImage(g: GalaxyData, L: Layout, focus: Focus | null) {
   await Promise.all(["600 60px 'Fredoka'", "500 20px 'IBM Plex Mono'", "600 14px 'Source Sans 3'"].map((f) => document.fonts.load(f)));
   const W = 1600, H = 900, c = document.createElement("canvas");
   c.width = W; c.height = H;
   const x = c.getContext("2d")!;
   const k = (H / 2 - 20) / L.extent;
-  draw(x, W, H, { k, cx: -(1090 - W / 2) / k, cy: 0 }, g, L, { p: 1, hidden: [false, false, false, false], hover: -1, sel: -1, kFit: k, labels: 14 });
+  draw(x, W, H, { k, cx: -(1090 - W / 2) / k, cy: 0 }, g, L, { p: 1, hidden: [false, false, false, false], hover: -1, sel: focus ? focus.ids[0] : -1, kFit: k, focus, labels: 14 });
   const fade = x.createLinearGradient(0, 0, 640, 0);
   fade.addColorStop(0, "rgba(251,250,245,1)"); fade.addColorStop(0.8, "rgba(251,250,245,0.92)"); fade.addColorStop(1, "rgba(251,250,245,0)");
   x.fillStyle = fade; x.fillRect(0, 0, 640, H);
@@ -572,25 +613,65 @@ function Entry() {
 }
 
 export function Galaxy({ model }: { model?: string }) {
-  const [g, setG] = useState<GalaxyData | null>(null);
+  // the model's own galaxy, and, when it is itself a derivative, the galaxy of its base model with it inside
+  const [own, setOwn] = useState<GalaxyData | null>(null);
+  const [ctx, setCtx] = useState<{ g: GalaxyData; i: number } | null>(null);
+  const [wide, setWide] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [hidden, setHidden] = useState([false, false, false, false]);
   const [sel, setSel] = useState(-1);
   const [hoverRow, setHoverRow] = useState(-1);
-  const [fly, setFly] = useState<{ i: number; n: number } | null>(null);
+  const [fly, setFly] = useState<{ i: number; n: number; zoom?: number } | null>(null);
   const [q, setQ] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!model) return;
+    let live = true;
     document.title = `${model} galaxy: every model built on it · Model Pulse`;
-    setG(null); setErr(null); setSel(-1); setQ("");
+    setOwn(null); setCtx(null); setWide(true); setErr(null); setSel(-1); setQ("");
     get<GalaxyData>(`/api/galaxy/${model}`)
-      .then((d) => { setG(d); document.title = `${d.root.id} galaxy: ${d.total.toLocaleString("en")} models built on it · Model Pulse`; })
-      .catch((e) => setErr(e.message));
+      .then(async (d) => {
+        const top = d.lineage[d.lineage.length - 1];
+        let c: { g: GalaxyData; i: number } | null = null;
+        if (top) {
+          // a model deeper than the base galaxy reaches, or past its size cap, is not in it: then only its own galaxy is shown
+          const t = await get<GalaxyData>(`/api/galaxy/${top}`).catch(() => null);
+          const i = t ? t.nodes.id.indexOf(d.root.id) : -1;
+          if (t && i > 0) c = { g: t, i };
+        }
+        if (!live) return;
+        setOwn(d); setCtx(c);
+        if (c) setSel(c.i);
+        document.title = c ? `${d.root.id} in the ${c.g.root.id} galaxy · Model Pulse`
+          : `${d.root.id} galaxy: ${d.total.toLocaleString("en")} models built on it · Model Pulse`;
+      })
+      .catch((e) => live && setErr(e.message));
+    return () => { live = false; };
   }, [model]);
 
-  const L = useMemo(() => (g ? layout(g) : null), [g]);
+  const inCtx = wide && !!ctx;
+  const g = inCtx ? ctx!.g : own;
+  const Lown = useMemo(() => (own ? layout(own) : null), [own]);
+  const Lctx = useMemo(() => (ctx ? layout(ctx.g) : null), [ctx]);
+  const L = inCtx ? Lctx : Lown;
+  const focus = useMemo<Focus | null>(() => {
+    if (!ctx) return null;
+    const { parent, dl30 } = ctx.g.nodes, n = parent.length, f = ctx.i;
+    const mark = new Uint8Array(n);
+    mark[f] = 1;
+    for (let i = f + 1; i < n; i++) if (mark[parent[i]] === 1) mark[i] = 1; // parents always come before their children
+    for (let j = parent[f]; j > 0; j = parent[j]) mark[j] = 2;
+    const ids = Int32Array.from({ length: n }, (_, i) => i).filter((i) => mark[i] === 1 && i !== f).sort((p, q) => (dl30[q] || 0) - (dl30[p] || 0));
+    return { mark, ids: Int32Array.from([f, ...ids]) };
+  }, [ctx]);
+  // once the galaxy has drawn itself, glide toward the model
+  useEffect(() => {
+    if (!inCtx) return;
+    const t = setTimeout(() => setFly({ i: ctx!.i, n: Date.now(), zoom: 2.2 }), reduceMotion() ? 50 : 1000);
+    return () => clearTimeout(t);
+  }, [inCtx, ctx]);
+  const showWide = (on: boolean) => { setWide(on); setSel(on && ctx ? ctx.i : -1); setFly(null); setHidden([false, false, false, false]); setQ(""); };
   const lower = useMemo(() => (g ? g.nodes.id.map((s) => s.toLowerCase()) : []), [g]);
   const found = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -619,9 +700,12 @@ export function Galaxy({ model }: { model?: string }) {
   const root = g?.root;
   const [org, name] = model.includes("/") ? [model.split("/")[0], short(model)] : ["", model];
   const pick = (i: number) => { setSel(i); setQ(""); if (i > 0) setFly({ i, n: Date.now() }); };
-  const url = shareUrl({ view: "galaxy", model: root?.id ?? model });
-  const post = root ? `${fmtFull(g!.total)} models are built on ${root.id}. Here is its whole galaxy:` : "";
-  const top = g?.lineage.length ? g.lineage[g.lineage.length - 1] : null;
+  const url = shareUrl({ view: "galaxy", model: own?.root.id ?? model });
+  const post = !root ? "" : inCtx ? `${own!.root.id} in the ${root.id} galaxy, ${fmtFull(g!.total)} models built on ${short(root.id)}:`
+    : `${fmtFull(g!.total)} models are built on ${root.id}. Here is its whole galaxy:`;
+  // a derivative too deep (or too far down a huge galaxy) to be placed in its base model's galaxy still links to it
+  const top = !ctx && own?.lineage.length ? own.lineage[own.lineage.length - 1] : null;
+  const fi = ctx?.i ?? -1;
   const typeCounts = L ? [0, 1, 2, 3].map((r) => L.byRel[r].length) : [0, 0, 0, 0];
   const topList = L ? Array.from(L.order).filter((i) => i > 0).slice(0, 12) : [];
   const kind = (i: number) => REL[relOf(g!, i)];
@@ -637,20 +721,30 @@ export function Galaxy({ model }: { model?: string }) {
         <h1 class="model-name">{org && <><span class="org">{org}/</span><wbr /></>}<span class="hl">{name}</span></h1>
         <p class="g-lede">
           {!g ? "Mapping every model built on it…"
+            : inCtx ? <>A {REL[relOf(g, fi)].one} of {short(g.nodes.id[g.nodes.parent[fi]])}, {ORD[L!.depth[fi]]} generation in the galaxy of {short(root!.id)}
+                {", "}{own!.total ? <><b>{fmtFull(own!.total)}</b> {own!.total === 1 ? "model is" : "models are"} built on it, highlighted below</> : "with nothing built on it yet"}.
+                {" "}The whole galaxy has <b>{fmtFull(g.total)}</b> models, downloaded <b>{fmt(root!.fam_dl30)}</b> times in the last 30 days.</>
             : g.total ? <><b>{fmtFull(g.total)}</b> models are built on {name}, directly or through other derivatives. Together with the original they were downloaded <b>{fmt(root!.fam_dl30)}</b> times in the last 30 days.</>
               : <>No models on the Hub are built on {name} yet.</>}
         </p>
+        {ctx && own && own.total > 0 && (
+          <div class="seg g-mode" role="group" aria-label="What to show">
+            <button aria-pressed={wide} onClick={() => showWide(true)}>In the {short(ctx.g.root.id)} galaxy</button>
+            <button aria-pressed={!wide} onClick={() => showWide(false)}>Only what is built on it ({fmtFull(own.total)})</button>
+          </div>
+        )}
       </div>
 
       <div class="wrap o-layout">
         <div class="o-stage">
           {g && L && g.total > 0 ? (
-            <Orrery g={g} L={L} hidden={hidden} sel={sel} hoverExt={hoverRow} onSel={setSel} flyTo={fly} />
+            <Orrery key={inCtx ? "ctx" : "own"} g={g} L={L} focus={inCtx ? focus : null} hidden={hidden} sel={sel} hoverExt={hoverRow} onSel={setSel} flyTo={fly} />
           ) : (
             <div class="o-sky o-empty">{g ? <span>Nothing orbits this model yet.</span> : <span class="g-loading">Mapping the galaxy…</span>}</div>
           )}
           <ul class="o-key">
-            <li><span class="k-sun" aria-hidden="true" />{name} in the center</li>
+            <li><span class="k-sun" aria-hidden="true" />{root ? short(root.id) : name} in the center</li>
+            {inCtx && <li><span class="k-focus" aria-hidden="true" />{name} and what is built on it, highlighted</li>}
             <li><span class="k-ring" aria-hidden="true" />one orbit per generation</li>
             <li><span class="k-size" aria-hidden="true" />bigger planet, more downloads</li>
             <li><span class="k-line" aria-hidden="true" />line to the model it was made from</li>
@@ -662,7 +756,7 @@ export function Galaxy({ model }: { model?: string }) {
                 <button class="btn primary" disabled={saving} onClick={async () => {
                   setSaving(true);
                   try {
-                    const b = await shareImage(g, L);
+                    const b = await shareImage(g, L, inCtx ? focus : null);
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(b); a.download = `${g.root.id.replace("/", "_")}-galaxy.png`; a.click();
                     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -695,10 +789,12 @@ export function Galaxy({ model }: { model?: string }) {
                 <a class="id" href={hrefOf({ model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ model: g.nodes.id[sel] }); }}>{g.nodes.id[sel]}</a>
                 <span class="g-rel"><i style={{ background: kind(sel).color }} />{kind(sel).of} {short(g.nodes.id[g.nodes.parent[sel]])}, {ORD[L.depth[sel]]} generation</span>
                 <span class="n"><b>{fmtFull(g.nodes.dl30[sel])}</b> downloads in the last 30 days</span>
-                {L.sub[sel] > 1 && <span class="n"><b>{fmtFull(L.sub[sel] - 1)}</b> models built on it</span>}
+                {sel === fi && inCtx ? own!.total > 0 && <span class="n"><b>{fmtFull(own!.total)}</b> models built on it</span>
+                  : L.sub[sel] > 1 && <span class="n"><b>{fmtFull(L.sub[sel] - 1)}</b> models built on it</span>}
                 <div class="acts">
                   <a class="btn primary" href={hrefOf({ model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ model: g.nodes.id[sel] }); }}>Download history</a>
-                  {L.sub[sel] > 1 && <a class="btn" href={hrefOf({ view: "galaxy", model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: g.nodes.id[sel] }); }}>Its own galaxy</a>}
+                  {sel === fi && inCtx ? (own!.total > 0 && <button class="btn" onClick={() => showWide(false)}>Only what is built on it</button>)
+                  : (L.sub[sel] > 1 || inCtx) && <a class="btn" href={hrefOf({ view: "galaxy", model: g.nodes.id[sel] })} onClick={(e) => { e.preventDefault(); navigate({ view: "galaxy", model: g.nodes.id[sel] }); }}>{inCtx ? "Focus on it" : "Its own galaxy"}</a>}
                 </div>
               </div>
             )}
