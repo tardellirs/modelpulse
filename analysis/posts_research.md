@@ -314,3 +314,24 @@ App: https://huggingface.co/spaces/tardellirs/model-pulse
 Report: https://modelpulse.ifsp.dev/report
 Data: https://huggingface.co/datasets/modelpulse/model-pulse-data
 ```
+
+Published 2026-10-07 16:48 UTC as https://huggingface.co/posts/tardellirs/570535147315877 with the three images; the final links block became a single line, "Spaces: https://huggingface.co/spaces/tardellirs/model-pulse".
+
+## Follow-up: does the 5-minute dedup inflate robotics? (2026-10-07, hub-stats snapshot of today, mainSize = repo bytes)
+
+- HF docs: all files one IP fetches from one repo "within a 5-minute window" count as one download. Fixed vs restarting window is not documented.
+- Biggest repos cannot be full copies: genrobot2025/Gen-HumanEgo 62 TB with 363K dl30; nvidia GR00T X-Embodiment Sim 1.9 TB with 1.1M dl30.
+- Within robotics (74K datasets older than 60 days): rank corr(dl30, size) = 0.52; median dl30 by size decile 17 -> 86 (zero-like datasets: 16 -> 74).
+- Same slope outside robotics (zero likes, categorized): median 15 (<100 MB) -> 205 (>100 GB); robotics 26 -> 385.
+- Share of dl30 from repos >= 4 GB: robotics 61%, text-generation 50%, text-classification 58%, question-answering 16%.
+- Rank with repos >= 4 GB removed: text-generation 9.1M, question-answering 5.6M, robotics 5.3M (#3). Same under 1 GB (#3).
+- Scripts: scratchpad sizecheck*.py (copied to /opt/modelpulse/work/arun/).
+
+### Detailed pass (same day, Model Pulse monthly series x today's hub-stats mainSize; category = our pipeline_tag)
+- Correction to the line above: with repos >= 4 GB removed, robotics is #4 in Jul-Sep 2026 (3-month window), #3-#5 month by month. "#3" came from hub-stats' first task_category on one snapshot.
+- Rank of robotics, 3-month windows, all / <4 GB / <1 GB: Jul-Sep 2024 #24/#21/#20; Oct-Dec 2024 #22/#14/#13; Jul-Sep 2025 #2/#5/#5; Jul-Sep 2026 #2/#4/#4.
+- Share of robotics monthly downloads from repos >= 40 GB: 7-34% before Apr 2025, 26-68% since (usually ~50%).
+- Size elasticity of dl30 (log-log, controls likes and age), repos >= 4 GB: robotics 0.346, text-classification 0.355, image-to-text 0.314, text-generation 0.289, QA 0.261, ASR 0.205. Below 4 GB: robotics 0.123, others 0.06-0.20.
+- Counter switch 2024-10-21 -> 10-23 (dl30): hails/mmlu_no_train 28.7M -> 163K, lighteval/mmlu 3.9M -> 5.7K (dedup of repeated load_dataset). Robotics: lerobot/pusht 29.9K -> 4.5K, but charlesxu0124/functional-manipulation-benchmark 0 -> 26K, lerobot/berkeley_gnm_cory_hall 0 -> 11.8K (repos load_dataset never counted).
+- huggingface_hub 2.1.1 snapshot_download: per-file hf_hub_download (HEAD for metadata, then GET), 8 workers; cached re-downloads can skip the network via the tree cache.
+- Caveat: sizes are today's, so a repo that grew is binned by its current size.
