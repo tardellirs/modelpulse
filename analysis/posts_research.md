@@ -260,3 +260,57 @@ Thanks to @dipankarsarkar, whose comments on the last post fixed three data issu
 ```
 
 Next posts in the series (one strong finding every 1-2 weeks): downloads of 100B+ models grew 14x vs 2.6x under 10B (the mixture-of-experts shift, chart 06-model-size); the Hub's download counters stall on Wednesdays (for the data-minded).
+
+## Final draft, refreshed 2026-10-07 (data to 2026-10-06, after the 10-05 audit fixes)
+
+Numbers rerun on the server (explore_repos.py, explore_repos2.py): unchanged except FineWeb 629 -> 636 and the Spaces multiple, now stated per month (Oct 2025 vs late-2024 monthly average = 6.3x; the 3-month average in chart 12 is 4.8x). Adds the thanks for Spaces of the Week and #7 on trending (113 likes at 10:50 Brazil). Images unchanged: charts 13, 10, 12.
+
+```
+Robotics is now the second most downloaded dataset category on the Hub, after text generation.
+
+Robotics datasets got 13.7M downloads in September, ahead of text classification and question answering. Two years ago the category ranked 23rd. One in 7 new datasets is now robotics: most are LeRobot recordings of a few dozen pick-and-place demos on a low-cost SO-101 arm.
+
+I found this after adding datasets and Spaces to Model Pulse, which rebuilds daily history from @cfahlgren1's hub-stats snapshots. Two more findings:
+
+- In 2022, 36% of authors who list training data cited classic NLP sets like IMDb, SQuAD and GLUE. In 2026 it's 2.4%. Reasoning traces went from almost nothing to 12%, now the most cited kind.
+- In October 2025, 122K Spaces were created in a single month, 86K of them static sites, about 6x the monthly pace of late 2024. Likes given per month fell from about 35K to about 20K.
+
+New in the app: a page for every dataset, with daily downloads and the models trained on it (636 list FineWeb), a page for every Space, and rankings for both.
+
+Thank you to everyone who liked Model Pulse this week: it made Spaces of the Week and is #7 on trending. Thanks also to @dipankarsarkar, whose comments on the last post fixed three data issues. If a number looks wrong, tell me.
+
+App: https://huggingface.co/spaces/tardellirs/model-pulse
+Report: https://modelpulse.ifsp.dev/report
+Data: https://huggingface.co/datasets/modelpulse/model-pulse-data
+```
+
+## Fact-checked draft (2026-10-07, 11:50 Brazil) — supersedes the refreshed draft above
+
+Checks (scripts in the session scratchpad, run on the server in docker --memory 3g):
+- Robotics #2 holds whether a dataset counts under its first category (as in the app), under every category it declares, or split evenly; and after removing its top 10 datasets (10.4M of 13.4M dl30). #3 text-classification is half m-a-p/FineFineWeb (4.4M). No Reachy/Microduck effect (36 datasets, 19.5K dl30).
+- HF changed dataset download counting in Sept 2024 (before: only load_dataset calls; now any GET/HEAD, deduped per IP per repo per 5 min). Jul-Sep 2024 ranks use the old method, but robotics was also #23 in Oct 2024 under the new one. Robotics has been #2 since Oct 2025 (it was #1 in Sept 2025).
+- Robotics by downloads is new; by dataset count it was already reported (aiworld.eu Dec 2025, TechTimes May 2026).
+- Sept 2026 robotics datasets: 84% LeRobot; a sample of 300 info.json files gives median 29 episodes, ~19 s each, ~53% SO-100/101 (robot_type so_follower etc.); only ~25% have pick/place words in the name (many are policy rollouts), so "pick-and-place" was dropped.
+- Reasoning traces: 11.5% of 2026 authors, but 1,023 accounts cite u-10bei datasets (one course); without them 6.7-6.9%, below 2025 (8.6%), still the top theme (code 5.5, web 5.3). Number removed from the text; chart 10 still includes u-10bei, so swap it for chart 11.
+- Oct 2025 Spaces: 71,527 of the 86,482 static Spaces carry the deepsite-v3 tag, from 53K authors (not spam).
+
+Images: charts/13-robotics-rank.png, charts/11-spaces-sdk.png, charts/12-spaces-likes.png.
+
+```
+Robotics is now the second most downloaded dataset category on the Hub, after text generation.
+
+Robotics datasets got 13.7M downloads in September, ahead of text classification and question answering. Two years ago the category ranked 23rd. One in 7 new datasets is now robotics, mostly LeRobot recordings: typically a few dozen demos, about half of them on low-cost SO-100/SO-101 arms.
+
+I found this after adding datasets and Spaces to Model Pulse, which rebuilds daily history from @cfahlgren1's hub-stats snapshots. Two more findings:
+
+- In 2022, 36% of authors who list training data cited classic NLP sets like IMDb, SQuAD and GLUE. In 2026 it's 2.4%. Reasoning traces distilled from models like DeepSeek-R1 and Claude are now the most cited kind.
+- In October 2025, 122K Spaces were created, 71K of them websites built with DeepSite. That's about 6x the monthly pace of late 2024, while likes given per month fell from about 35K to about 20K.
+
+New in the app: a page for every dataset, with daily downloads and the models trained on it (636 list FineWeb), a page for every Space, and rankings for both.
+
+Thank you to everyone who liked Model Pulse this week: it made Spaces of the Week and is #7 on trending. Thanks also to @dipankarsarkar, whose comments on the last post fixed three data issues. If a number looks wrong, tell me.
+
+App: https://huggingface.co/spaces/tardellirs/model-pulse
+Report: https://modelpulse.ifsp.dev/report
+Data: https://huggingface.co/datasets/modelpulse/model-pulse-data
+```

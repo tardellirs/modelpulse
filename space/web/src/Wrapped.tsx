@@ -8,6 +8,7 @@ export type WrappedData = {
   author: string;
   period: { from: string; to: string };
   downloads: number;
+  downloads_all?: number;
   every_seconds: number;
   per_minute: number;
   rank: number;
@@ -57,6 +58,9 @@ const cadence = (d: WrappedData) => {
 };
 
 const short = (id: string) => id.split("/").slice(1).join("/") || id;
+
+/** The all-time total (as on the author page), when it says more than the year does. */
+const allTime = (d: WrappedData) => (d.downloads_all && d.downloads_all > d.downloads ? d.downloads_all : null);
 
 /** "A top-10 publisher", "top 3%"… never "top 0.00%". */
 const standing = (d: WrappedData) => {
@@ -111,10 +115,19 @@ function slides(d: WrappedData, active: number) {
       body: (
         <>
           <div class="w-kicker">Your models were downloaded</div>
-          <div class="w-big"><Count to={d.downloads} run={on(1)} /></div>
-          <p class="w-sub">times. That's {cadence(d)}.</p>
+          {allTime(d) ? (
+            <>
+              <div class="w-big"><Count to={allTime(d)!} run={on(1)} /></div>
+              <p class="w-sub">times in total. {fmt(d.downloads)} of them in the last 12 months: {cadence(d)}.</p>
+            </>
+          ) : (
+            <>
+              <div class="w-big"><Count to={d.downloads} run={on(1)} /></div>
+              <p class="w-sub">times. That's {cadence(d)}.</p>
+            </>
+          )}
           <Bars values={fullMonths(d).map((m) => m.downloads)} light />
-          <p class="w-mono">downloads by month</p>
+          <p class="w-mono">{allTime(d) ? "last 12 months, by month" : "downloads by month"}</p>
         </>
       ),
     },

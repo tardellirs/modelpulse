@@ -80,7 +80,7 @@ class Wrapped:
             k = d.replace(day=1)
             months[k] = months.get(k, 0) + v
 
-        models = con.execute("SELECT id, likes, created_at, pipeline_tag FROM models WHERE author = ?", [author]).fetchall()
+        models = con.execute("SELECT id, likes, created_at, pipeline_tag, dl_all FROM models WHERE author = ?", [author]).fetchall()
         tags = {m[0]: m[3] for m in models}
         likes_then = dict(con.execute(
             "SELECT id, arg_max(likes, day) FROM series WHERE day BETWEEN ? AND ? AND id IN (SELECT id FROM models WHERE author = ?) GROUP BY id",
@@ -106,6 +106,7 @@ class Wrapped:
             "author": author,
             "period": {"from": str(self.start + timedelta(days=1)), "to": str(self.last)},
             "downloads": year_dl,
+            "downloads_all": int(sum((m[4] or 0) for m in models)),  # the Hub's all-time counters, as on the author page
             "every_seconds": round(seconds / year_dl, 2),
             "per_minute": round(year_dl / (365 * 1440), 1),
             "rank": rank,
