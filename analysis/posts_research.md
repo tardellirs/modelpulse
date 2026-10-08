@@ -335,3 +335,12 @@ Published 2026-10-07 16:48 UTC as https://huggingface.co/posts/tardellirs/570535
 - Counter switch 2024-10-21 -> 10-23 (dl30): hails/mmlu_no_train 28.7M -> 163K, lighteval/mmlu 3.9M -> 5.7K (dedup of repeated load_dataset). Robotics: lerobot/pusht 29.9K -> 4.5K, but charlesxu0124/functional-manipulation-benchmark 0 -> 26K, lerobot/berkeley_gnm_cory_hall 0 -> 11.8K (repos load_dataset never counted).
 - huggingface_hub 2.1.1 snapshot_download: per-file hf_hub_download (HEAD for metadata, then GET), 8 workers; cached re-downloads can skip the network via the tree cache.
 - Caveat: sizes are today's, so a repo that grew is binned by its current size.
+
+### Dipankar's third comment (2026-10-08): swap log size for log file count
+- File counts from the API (`/api/datasets/{id}` siblings) for all 12,395 datasets >= 4 GB in 8 categories + a 1,339 random sample below 4 GB; same controls (likes, age), log dl30.
+- >= 4 GB, log files: robotics 0.306 +- 0.016, text-classification 0.345 +- 0.041, text-generation 0.334, QA 0.285, ASR 0.195, image-to-text 0.177. Pooled robotics x text-classification interaction: -0.036 +- 0.041 (size: +0.013 +- 0.072).
+- < 4 GB, log files: robotics 0.276, text-classification 0.360, text-generation 0.381 (wide CIs).
+- Both regressors: robotics files 0.264 / bytes 0.173; text-generation 0.315 / 0.046; text-classification 0.311 / 0.118.
+- Robotics >= 4 GB median dl30 per file: 2.25 (<=100 files), 0.49 (100-1K), 0.21 (1-5K), 0.07 (5-20K), 0.036 (>20K). Gen-HumanEgo 8.1/file ranks 273 of 5,089.
+- API siblings cap at 100,000 files: 195 repos hit it (75 robotics, 47% of robotics >= 4 GB dl30). Dropping them changes slopes by <= 0.015.
+- Scripts: scratchpad nfiles_fetch.py, nfiles_reg.py.
