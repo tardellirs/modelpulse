@@ -46,6 +46,12 @@ class Repos:
             con.execute("INSERT INTO ds_skip_days VALUES (?)", [d])
         load_renames(con, p('datasets/renames.parquet').replace("''", "'"), "ds_renames")
         con.execute("CREATE TABLE ds_search AS SELECT id, lower(id) AS lid, dl30 FROM datasets")
+        # the Wrapped name box finds dataset publishers too
+        con.execute("""CREATE OR REPLACE TABLE author_ix AS
+            SELECT author, any_value(la) AS la, sum(models)::BIGINT AS models, sum(datasets)::BIGINT AS datasets, sum(dl30) AS dl30 FROM (
+              SELECT author, la, models, 0 AS datasets, dl30 FROM author_ix
+              UNION ALL SELECT author, lower(author), 0, count(*), sum(dl30) FROM datasets WHERE author IS NOT NULL GROUP BY author)
+            GROUP BY author""")
         con.execute("CREATE TABLE sp_search AS SELECT id, lower(id) AS lid, lower(coalesce(title, '')) AS ltitle, likes FROM spaces")
         con.execute("CREATE VIEW sp_view AS SELECT s.id, s.lid, s.ltitle, s.likes, sp.title, sp.emoji FROM sp_search s JOIN spaces sp USING (id)")
 

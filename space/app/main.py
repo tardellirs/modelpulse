@@ -36,7 +36,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 logging.basicConfig(level=logging.INFO)
 store = Store()
 repos = store.repos = Repos(store)
-wrapped = Wrapped(store)
+wrapped = Wrapped(store, repos)
 def link_candidates():
     ranked = {r["id"] for rows in store.leaderboards.values() if isinstance(rows, list) for r in rows if r.get("id")}
     trending = set(jobs.trending_models())
@@ -54,7 +54,7 @@ def reload_store():
     global store, repos, wrapped
     store = Store()
     repos = store.repos = Repos(store)
-    wrapped = Wrapped(store)
+    wrapped = Wrapped(store, repos)
     _hub.cache_clear()
     badge_svg.cache_clear()
     _wrapped.cache_clear()
@@ -62,6 +62,7 @@ def reload_store():
     _galaxies.cache_clear()
     _og_model.cache_clear()
     _og_author.cache_clear()
+    _og_author_datasets.cache_clear()
     _og_dataset.cache_clear()
     _og_space.cache_clear()
     _og_galaxy.cache_clear()
@@ -207,16 +208,17 @@ def hub():
 
 
 @lru_cache(maxsize=512)
-def _wrapped(author: str):
+def _wrapped(author: str, kind: str | None):
     name = wrapped.find_author(author)
-    return wrapped.build(name) if name else None
+    return wrapped.build(name, kind) if name else None
 
 
 @app.get("/api/wrapped/{author}")
-def wrapped_api(author: str):
-    data = _wrapped(author.strip())
+def wrapped_api(author: str, kind: str | None = Query(None, pattern="^(models|datasets)$")):
+    data = _wrapped(author.strip(), kind)
     if not data:
-        raise HTTPException(404, f"We couldn't find downloads for models by {author} in the last 12 months. Check the spelling: it's the name in huggingface.co/<name>.")
+        what = kind or "models or datasets"
+        raise HTTPException(404, f"We couldn't find downloads for {what} by {author} in the last 12 months. Check the spelling: it's the name in huggingface.co/<name>.")
     return j(data)
 
 
@@ -435,6 +437,26 @@ def og_galaxy(mid: str):
     png = _og_galaxy(mid)
     if png is None:
         raise HTTPException(404, "No galaxy")
+    return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@lru_cache(maxsize=512)
+def _og_author_datasets(name: str):
+    author = wrapped.find_author(name) if repos.ok else None
+    if not author:
+        return None
+    r = store.con().execute("SELECT count(*), sum(dl30), sum(dl_all) FROM datasets WHERE author = ?", [author]).fetchone()
+    if not r[0]:
+        return None
+    top = store._rows("SELECT id, dl30 FROM datasets WHERE author = ? ORDER BY dl30 DESC NULLS LAST LIMIT 3", [author])
+    return og.author_card(author, {"models": r[0], "dl30": r[1] or 0, "dl_all": r[2] or 0}, top, "datasets")
+
+
+@app.get("/og/author/{name}/datasets.png")
+def og_author_datasets(name: str):
+    png = _og_author_datasets(name)
+    if png is None:
+        raise HTTPException(404, "Not tracked")
     return Response(png, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
 
 

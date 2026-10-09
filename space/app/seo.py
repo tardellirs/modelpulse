@@ -141,6 +141,8 @@ class Pages:
         if head == "galaxy":
             return self.galaxy(store, rest) if rest else self.galaxies(store)
         if head == "wrapped":
+            if len(parts) == 3 and parts[2] == "datasets":
+                return self.wrapped(parts[1], "datasets")
             return self.wrapped(parts[1] if len(parts) == 2 else None)
         if head == "report" and not rest:
             return self.report()
@@ -153,6 +155,8 @@ class Pages:
             path = f"/galaxy/{seg(model)}" if model else "/galaxy"
         elif view == "wrapped":
             path = f"/wrapped/{quote(author, safe='')}" if author else "/wrapped"
+            if author and q.get("kind") == "datasets":
+                path += "/datasets"
         elif view == "report":
             path = "/report"
         elif model:
@@ -401,7 +405,14 @@ class Pages:
                     path, body, image=f"{SITE}/og/galaxy/{seg(mid)}.png" if fam else f"{SITE}/og/model/{seg(mid)}.png", noindex=fam < 20,
                     ld=[crumbs(("Model Pulse", "/"), ("Galaxies", "/galaxy"), (mid, path))])
 
-    def wrapped(self, author: str | None) -> Page:
+    def wrapped(self, author: str | None, kind: str = "models") -> Page:
+        if author and kind == "datasets":
+            path = f"/wrapped/{quote(author, safe='')}/datasets"
+            return Page(f"{author}'s datasets, the last 12 months on Hugging Face · Model Pulse Wrapped",
+                        f"{author}'s datasets on the Hugging Face Hub, the last 12 months: downloads, the #1 dataset, the biggest week, the models trained on them, and their rank.",
+                        path, f'<nav>{a("/wrapped", "Model Pulse Wrapped")}</nav><h1>{e(author)} Wrapped: datasets</h1>'
+                              f"<p>{e(author)}'s datasets in the last 12 months on the Hugging Face Hub. {a('/author/' + quote(author, safe=''), 'See everything by ' + author)}.</p>",
+                        image=f"{SITE}/og/author/{quote(author, safe='')}/datasets.png", noindex=True)
         if author:
             path = f"/wrapped/{quote(author, safe='')}"
             return Page(f"{author}'s last 12 months on Hugging Face · Model Pulse Wrapped",
@@ -410,7 +421,7 @@ class Pages:
                               f"<p>{e(author)}'s last 12 months on the Hugging Face Hub. {a('/author/' + quote(author, safe=''), 'See all models by ' + author)}.</p>",
                         image=f"{SITE}/og/author/{quote(author, safe='')}.png", noindex=True)
         return Page("Model Pulse Wrapped: your last 12 months on Hugging Face",
-                    "Your last 12 months on the Hugging Face Hub in six cards: total downloads, your #1 model, your biggest week, the models built on yours, and where you rank.",
+                    "Your last 12 months on the Hugging Face Hub, for your models or your datasets: total downloads, your #1, your biggest week, the models built on yours, and where you rank.",
                     "/wrapped", f'<nav>{a("/", "Model Pulse")}</nav><h1>Model Pulse Wrapped</h1>'
                                 "<p>Type a Hugging Face username or organization to see its last 12 months on the Hub.</p>")
 

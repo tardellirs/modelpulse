@@ -91,7 +91,7 @@ class Store:
         con.execute(f"CREATE TABLE hub AS SELECT * FROM read_parquet('{p('hub_series.parquet')}')")
         con.execute("CREATE TABLE search_ix AS SELECT id, lower(id) AS lid, author, pipeline_tag, dl30 FROM models")
         # authors and orgs, for the Wrapped name box
-        con.execute("CREATE TABLE author_ix AS SELECT author, lower(author) AS la, count(*) AS models, sum(dl30) AS dl30 "
+        con.execute("CREATE TABLE author_ix AS SELECT author, lower(author) AS la, count(*) AS models, 0 AS datasets, sum(dl30) AS dl30 "
                     "FROM models WHERE author IS NOT NULL GROUP BY author")
         # snapshots from days when the Hub's counters stood still or went backwards (see pipeline/stalls.py); leaving
         # them out spreads the catch-up evenly
@@ -199,7 +199,7 @@ class Store:
             return []
         where = " AND ".join("la LIKE ?" for _ in words)
         full = "".join(words)
-        return self._rows(f"SELECT author, models, dl30 FROM author_ix WHERE {where} "
+        return self._rows(f"SELECT author, models, datasets, dl30 FROM author_ix WHERE {where} "
                           "ORDER BY (la = ?) DESC, starts_with(la, ?) DESC, dl30 DESC NULLS LAST LIMIT ?",
                           [*[f"%{w}%" for w in words], full, words[0], limit])
 

@@ -105,7 +105,7 @@ export const api = {
   dataset: (id: string) => get<DatasetResponse>(`/api/dataset/${id}`),
   space: (id: string) => get<SpaceResponse>(`/api/space/${id}`),
   searchAll: (q: string) => get<Found>(`/api/search/all?q=${encodeURIComponent(q)}`),
-  searchAuthors: (q: string) => get<{ author: string; models: number; dl30: number | null }[]>(`/api/search/authors?q=${encodeURIComponent(q)}`),
+  searchAuthors: (q: string) => get<{ author: string; models: number; datasets?: number; dl30: number | null }[]>(`/api/search/authors?q=${encodeURIComponent(q)}`),
   boards: (kind: "datasets" | "spaces") => get<Leaderboards>(`/api/leaderboards/${kind}`),
   newSpaces: () => get<{ sdks: string[]; week: string[]; sdk: string[]; n: number[] }>("/api/spaces/new"),
   meta: () => get<{ days: number; first: string; last: string; models: number; families: number }>("/api/meta"),
@@ -196,7 +196,7 @@ export function milestones(s: Series): Milestone[] {
 
 // ---------- url state (synced to the huggingface.co parent page) ----------
 
-export type Route = { model?: string; dataset?: string; space?: string; author?: string; compare?: string[]; view?: string };
+export type Route = { model?: string; dataset?: string; space?: string; author?: string; compare?: string[]; view?: string; kind?: "datasets" };
 
 /**
  * Inside the Hugging Face Space the app runs in an iframe and keeps its state in the query string, which the
@@ -213,6 +213,7 @@ export function readRoute(): Route {
     author: q.get("author") || undefined,
     compare: q.get("compare")?.split(",").filter(Boolean),
     view: q.get("view") || undefined,
+    kind: q.get("kind") === "datasets" ? "datasets" : undefined,
   };
   const p = location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
   if (p[0] === "model" && p.length > 1) r.model = p.slice(1).join("/");
@@ -220,7 +221,7 @@ export function readRoute(): Route {
   else if (p[0] === "space" && p.length > 1) r.space = p.slice(1).join("/");
   else if (p[0] === "author" && p[1]) r.author = p[1];
   else if (p[0] === "galaxy") { r.view = "galaxy"; if (p.length > 1) r.model = p.slice(1).join("/"); }
-  else if (p[0] === "wrapped") { r.view = "wrapped"; if (p[1]) r.author = p[1]; }
+  else if (p[0] === "wrapped") { r.view = "wrapped"; if (p[1]) r.author = p[1]; if (p[1] && p[2] === "datasets") r.kind = "datasets"; }
   else if (p[0] === "report") r.view = "report";
   return r;
 }
@@ -231,7 +232,7 @@ const seg = (id: string) => id.split("/").map(encodeURIComponent).join("/");
 export function pathOf(r: Route) {
   let path = "/";
   if (r.view === "galaxy") path = r.model ? `/galaxy/${seg(r.model)}` : "/galaxy";
-  else if (r.view === "wrapped") path = r.author ? `/wrapped/${encodeURIComponent(r.author)}` : "/wrapped";
+  else if (r.view === "wrapped") path = r.author ? `/wrapped/${encodeURIComponent(r.author)}${r.kind === "datasets" ? "/datasets" : ""}` : "/wrapped";
   else if (r.view === "report") path = "/report";
   else if (r.model) path = `/model/${seg(r.model)}`;
   else if (r.dataset) path = `/dataset/${seg(r.dataset)}`;
@@ -253,6 +254,7 @@ export function routeToQuery(r: Route) {
   if (r.author) q.set("author", r.author);
   if (r.compare?.length) q.set("compare", r.compare.join(","));
   if (r.view) q.set("view", r.view);
+  if (r.kind) q.set("kind", r.kind);
   return q.toString().replace(/%2F/g, "/").replace(/%2C/g, ",");
 }
 

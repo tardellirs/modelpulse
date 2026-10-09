@@ -54,9 +54,10 @@ function App() {
   const isGalaxy = route.view === "galaxy";
   const isHome = !route.model && !route.dataset && !route.space && !route.author && !isReport && !isWrapped && !isGalaxy;
   // Galaxy and Wrapped open on what is on screen: the model's galaxy, and the Wrapped of its owner (or of the author)
-  const ctxAuthor = route.author ?? (route.model?.includes("/") ? route.model.split("/")[0] : undefined);
+  const ctxAuthor = route.author ?? (route.model?.includes("/") ? route.model.split("/")[0] : route.dataset?.includes("/") ? route.dataset.split("/")[0] : undefined);
   const galaxyTo: Route = route.model ? { view: "galaxy", model: route.model } : { view: "galaxy" };
-  const wrappedTo: Route = ctxAuthor ? { view: "wrapped", author: ctxAuthor } : { view: "wrapped" };
+  // on a dataset page, the Wrapped of its owner's datasets
+  const wrappedTo: Route = ctxAuthor ? { view: "wrapped", author: ctxAuthor, kind: route.dataset && !route.author ? "datasets" : isWrapped ? route.kind : undefined } : { view: "wrapped" };
 
   return (
     <>
@@ -75,7 +76,7 @@ function App() {
         </div>
       </header>
       <main>
-        {isGalaxy ? <Galaxy model={route.model} key={route.model ?? "entry"} /> : isWrapped ? <Wrapped author={route.author} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.dataset ? <DatasetPage id={route.dataset} key={route.dataset} /> : route.space ? <SpacePage id={route.space} key={route.space} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
+        {isGalaxy ? <Galaxy model={route.model} key={route.model ?? "entry"} /> : isWrapped ? <Wrapped author={route.author} kind={route.kind} key={route.author ?? "entry"} /> : route.model ? <ModelPage route={route} key={route.model} /> : route.dataset ? <DatasetPage id={route.dataset} key={route.dataset} /> : route.space ? <SpacePage id={route.space} key={route.space} /> : route.author ? <AuthorPage route={route} key={route.author} /> : isReport ? <Report /> : <Home />}
       </main>
       <footer class="foot">
         <div class="wrap">

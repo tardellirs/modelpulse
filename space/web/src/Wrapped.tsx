@@ -23,8 +23,18 @@ export type WrappedData = {
   best_week: { week_of: string; downloads: number } | null;
   weeks: { week_of: string; downloads: number }[];
   months: { month: string; downloads: number }[];
-  ripple: { models: number; downloads_30d: number; top: { id: string; downloads_30d: number; relation: string } | null };
+  ripple: { models: number; downloads_30d: number; spaces?: number; top: { id: string; downloads_30d: number; relation: string; dataset?: string } | null };
+  kind?: Kind;
+  kinds?: Kind[];
+  tasks?: { total_30d: number; top: { task: string; downloads_30d: number; datasets: number }[] };
 };
+
+type Kind = "models" | "datasets";
+const isDs = (d: WrappedData) => d.kind === "datasets";
+/** "model" / "dataset", plural with n != 1 */
+const noun = (d: WrappedData, n = 2) => (isDs(d) ? "dataset" : "model") + (n === 1 ? "" : "s");
+const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const task = (t: string) => t.replace(/-/g, " ");
 
 const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -58,6 +68,18 @@ const cadence = (d: WrappedData) => {
 };
 
 const short = (id: string) => id.split("/").slice(1).join("/") || id;
+
+/** Task categories by share of the last 30 days, when enough of the author's downloads carry one. */
+const MIX = ["#ffd21e", "#fbfaf5", "#ff8a1f", "#3fd08a", "#7fb1ff"];
+const mix = (d: WrappedData) => {
+  const t = d.tasks;
+  if (!t || !t.top.length || !t.total_30d) return null;
+  // shares among the downloads of the five biggest categories
+  const tagged = t.top.reduce((a, r) => a + r.downloads_30d, 0);
+  if (tagged / t.total_30d < 0.3) return null;
+  const rows = t.top.map((r, k) => ({ ...r, share: r.downloads_30d / tagged, color: MIX[k % MIX.length] }));
+  return { rows, untagged: 1 - tagged / t.total_30d };
+};
 
 /** The all-time total (as on the author page), when it says more than the year does. */
 const allTime = (d: WrappedData) => (d.downloads_all && d.downloads_all > d.downloads ? d.downloads_all : null);
@@ -95,6 +117,10 @@ function Bars({ values, highlight, light }: { values: number[]; highlight?: numb
 
 function slides(d: WrappedData, active: number) {
   const on = (i: number) => active === i;
+  const m = isDs(d) ? mix(d) : null;
+  const order = ["intro", "downloads", "top", ...(m ? ["mix"] : []), "week", "ripple", "rank"];
+  const at = (k: string) => order.indexOf(k);
+  const count = order.length;
   const weekVals = d.weeks.map((w) => w.downloads);
   const bestIdx = d.best_week ? d.weeks.findIndex((w) => w.week_of === d.best_week!.week_of) : -1;
   const list: { key: string; tone: string; body: JSX.Element }[] = [
@@ -102,10 +128,10 @@ function slides(d: WrappedData, active: number) {
       key: "intro", tone: "yellow",
       body: (
         <>
-          <div class="w-kicker">Model Pulse Wrapped</div>
+          <div class="w-kicker">Model Pulse Wrapped{isDs(d) && <span class="w-edition">datasets</span>}</div>
           <div class="w-logo"><Logo size={88} /></div>
           <h2 class="w-title"><span class="w-name">{d.author}</span><br />on the Hub</h2>
-          <p class="w-sub">Your last 12 months, in six cards.</p>
+          <p class="w-sub">{isDs(d) ? "Your datasets' last 12 months" : "Your last 12 months"}, in {WORDS[count] ?? count} cards.</p>
           <p class="w-mono">{period(d)}</p>
         </>
       ),
@@ -114,7 +140,7 @@ function slides(d: WrappedData, active: number) {
       key: "downloads", tone: "blue",
       body: (
         <>
-          <div class="w-kicker">Your models were downloaded</div>
+          <div class="w-kicker">Your {noun(d)} were downloaded</div>
           {allTime(d) ? (
             <>
               <div class="w-big"><Count to={allTime(d)!} run={on(1)} /></div>
@@ -135,36 +161,80 @@ function slides(d: WrappedData, active: number) {
       key: "top", tone: "paper",
       body: d.top_model ? (
         <>
-          <div class="w-kicker">Your #1 model this year</div>
+          <div class="w-kicker">Your #1 {noun(d, 1)} this year</div>
           <h2 class="w-model"><span>{short(d.top_model.id)}</span></h2>
           <div class="w-big sm"><Count to={d.top_model.downloads} run={on(2)} format={fmt} /> <small>downloads</small></div>
-          <p class="w-sub">{Math.round(d.top_model.share * 100)}% of everything you served{d.top_model.task ? `, as ${d.top_model.task.replace(/-/g, " ")}` : ""}.</p>
+          <p class="w-sub">{Math.round(d.top_model.share * 100)}% of everything you served{d.top_model.task ? `, as ${task(d.top_model.task)}` : ""}.</p>
           {d.top_models.length > 1 && (
             <ol class="w-list" start={2}>
               {d.top_models.slice(1, 5).map((m) => <li key={m.id}><span>{short(m.id)}</span><b>{fmt(m.downloads)}</b></li>)}
             </ol>
           )}
         </>
-      ) : <p class="w-sub">No single model stood out this year.</p>,
+      ) : <p class="w-sub">No single {noun(d, 1)} stood out this year.</p>,
     },
+    ...(m ? [{
+      key: "mix", tone: "purple",
+      body: (
+        <>
+          <div class="w-kicker">What your data is for</div>
+          <h2 class="w-title sm">{m.rows[0].share >= 0.5 ? <>Mostly <span class="w-hl">{task(m.rows[0].task)}</span></> : <>A bit of <span class="w-hl">everything</span></>}</h2>
+          <div class={`w-mix${on(3) ? " run" : ""}`} aria-hidden="true">
+            {m.rows.map((r) => <span key={r.task} style={{ flexGrow: r.share, background: r.color }} />)}
+          </div>
+          <ul class="w-legend">
+            {m.rows.map((r) => (
+              <li key={r.task}><i style={{ background: r.color }} /><span>{task(r.task)}</span><b>{Math.round(r.share * 100) || "<1"}%</b><small>{fmtFull(r.datasets)} {r.datasets === 1 ? "dataset" : "datasets"}</small></li>
+            ))}
+          </ul>
+          <p class="w-mono">share of your downloads in the last 30 days, by task category{m.untagged >= 0.05 ? `. ${Math.round(m.untagged * 100)}% come from datasets with no category` : ""}</p>
+        </>
+      ),
+    }] : []),
     {
       key: "week", tone: "orange",
       body: d.best_week ? (
         <>
           <div class="w-kicker">Your biggest week</div>
           <h2 class="w-title sm">Week of {fmtDate(d.best_week.week_of, { month: "long", day: "numeric", year: "numeric" })}</h2>
-          <div class="w-big"><Count to={d.best_week.downloads} run={on(3)} /></div>
+          <div class="w-big"><Count to={d.best_week.downloads} run={on(at("week"))} /></div>
           <p class="w-sub">downloads in seven days.</p>
           <Bars values={weekVals} highlight={bestIdx} />
         </>
       ) : <p class="w-sub">Not enough weeks of data yet.</p>,
     },
-    {
+    isDs(d) ? {
+      key: "ripple", tone: "green",
+      body: d.ripple.models > 0 || (d.ripple.spaces ?? 0) > 0 ? (
+        <>
+          <div class="w-kicker">Trained on your data</div>
+          {d.ripple.models > 0 ? (
+            <>
+              <div class="w-big"><Count to={d.ripple.models} run={on(at("ripple"))} /></div>
+              <p class="w-sub">model{d.ripple.models === 1 ? "" : "s"} by other people list{d.ripple.models === 1 ? "s" : ""} your datasets as training data.{d.ripple.downloads_30d > 0 && <> {d.ripple.models === 1 ? "It was" : "Together they were"} downloaded <b>{fmt(d.ripple.downloads_30d)}</b> times last month.</>}</p>
+              {d.ripple.top && <p class="w-mono">{d.ripple.models > 1 ? "the biggest: " : ""}{d.ripple.top.id}, trained on {short(d.ripple.top.dataset ?? "")}</p>}
+              {(d.ripple.spaces ?? 0) > 0 && <div class="w-chips"><span>{fmtFull(d.ripple.spaces!)} Space{d.ripple.spaces === 1 ? "" : "s"} use{d.ripple.spaces === 1 ? "s" : ""} them too</span></div>}
+            </>
+          ) : (
+            <>
+              <div class="w-big"><Count to={d.ripple.spaces!} run={on(at("ripple"))} /></div>
+              <p class="w-sub">Space{d.ripple.spaces === 1 ? "" : "s"} by other people use{d.ripple.spaces === 1 ? "s" : ""} your datasets. No model lists them as training data yet.</p>
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <div class="w-kicker">Trained on your data</div>
+          <h2 class="w-title sm">No models list it yet.</h2>
+          <p class="w-sub">When someone names one of your datasets in a model card's <code>datasets:</code> field, that model shows up here. You published <b>{d.models_new}</b> new dataset{d.models_new === 1 ? "" : "s"} this year; one of them could be next.</p>
+        </>
+      ),
+    } : {
       key: "ripple", tone: "green",
       body: d.ripple.models > 0 ? (
         <>
           <div class="w-kicker">Your ripple effect</div>
-          <div class="w-big"><Count to={d.ripple.models} run={on(4)} /></div>
+          <div class="w-big"><Count to={d.ripple.models} run={on(at("ripple"))} /></div>
           <p class="w-sub">models by other people build on yours. Together they were downloaded <b>{fmt(d.ripple.downloads_30d)}</b> times last month.</p>
           {d.ripple.top && (
             <p class="w-mono">the biggest: {d.ripple.top.id} ({d.ripple.top.relation})</p>
@@ -182,13 +252,13 @@ function slides(d: WrappedData, active: number) {
       key: "rank", tone: "red",
       body: (
         <>
-          <div class="w-kicker">Among {fmtFull(d.authors_ranked)} publishers on the Hub</div>
-          <div class="w-big xl">#<Count to={d.rank} run={on(5)} /></div>
-          <p class="w-sub">{standing(d) ? (d.rank <= 1000 ? `A ${standing(d)} publisher by downloads this year.` : `That's the ${standing(d)} by downloads.`) : "by downloads this year."}</p>
+          <div class="w-kicker">Among {fmtFull(d.authors_ranked)} {isDs(d) ? "dataset publishers" : "publishers"} on the Hub</div>
+          <div class="w-big xl">#<Count to={d.rank} run={on(at("rank"))} /></div>
+          <p class="w-sub">{standing(d) ? (d.rank <= 1000 ? `A ${standing(d)} ${isDs(d) ? "dataset publisher" : "publisher"} by downloads this year.` : `That's the ${standing(d)} by downloads.`) : "by downloads this year."}</p>
           <div class="w-chips">
             <span>+{fmtFull(d.likes_gained)} likes</span>
-            <span>{fmtFull(d.models_new)} new models</span>
-            <span>{fmtFull(d.models_total)} models in total</span>
+            <span>{fmtFull(d.models_new)} new {noun(d, d.models_new)}</span>
+            <span>{fmtFull(d.models_total)} {noun(d, d.models_total)} in total</span>
           </div>
         </>
       ),
@@ -222,7 +292,7 @@ async function shareImage(d: WrappedData) {
   x.beginPath(); x.lineWidth = 6; x.lineJoin = "round"; x.lineCap = "round";
   x.moveTo(74, 100); x.lineTo(87, 100); x.lineTo(94, 81); x.lineTo(106, 117); x.lineTo(113, 100); x.lineTo(124, 100); x.stroke();
   text("Model Pulse Wrapped", 156, 116, "600 44px 'Fredoka'");
-  text(period(d), 62, 196, "500 26px 'IBM Plex Mono'", "#6E6C66");
+  text(isDs(d) ? `datasets · ${period(d)}` : period(d), 62, 196, "500 26px 'IBM Plex Mono'", "#6E6C66");
   // author
   x.font = "600 92px 'Fredoka'";
   const name = d.author.length > 20 ? d.author.slice(0, 19) + "…" : d.author;
@@ -231,14 +301,15 @@ async function shareImage(d: WrappedData) {
   text(name, 76, 314, "600 92px 'Fredoka'", INK, W - 170);
   // big stat
   card(62, 386, W - 124, 250, "#3B6FF5");
-  text("downloads in 12 months", 100, 446, "500 28px 'IBM Plex Mono'", "#fff");
+  text(isDs(d) ? "dataset downloads in 12 months" : "downloads in 12 months", 100, 446, "500 28px 'IBM Plex Mono'", "#fff");
   text(fmtFull(d.downloads), 96, 572, "600 118px 'Fredoka'", "#fff", W - 200);
   // tiles
   const tiles: [string, string, string][] = [
-    ["#1 model", d.top_model ? short(d.top_model.id) : "–", d.top_model ? `${fmt(d.top_model.downloads)} downloads` : ""],
+    [`#1 ${noun(d, 1)}`, d.top_model ? short(d.top_model.id) : "–", d.top_model ? `${fmt(d.top_model.downloads)} downloads` : ""],
     ["biggest week", d.best_week ? fmt(d.best_week.downloads) : "–", d.best_week ? `week of ${fmtDate(d.best_week.week_of, { month: "short", day: "numeric" })}` : ""],
     ["publisher rank", `#${fmtFull(d.rank)}`, standing(d) ?? `of ${fmt(d.authors_ranked)}`],
-    d.ripple.models > 0 ? ["built on yours", fmtFull(d.ripple.models), "models by others"] : ["published", fmtFull(d.models_new), d.models_new === 1 ? "new model this year" : "new models this year"],
+    d.ripple.models > 0 ? [isDs(d) ? "trained on yours" : "built on yours", fmtFull(d.ripple.models), "models by others"]
+      : ["published", fmtFull(d.models_new), `new ${noun(d, d.models_new)} this year`],
   ];
   const tw = (W - 124 - 32) / 2, th = 230;
   tiles.forEach(([k, v, s], i) => {
@@ -265,7 +336,7 @@ async function shareImage(d: WrappedData) {
 function Entry({ initial }: { initial?: string }) {
   const [v, setV] = useState(initial ?? "");
   // names on the Hub as you type, like the other search boxes
-  const [hits, setHits] = useState<{ author: string; models: number; dl30: number | null }[]>([]);
+  const [hits, setHits] = useState<{ author: string; models: number; datasets?: number; dl30: number | null }[]>([]);
   const [sel, setSel] = useState(-1);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -281,7 +352,7 @@ function Entry({ initial }: { initial?: string }) {
   return (
     <div class="wrap w-entry">
       <h1><Logo size={72} />Model Pulse <span class="hl">Wrapped</span></h1>
-      <p class="lede">Your last 12 months on the Hugging Face Hub, in six cards: total downloads, your #1 model, your biggest week, the models built on yours, and where you rank.</p>
+      <p class="lede">Your last 12 months on the Hugging Face Hub, for your models or your datasets: total downloads, your #1, your biggest week, the models built on yours (or trained on your data), and where you rank.</p>
       <form class="w-form" onSubmit={(e) => { e.preventDefault(); go(sel >= 0 && hits[sel] ? hits[sel].author : v); }}>
         <div class="search big">
           <input value={v} onInput={(e) => { setV((e.target as HTMLInputElement).value); setOpen(true); }} placeholder="Username or org, e.g. Qwen"
@@ -299,7 +370,7 @@ function Entry({ initial }: { initial?: string }) {
                 <li key={h.author} role="option" aria-selected={i === sel} onMouseEnter={() => setSel(i)}
                   onMouseDown={(e) => { e.preventDefault(); go(h.author); }}>
                   <span class="rid">{h.author}</span>
-                  <span class="rmeta">{fmtFull(h.models)} model{h.models === 1 ? "" : "s"} · {fmt(h.dl30 ?? 0)}/mo</span>
+                  <span class="rmeta">{[h.models ? `${fmtFull(h.models)} model${h.models === 1 ? "" : "s"}` : "", h.datasets ? `${fmtFull(h.datasets)} dataset${h.datasets === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ")} · {fmt(h.dl30 ?? 0)}/mo</span>
                 </li>
               ))}
             </ul>
@@ -319,7 +390,7 @@ function Entry({ initial }: { initial?: string }) {
   );
 }
 
-export function Wrapped({ author }: { author?: string }) {
+export function Wrapped({ author, kind }: { author?: string; kind?: Kind }) {
   const [d, setD] = useState<WrappedData | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [i, setI] = useState(0);
@@ -327,13 +398,15 @@ export function Wrapped({ author }: { author?: string }) {
   const stage = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = author ? `${author}'s last 12 months on Hugging Face · Model Pulse Wrapped` : "Model Pulse Wrapped: your last 12 months on Hugging Face";
+    document.title = author ? `${author}'s ${kind === "datasets" ? "datasets, the " : ""}last 12 months on Hugging Face · Model Pulse Wrapped` : "Model Pulse Wrapped: your last 12 months on Hugging Face";
     setD(null); setErr(null); setI(0);
     if (!author) return;
-    fetch(`${API_BASE}/api/wrapped/${encodeURIComponent(author)}`)
+    let live = true;
+    fetch(`${API_BASE}/api/wrapped/${encodeURIComponent(author)}${kind ? `?kind=${kind}` : ""}`)
       .then(async (r) => { const b = await r.json(); if (!r.ok) throw new Error(b.detail || "Something went wrong"); return b; })
-      .then(setD).catch((e) => setErr(e.message));
-  }, [author]);
+      .then((b) => { if (live) setD(b); }).catch((e) => { if (live) setErr(e.message); });
+    return () => { live = false; };
+  }, [author, kind]);
 
   const total = d ? slides(d, i).length + 1 : 0;
   const next = () => setI((v) => Math.min(total - 1, v + 1));
@@ -357,18 +430,29 @@ export function Wrapped({ author }: { author?: string }) {
   if (!d) return (
     <div class="wrap w-loading">
       <Logo size={64} />
-      <p>Crunching 12 months of downloads for <b>{author}</b>…</p>
+      <p>Crunching 12 months of {kind === "datasets" ? "dataset " : ""}downloads for <b>{author}</b>…</p>
     </div>
   );
 
   const list = slides(d, i);
-  const url = shareUrl({ view: "wrapped", author: d.author });
-  const post = `My last 12 months on the Hugging Face Hub: ${fmt(d.downloads)} downloads${standing(d) && (d.rank <= 1000 || (d.top_pct ?? 100) <= 10) ? `, ${standing(d)} of publishers` : ""}. Get your Model Pulse Wrapped:`;
+  const url = shareUrl({ view: "wrapped", author: d.author, kind: isDs(d) ? "datasets" : undefined });
+  const post = `${isDs(d) ? "My datasets' last 12 months" : "My last 12 months"} on the Hugging Face Hub: ${fmt(d.downloads)} downloads${standing(d) && (d.rank <= 1000 || (d.top_pct ?? 100) <= 10) ? `, ${standing(d)} of publishers` : ""}. Get your Model Pulse Wrapped:`;
   const isSummary = i === list.length;
 
   return (
     <div class="wrap w-page">
       <div class="w-stage" ref={stage}>
+        {(d.kinds?.length ?? 0) > 1 && (
+          <div class="w-kinds">
+            <div class="seg" role="group" aria-label={`${d.author}'s Wrapped for`}>
+              {d.kinds!.map((k) => (
+                <button key={k} aria-pressed={d.kind === k} onClick={() => { if (d.kind !== k) navigate({ view: "wrapped", author: d.author, kind: k === "datasets" ? "datasets" : undefined }); }}>
+                  {k === "datasets" ? "Datasets" : "Models"}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div class="w-progress" aria-hidden="true">
           {Array.from({ length: total }, (_, k) => <span key={k} class={k < i ? "done" : k === i ? "now" : ""} />)}
         </div>
@@ -384,12 +468,12 @@ export function Wrapped({ author }: { author?: string }) {
             <h2 class="w-title sm"><span class="w-name">{d.author}</span></h2>
             <div class="w-grid">
               <div class="t blue"><span>downloads</span><b>{fmt(d.downloads)}</b></div>
-              <div class="t"><span>#1 model</span><b class="s">{d.top_model ? short(d.top_model.id) : "–"}</b></div>
+              <div class="t"><span>#1 {noun(d, 1)}</span><b class="s">{d.top_model ? short(d.top_model.id) : "–"}</b></div>
               <div class="t"><span>biggest week</span><b>{d.best_week ? fmt(d.best_week.downloads) : "–"}</b></div>
-              <div class="t yellow"><span>publisher rank</span><b>#{fmtFull(d.rank)}</b></div>
+              <div class="t yellow"><span>{isDs(d) ? "dataset publisher rank" : "publisher rank"}</span><b>#{fmtFull(d.rank)}</b></div>
               {d.ripple.models > 0
-                ? <div class="t"><span>built on yours</span><b>{fmtFull(d.ripple.models)}</b></div>
-                : <div class="t"><span>new models</span><b>{fmtFull(d.models_new)}</b></div>}
+                ? <div class="t"><span>{isDs(d) ? "trained on yours" : "built on yours"}</span><b>{fmtFull(d.ripple.models)}</b></div>
+                : <div class="t"><span>new {noun(d)}</span><b>{fmtFull(d.models_new)}</b></div>}
               <div class="t"><span>likes gained</span><b>+{fmt(d.likes_gained)}</b></div>
             </div>
             <div class="w-actions">
@@ -398,7 +482,7 @@ export function Wrapped({ author }: { author?: string }) {
                 try {
                   const b = await shareImage(d);
                   const a = document.createElement("a");
-                  a.href = URL.createObjectURL(b); a.download = `${d.author}-model-pulse-wrapped.png`; a.click();
+                  a.href = URL.createObjectURL(b); a.download = `${d.author}${isDs(d) ? "-datasets" : ""}-model-pulse-wrapped.png`; a.click();
                   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
                 } finally { setSaving(false); }
               }}>{saving ? "Drawing…" : "Download image"}</button>
@@ -407,7 +491,7 @@ export function Wrapped({ author }: { author?: string }) {
               <button class="btn" onClick={() => navigator.clipboard?.writeText(url)}>Copy link</button>
             </div>
             <div class="w-more">
-              <a href={hrefOf({ author: d.author })} onClick={(e) => { e.preventDefault(); navigate({ author: d.author }); }}>See {d.author}'s models</a>
+              <a href={hrefOf({ author: d.author })} onClick={(e) => { e.preventDefault(); navigate({ author: d.author }); }}>See {d.author}'s {noun(d)}</a>
               <a href={hrefOf({ view: "wrapped" })} onClick={(e) => { e.preventDefault(); navigate({ view: "wrapped" }); }}>Try another name</a>
             </div>
             <div class="w-like"><LikeCta /></div>

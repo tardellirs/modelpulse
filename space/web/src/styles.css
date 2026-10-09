@@ -575,3 +575,26 @@ main { min-height: calc(100vh - 72px); }
 
 /* a chart with fewer than two points */
 .chart-empty { display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 24px; color: var(--muted); font: 400 13px/1.5 var(--font-mono); border: 2px dashed var(--rule); border-radius: 12px; }
+
+/* ---------- Wrapped: datasets ---------- */
+.w-kinds { display: flex; justify-content: center; margin-bottom: 14px; }
+.w-edition { margin-left: 8px; padding: 1px 8px 2px; border: 2px solid var(--ink); border-radius: 999px; background: var(--surface); color: var(--ink); letter-spacing: .02em; }
+.tone-purple { background: #7c5cff; color: #fff; }
+.w-hl { background: var(--mark); color: var(--ink); padding: 0 .16em; border-radius: 8px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.w-mix { display: flex; height: 38px; border: 3px solid var(--ink); border-radius: 12px; overflow: hidden; box-shadow: 4px 4px 0 var(--ink); background: var(--surface); }
+.w-mix span { flex-basis: 0; min-width: 4px; border-right: 2.5px solid var(--ink); }
+.w-mix span:last-child { border-right: 0; }
+.w-mix .rest, .w-legend i.rest { background: repeating-linear-gradient(45deg, rgba(27,27,31,.18) 0 4px, transparent 4px 9px), var(--surface); }
+.w-mix.run span { animation: w-grow .9s cubic-bezier(.2,.8,.2,1) both; transform-origin: left; }
+.w-mix.run span:nth-child(2) { animation-delay: .08s; } .w-mix.run span:nth-child(3) { animation-delay: .16s; }
+.w-mix.run span:nth-child(4) { animation-delay: .24s; } .w-mix.run span:nth-child(5) { animation-delay: .32s; }
+@keyframes w-grow { from { transform: scaleX(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .w-mix.run span { animation: none; } }
+.w-legend { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 7px; }
+.w-legend li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; font-size: 15px; }
+.w-legend i { width: 16px; height: 16px; border: 2.5px solid var(--ink); border-radius: 5px; }
+.w-legend span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
+.w-legend b { font: 600 15px var(--font-mono); }
+.w-legend small { grid-column: 2 / -1; margin-top: -6px; font: 400 12px var(--font-mono); opacity: .75; }
+.w-legend small:empty { display: none; }
+.w-sub code { font: 500 .85em var(--font-mono); background: rgba(255,255,255,.18); padding: 0 .3em; border-radius: 5px; }

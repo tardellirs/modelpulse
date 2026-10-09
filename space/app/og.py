@@ -51,7 +51,7 @@ def png(img) -> bytes:
     return out.getvalue()
 
 
-def author_card(author: str, summary: dict, models: list) -> bytes:
+def author_card(author: str, summary: dict, models: list, noun: str = "models") -> bytes:
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     header(d, "on Hugging Face")
@@ -60,7 +60,7 @@ def author_card(author: str, summary: dict, models: list) -> bytes:
     d.rounded_rectangle((52, 160, 52 + tw + 32, 160 + f.size + 26), 14, fill=MARK)
     d.text((68, 168), text, font=f, fill=INK)
     stats = [(compact(summary.get("dl30")), "downloads, last 30 days"), (compact(summary.get("dl_all")), "downloads all time"),
-             (f"{summary.get('models', 0):,}", "tracked models")]
+             (f"{summary.get('models', 0):,}", f"tracked {noun}")]
     x, y, w = 60, 300, 330
     for i, (v, label) in enumerate(stats):
         card(d, (x, y, x + w, y + 128), SURF if i else "#3B6FF5")
