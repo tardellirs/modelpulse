@@ -69,6 +69,11 @@ def main():
     meta_df = build.latest_meta(path).rename({"createdAt": "created_at", "lastModified": "last_modified", "trendingScore": "trending"})
     # the datasets each model lists as training data, for daily_repos.py
     build_repos.model_refs(path).write_parquet(os.path.join(a.workdir, "model_refs.parquet"))
+    try:  # the arXiv papers each model cites, for paper_models.parquet below (Paper Pulse); never worth failing the day over
+        papers = build_repos.paper_refs(path)
+    except Exception as e:
+        papers = None
+        build.log("paper refs failed:", str(e).splitlines()[0][:200])
     shutil.rmtree(os.path.join(a.workdir, "cache"), ignore_errors=True)  # 1.5 GB per day otherwise
     today = (snap.rename({"downloads": "dl30", "downloadsAllTime": "dl_all"})
              .with_columns(pl.lit(day).alias("day"), pl.col("dl30").cast(pl.Int32), pl.col("likes").cast(pl.Int32))
@@ -149,6 +154,11 @@ def main():
                 .explode("parent").drop_nulls("parent").filter(pl.col("parent") != pl.col("id"))
                 .sort(["parent", "dl30"], descending=[False, True], nulls_last=True))
     children.write_parquet(os.path.join(out, "children.parquet"), compression="zstd", row_group_size=100_000)
+    if papers is not None:
+        try:
+            build_repos.paper_models(papers, models, out)
+        except Exception as e:
+            build.log("paper_models failed:", str(e).splitlines()[0][:200])
 
     # 5. this month's family and author partitions (recomputed from the month's series)
     fam_ids = models.filter(pl.col("fam_members") >= build.FAMILY_MIN_MEMBERS)["id"].to_list()
@@ -189,6 +199,8 @@ def main():
         return
     changed = ["meta.json", "models.parquet", "children.parquet", "hub_series.parquet", "leaderboards.json", "renames.parquet",
                f"series/{m}.parquet", f"family_series/{m}.parquet", f"author_series/{m}.parquet"]
+    if os.path.exists(os.path.join(out, "paper_models.parquet")):
+        changed.append("paper_models.parquet")
     api.upload_folder(repo_id=a.repo, repo_type="dataset", folder_path=out, allow_patterns=changed,
                       commit_message=f"Daily update {day}")
     build.log("uploaded", day)

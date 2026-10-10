@@ -179,6 +179,27 @@ def model_refs(models_path):
             .with_columns(pl.lit("model").alias("src_kind"), pl.lit("dataset").alias("dst_kind"), pl.col("weight").cast(pl.Int64)))
 
 
+def paper_refs(models_path):
+    """Models and the arXiv papers their card cites (the Hub's arxiv: tags)."""
+    t = pl.from_arrow(pq.read_table(models_path, columns=["id", "tags"]))
+    return (t.explode("tags").filter(pl.col("tags").str.starts_with("arxiv:"))
+            .select(pl.col("id"), pl.col("tags").str.slice(6).str.strip_chars().alias("arxiv"))
+            .filter(pl.col("arxiv").str.contains(r"^\d{4}\.\d{4,5}$")).unique())
+
+
+def paper_models(refs, models, out):
+    """Per arXiv paper: how many models cite it and how much they are downloaded, with the five most downloaded.
+    Paper Pulse reads it to put a paper's upvotes next to its use."""
+    m = refs.join(models.select("id", "dl30", "dl_all"), on="id", how="inner")
+    top = (m.sort("dl30", descending=True, nulls_last=True).group_by("arxiv", maintain_order=True).head(5)
+           .group_by("arxiv").agg(pl.struct(pl.col("id"), pl.col("dl30").fill_null(0)).alias("top")))
+    pm = (m.group_by("arxiv").agg(pl.len().alias("models"), pl.col("dl30").sum(), pl.col("dl_all").sum())
+          .join(top, on="arxiv", how="left").sort("dl30", descending=True))
+    pm.write_parquet(os.path.join(out, "paper_models.parquet"), compression="zstd")
+    log("paper_models", pm.height, "papers,", m.height, "model citations")
+    return pm
+
+
 def build_uses(out, spaces_path, refs):
     created = pl.from_arrow(pq.read_table(spaces_path, columns=["id", "createdAt", "likes"])).rename(
         {"id": "src", "createdAt": "created", "likes": "weight"}).with_columns(pl.col("weight").cast(pl.Int64))
