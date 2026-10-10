@@ -15,22 +15,27 @@ const showTab = (e: { currentTarget: EventTarget | null }) => {
   }, 0);
 };
 
-const BOARDS: { key: string; label: string; note: string; author?: boolean }[] = [
+// hidden boards have no tab: they open from the table's sortable column headers
+const BOARDS: { key: string; label: string; note: string; author?: boolean; hidden?: boolean }[] = [
   { key: "gainers_7d", label: "Most downloaded this week", note: "Downloads in the last 7 days." },
   { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among models with at least 1,000 weekly downloads. Models whose week came mostly from a single day are left out." },
   { key: "breakouts", label: "New this month", note: "Models created in the last 30 days, by downloads this week, leaving out those whose week came almost all from a single day." },
   { key: "likes_7d", label: "Most liked this week", note: "Likes gained in the last 7 days, among models with at least 1,000 downloads this month." },
   { key: "families", label: "Biggest families", note: "Base models ranked by the 30-day downloads of the model plus all its derivatives." },
   { key: "authors_7d", label: "Organizations", note: "Authors ranked by downloads across all their models this week.", author: true },
+  { key: "dl30", label: "Most downloaded this month", note: "Downloads in the last 30 days.", hidden: true },
+  { key: "dl_all", label: "Most downloaded of all time", note: "All-time downloads, as the Hub counts them.", hidden: true },
 ];
 
 type RepoKind = "models" | "datasets" | "spaces";
-const REPO_BOARDS: Record<"datasets" | "spaces", { key: string; label: string; note: string }[]> = {
+const REPO_BOARDS: Record<"datasets" | "spaces", { key: string; label: string; note: string; hidden?: boolean }[]> = {
   datasets: [
     { key: "gainers_7d", label: "Most downloaded this week", note: "Dataset downloads in the last 7 days." },
     { key: "growth_7d", label: "Fastest growing", note: "Downloads this week compared with the average of the three weeks before, among datasets with at least 1,000 weekly downloads. Datasets whose week came mostly from a single day are left out." },
     { key: "breakouts", label: "New this month", note: "Datasets created in the last 30 days, by downloads this week, leaving out those whose week came almost all from a single day." },
     { key: "used_by_models", label: "Most used for training", note: "Datasets listed as training data by the most models." },
+    { key: "dl30", label: "Most downloaded this month", note: "Dataset downloads in the last 30 days.", hidden: true },
+    { key: "dl_all", label: "Most downloaded of all time", note: "All-time dataset downloads, as the Hub counts them.", hidden: true },
   ],
   spaces: [
     { key: "likes_7d", label: "Most liked this week", note: "Likes gained in the last 7 days. The Hub doesn't publish visits for Spaces, so likes are the measure." },
@@ -49,6 +54,14 @@ const SPACE_SORTS = [
   { key: "likes_30d", label: "30 days", title: "likes gained in the last 30 days" },
   { key: "most_liked", label: "Likes", title: "all-time likes" },
 ];
+// a column header that switches the table to the ranking by that column (▼ on the active one)
+function SortTh({ k, label, title, board, onSort }: { k: string; label: string; title: string; board: string; onSort: (k: string) => void }) {
+  return (
+    <th aria-sort={board === k ? "descending" : undefined}>
+      <button class="th-sort" aria-pressed={board === k} title={`Rank by ${title}`} onClick={() => onSort(k)}>{label}{board === k ? " ▼" : ""}</button>
+    </th>
+  );
+}
 const SDKS = [["", "All"], ["gradio", "Gradio"], ["docker", "Docker"], ["static", "Static"], ["streamlit", "Streamlit"]];
 
 const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -144,11 +157,11 @@ export function Home() {
                 </div>
               </div>
               <div class="seg lb-tabs" role="tablist">
-                {BOARDS.map((b) => (
+                {BOARDS.filter((b) => !b.hidden).map((b) => (
                   <button key={b.key} role="tab" aria-selected={board === b.key} onClick={(e) => { setBoard(b.key); showTab(e); }}>{b.label}</button>
                 ))}
               </div>
-              {lb ? <Board rows={rows} kind={board} author={!!cur.author} /> : <div class="skeleton" />}
+              {lb ? <Board rows={rows} kind={board} author={!!cur.author} onSort={setBoard} /> : <div class="skeleton" />}
             </>
           ) : <RepoBoards kind={repo} key={repo} />}
          </div>
@@ -158,7 +171,7 @@ export function Home() {
   );
 }
 
-function Board({ rows, kind, author }: { rows: Row[]; kind: string; author: boolean }) {
+function Board({ rows, kind, author, onSort }: { rows: Row[]; kind: string; author: boolean; onSort: (k: string) => void }) {
   const [n, setN] = useState(25);
   const go = (r: Row) => (author ? navigate({ author: r.author }) : navigate({ model: r.id }));
   const href = (r: Row) => hrefOf(author ? { author: r.author } : { model: r.id });
@@ -170,10 +183,19 @@ function Board({ rows, kind, author }: { rows: Row[]; kind: string; author: bool
             <tr>
               <th>{author ? "Organization" : "Model"}</th>
               {!author && <th>Last 4 weeks</th>}
-              {kind === "likes_7d" ? <th>Likes this week</th> : <th>This week</th>}
-              <th>Change</th>
-              <th>{kind === "families" ? "Family, 30 days" : "30 days"}</th>
-              <th>{author ? "Models" : kind === "likes_7d" ? "Likes" : "All time"}</th>
+              {author || kind === "families" ? (
+                // families and organizations rank other things: their columns stay plain
+                <><th>This week</th><th>Change</th><th>{kind === "families" ? "Family, 30 days" : "30 days"}</th><th>{author ? "Models" : "All time"}</th></>
+              ) : (
+                <>
+                  {kind === "likes_7d"
+                    ? <SortTh k="likes_7d" label="Likes this week" title="likes gained this week" board={kind} onSort={onSort} />
+                    : <SortTh k="gainers_7d" label="This week" title="downloads this week" board={kind} onSort={onSort} />}
+                  <SortTh k="growth_7d" label="Change" title="growth against the three weeks before" board={kind} onSort={onSort} />
+                  <SortTh k="dl30" label="30 days" title="downloads in the last 30 days" board={kind} onSort={onSort} />
+                  {kind === "likes_7d" ? <th>Likes</th> : <SortTh k="dl_all" label="All time" title="all-time downloads" board={kind} onSort={onSort} />}
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -234,6 +256,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
   const [board, setBoard] = useState(boards[0].key);
   const [n, setN] = useState(25);
   const [sdk, setSdk] = useState("");
+  const sort = (k: string) => { setBoard(k); setN(25); };
   useEffect(() => { api.boards(kind, sdk || undefined).then(setLb).catch(() => {}); }, [kind, sdk]);
   const cur = boards.find((b) => b.key === board)!;
   const rows = ((lb?.[board] ?? []) as any[]);
@@ -248,7 +271,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
         </div>
       </div>
       <div class="seg lb-tabs" role="tablist">
-        {boards.map((b) => <button key={b.key} role="tab" aria-selected={board === b.key} onClick={(e) => { setBoard(b.key); setN(25); showTab(e); }}>{b.label}</button>)}
+        {boards.filter((b) => !b.hidden).map((b) => <button key={b.key} role="tab" aria-selected={board === b.key} onClick={(e) => { setBoard(b.key); setN(25); showTab(e); }}>{b.label}</button>)}
       </div>
       {kind === "spaces" && (
         <div class="sdk-filter" role="group" aria-label="SDK">
@@ -262,16 +285,19 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
             <table class="list">
               <thead>
                 {kind === "datasets" ? (
-                  <tr><th>Dataset</th><th>Last 4 weeks</th><th>This week</th><th>Change</th><th>30 days</th><th>{board === "used_by_models" ? "Models trained on it" : "All time"}</th></tr>
+                  <tr>
+                    <th>Dataset</th><th>Last 4 weeks</th>
+                    <SortTh k="gainers_7d" label="This week" title="downloads this week" board={board} onSort={sort} />
+                    <SortTh k="growth_7d" label="Change" title="growth against the three weeks before" board={board} onSort={sort} />
+                    <SortTh k="dl30" label="30 days" title="downloads in the last 30 days" board={board} onSort={sort} />
+                    {board === "used_by_models"
+                      ? <SortTh k="used_by_models" label="Models trained on it" title="models that list it as training data" board={board} onSort={sort} />
+                      : <SortTh k="dl_all" label="All time" title="all-time downloads" board={board} onSort={sort} />}
+                  </tr>
                 ) : (
                   <tr>
                     <th>Space</th><th>Last 4 weeks</th>
-                    {SPACE_SORTS.map((c) => (
-                      <th key={c.key} aria-sort={board === c.key ? "descending" : undefined}>
-                        <button class="th-sort" aria-pressed={board === c.key} title={`Rank all Spaces by ${c.title}`}
-                          onClick={() => { setBoard(c.key); setN(25); }}>{c.label}{board === c.key ? " ▼" : ""}</button>
-                      </th>
-                    ))}
+                    {SPACE_SORTS.map((c) => <SortTh key={c.key} k={c.key} label={c.label} title={c.title} board={board} onSort={sort} />)}
                     <th>SDK</th>
                   </tr>
                 )}

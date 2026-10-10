@@ -363,6 +363,8 @@ def leaderboards(models, last, pairs=None):
     lb = {
         "updated": str(last),
         "gainers_7d": top(m, "dl_7d"),
+        "dl30": top(m, "dl30"),
+        "dl_all": top(m, "dl_all"),
         "growth_7d": top(steady(m.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000))), "growth_7d"),
         "breakouts": top(steady(m.filter(pl.col("created_at") >= dt.datetime.combine(last - dt.timedelta(days=30), dt.time())), SPIKY_NEW, 3), "dl_7d"),
         "likes_7d": top(m.filter(pl.col("dl30") >= 1_000), "likes_7d"),

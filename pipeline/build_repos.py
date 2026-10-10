@@ -228,6 +228,8 @@ def leaderboards(out, ds, sp, last_ds, last_sp):
     dlb = {
         "updated": str(last_ds),
         "gainers_7d": top(ds, "dl_7d", cols=dcols, spark=spark),
+        "dl30": top(ds, "dl30", cols=dcols, spark=spark),
+        "dl_all": top(ds, "dl_all", cols=dcols, spark=spark),
         "growth_7d": top(build.steady(ds.filter((pl.col("dl_base7d") >= 1_000) & (pl.col("dl30") >= 10_000))), "growth_7d", cols=dcols, spark=spark),
         "breakouts": top(build.steady(ds.filter(pl.col("created_at") >= since(last_ds)), build.SPIKY_NEW, 3), "dl_7d", cols=dcols, spark=spark),
         "used_by_models": top(ds, "used_by_models", cols=dcols, spark=spark),
