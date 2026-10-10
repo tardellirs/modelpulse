@@ -73,6 +73,10 @@ button { font: inherit; color: inherit; }
 .top nav a.nav-btn { padding: 7px 13px; border: var(--line); border-radius: 12px; background: var(--surface); font-weight: 600; box-shadow: var(--shadow-sm); }
 .top nav a.nav-btn:hover { background: var(--surface); box-shadow: 4px 4px 0 var(--ink); }
 .top nav a.nav-btn[aria-current="page"] { background: var(--mark); }
+/* the sister project, in its own coral */
+.top nav a.nav-btn.sister { display: inline-flex; align-items: center; gap: 7px; background: #ff8a6b; color: #1b1b1f; }
+.top nav a.nav-btn.sister:hover { background: #ff9c81; }
+.top nav a.nav-btn.sister svg { flex: none; }
 .top nav a.like, .like {
   display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px;
   background: var(--surface); color: var(--ink); text-decoration: none; font: 600 var(--step--1) var(--font-mono);
@@ -310,6 +314,8 @@ main { min-height: calc(100vh - 72px); }
   .top .wrap { gap: 10px; height: 64px; }
   .brand span { display: none; }
   .top nav a.hide-sm { display: none; }
+  .top nav a.nav-btn.sister span { display: none; }
+  .top nav a.nav-btn.sister { padding: 7px 9px; }
   .top nav { gap: 6px; }
   .top nav a.nav-btn { padding: 5px 9px; font-size: 12px; box-shadow: 2px 2px 0 var(--ink); }
   .like .t { display: none; }

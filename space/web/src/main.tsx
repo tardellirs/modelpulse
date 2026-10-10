@@ -4,7 +4,7 @@ import { useEffect, useState } from "preact/hooks";
 import { PATH_MODE, hrefOf, navigate, readRoute, type Route } from "./api";
 import { AuthorPage } from "./AuthorPage";
 import { Home } from "./Home";
-import { Logo } from "./Logo";
+import { Logo, PaperPulseLogo } from "./Logo";
 import { ModelPage } from "./ModelPage";
 import { Search } from "./Search";
 // fonts are served with the site rather than from Google Fonts: one less origin to connect to before text renders
@@ -72,6 +72,8 @@ function App() {
             <a class="btn nav-btn" aria-current={isGalaxy ? "page" : undefined} href={hrefOf(galaxyTo)} onClick={(e) => { e.preventDefault(); navigate(galaxyTo); }}>Galaxy</a>
             <a class="btn nav-btn" aria-current={isWrapped ? "page" : undefined} href={hrefOf(wrappedTo)} onClick={(e) => { e.preventDefault(); navigate(wrappedTo); }}>Wrapped</a>
             <a class={`btn nav-btn${isHome || isReport ? "" : " hide-sm"}`} aria-current={isReport ? "page" : undefined} href={hrefOf({ view: "report" })} onClick={(e) => { e.preventDefault(); navigate({ view: "report" }); }}>Report</a>
+            <a class="btn nav-btn sister" href="https://huggingface.co/spaces/tardellirs/paper-pulse" target="_blank" rel="noopener"
+              title="Paper Pulse: the day-by-day history of every Hugging Face Daily Paper"><PaperPulseLogo fill="#FFF8F5" /><span>Paper Pulse</span></a>
           </nav>
         </div>
       </header>
