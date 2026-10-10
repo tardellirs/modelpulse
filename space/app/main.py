@@ -69,12 +69,12 @@ def reload_store():
     _new_spaces.cache_clear()
     _space_boards.cache_clear()
     threading.Thread(target=jobs.indexnow, args=(changed_urls(),), daemon=True).start()
-    threading.Thread(target=warm_galaxies, daemon=True).start()
+    threading.Thread(target=warm, daemon=True).start()
 
 
 @app.on_event("startup")
 def start_jobs():
-    threading.Thread(target=warm_galaxies, daemon=True).start()
+    threading.Thread(target=warm, daemon=True).start()
     if not os.environ.get("HF_TOKEN"):
         return
     sha = open(os.path.join(jobs.DATA_DIR, ".sha")).read().strip() if os.path.exists(os.path.join(jobs.DATA_DIR, ".sha")) else None
@@ -231,6 +231,17 @@ def wrapped_api(author: str, kind: str | None = Query(None, pattern="^(models|da
 @lru_cache(maxsize=64)
 def _galaxy(mid: str):
     return store.galaxy(mid)
+
+
+def warm():
+    """The Spaces rankings for every SDK filter, then the biggest galaxies."""
+    for sdk in (None, "gradio", "docker", "static", "streamlit"):
+        try:
+            if repos.ok:
+                _space_boards(sdk)
+        except Exception:
+            logging.exception("Spaces rankings warmup failed for %s", sdk)
+    warm_galaxies()
 
 
 def warm_galaxies():
