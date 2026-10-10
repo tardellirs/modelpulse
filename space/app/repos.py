@@ -2,7 +2,7 @@
 import json
 import os
 import urllib.request
-from datetime import date
+from datetime import date, timedelta
 from functools import lru_cache
 
 from .data import load_renames, ranked_search, stitched
@@ -155,6 +155,41 @@ class Repos:
     def top_ids(self, kind: str, n: int):
         table, col = ("datasets", "dl30") if kind == "datasets" else ("spaces", "likes")
         return [r[0] for r in self.s.con().execute(f"SELECT id FROM {table} ORDER BY {col} DESC NULLS LAST LIMIT ?", [n]).fetchall()]
+
+
+# Spaces rankings, computed live from the spaces table so they can be filtered by SDK. The likes this week against
+# the weekly pace of the other 23 days of the month; only with 10+ likes in those days, so 0 -> 3 isn't "growth".
+SP_GROWTH = "CASE WHEN likes_30d - likes_7d >= 10 THEN likes_7d / ((likes_30d - likes_7d) * 7 / 23.0) - 1 END"
+SP_BOARDS = {
+    "likes_7d": ("TRUE", "likes_7d"),
+    "likes_30d": ("TRUE", "likes_30d"),
+    "rising": ("likes_7d >= 20 AND growth_7d IS NOT NULL", "growth_7d"),
+    "trending": ("trending IS NOT NULL", "trending"),
+    "breakouts": ("created_at >= ?", "likes_7d"),
+    "most_liked": ("TRUE", "likes"),
+}
+
+
+def space_boards(repos, sdk: str | None = None, n: int = 100):
+    """Every Spaces ranking, optionally for one SDK, each with a 30-day sparkline of daily likes."""
+    con = repos.s.con()
+    last = date.fromisoformat(str(repos.lb["spaces"]["updated"])[:10])
+    out = {"updated": str(last), "sdk": sdk}
+    for key, (where, by) in SP_BOARDS.items():
+        args = [last - timedelta(days=30)] if "?" in where else []
+        out[key] = repos.s._rows(
+            f"""SELECT id, title, emoji, sdk, likes, likes_7d, likes_30d, round(growth_7d, 3) AS growth_7d, trending, short_description
+                FROM (SELECT *, {SP_GROWTH} AS growth_7d FROM spaces) WHERE {where} {"AND sdk = ?" if sdk else ""}
+                ORDER BY {by} DESC NULLS LAST, likes DESC LIMIT {int(n)}""", args + ([sdk] if sdk else []))
+    ids = list({r["id"] for k in SP_BOARDS for r in out[k]})
+    sparks = dict(con.execute(
+        """SELECT id, list(greatest(0, likes - p) ORDER BY day) FROM (
+             SELECT id, day, likes, lag(likes) OVER (PARTITION BY id ORDER BY day) AS p FROM sp_series WHERE id IN (SELECT unnest(?)) AND day >= ?)
+           WHERE p IS NOT NULL GROUP BY id""", [ids, last - timedelta(days=29)]).fetchall()) if ids else {}
+    for k in SP_BOARDS:
+        for r in out[k]:
+            r["spark"] = sparks.get(r["id"], [])
+    return out
 
 
 def clean_day(v):

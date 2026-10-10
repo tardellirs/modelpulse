@@ -238,6 +238,7 @@ def leaderboards(out, ds, sp, last_ds, last_sp):
     slb = {
         "updated": str(last_sp),
         "likes_7d": top(sp, "likes_7d", cols=scols, spark=sspark),
+        "likes_30d": top(sp, "likes_30d", cols=scols, spark=sspark),
         "trending": top(sp, "trending", cols=scols, spark=sspark),
         "breakouts": top(sp.filter(pl.col("created_at") >= since(last_sp)), "likes_7d", cols=scols, spark=sspark),
         "most_liked": top(sp, "likes", cols=scols, spark=sspark),

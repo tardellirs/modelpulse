@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import jobs, og, seo
 from .data import Store
-from .repos import Repos, legacy_id
+from .repos import Repos, legacy_id, space_boards
 from .wrapped import Wrapped
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -67,6 +67,7 @@ def reload_store():
     _og_space.cache_clear()
     _og_galaxy.cache_clear()
     _new_spaces.cache_clear()
+    _space_boards.cache_clear()
     threading.Thread(target=jobs.indexnow, args=(changed_urls(),), daemon=True).start()
     threading.Thread(target=warm_galaxies, daemon=True).start()
 
@@ -155,11 +156,16 @@ def space(rid: str):
     return j({"space": clean(s), "series": repos.space_series(rid), "uses": repos.space_uses(rid)})
 
 
+@lru_cache(maxsize=8)
+def _space_boards(sdk):
+    return space_boards(repos, sdk)
+
+
 @app.get("/api/leaderboards/{kind}")
-def leaderboards_kind(kind: str):
+def leaderboards_kind(kind: str, sdk: str | None = Query(None, pattern="^(gradio|docker|static|streamlit)$")):
     if not repos.ok or kind not in ("datasets", "spaces"):
         raise HTTPException(404, "No such leaderboard")
-    return j(repos.lb[kind])
+    return j(_space_boards(sdk) if kind == "spaces" else repos.lb[kind])
 
 
 @lru_cache(maxsize=1)

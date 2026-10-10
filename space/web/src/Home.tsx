@@ -34,11 +34,22 @@ const REPO_BOARDS: Record<"datasets" | "spaces", { key: string; label: string; n
   ],
   spaces: [
     { key: "likes_7d", label: "Most liked this week", note: "Likes gained in the last 7 days. The Hub doesn't publish visits for Spaces, so likes are the measure." },
+    { key: "likes_30d", label: "Most liked this month", note: "Likes gained in the last 30 days." },
+    { key: "rising", label: "Rising", note: "Spaces picking up speed: likes this week against their weekly pace over the rest of the last 30 days, among Spaces with at least 20 likes this week and 10 in the weeks before." },
     { key: "trending", label: "Trending", note: "The Hub's own trending score, from the latest snapshot." },
     { key: "breakouts", label: "New this month", note: "Spaces created in the last 30 days, by likes gained this week." },
     { key: "most_liked", label: "Most liked", note: "All-time likes." },
   ],
 };
+
+// the Spaces table's like columns double as sort buttons: each one switches to the ranking of all Spaces by that column
+const SPACE_SORTS = [
+  { key: "likes_7d", label: "Likes this week", title: "likes gained this week" },
+  { key: "rising", label: "Change", title: "how much faster they gain likes than before" },
+  { key: "likes_30d", label: "30 days", title: "likes gained in the last 30 days" },
+  { key: "most_liked", label: "Likes", title: "all-time likes" },
+];
+const SDKS = [["", "All"], ["gradio", "Gradio"], ["docker", "Docker"], ["static", "Static"], ["streamlit", "Streamlit"]];
 
 const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const PALETTE = ["--c1", "--c2", "--c3", "--c4", "--c5"];
@@ -222,7 +233,8 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
   const [lb, setLb] = useState<Leaderboards | null>(null);
   const [board, setBoard] = useState(boards[0].key);
   const [n, setN] = useState(25);
-  useEffect(() => { api.boards(kind).then(setLb).catch(() => {}); }, [kind]);
+  const [sdk, setSdk] = useState("");
+  useEffect(() => { api.boards(kind, sdk || undefined).then(setLb).catch(() => {}); }, [kind, sdk]);
   const cur = boards.find((b) => b.key === board)!;
   const rows = ((lb?.[board] ?? []) as any[]);
   const route = (r: any) => (kind === "datasets" ? { dataset: r.id } : { space: r.id });
@@ -238,6 +250,12 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
       <div class="seg lb-tabs" role="tablist">
         {boards.map((b) => <button key={b.key} role="tab" aria-selected={board === b.key} onClick={(e) => { setBoard(b.key); setN(25); showTab(e); }}>{b.label}</button>)}
       </div>
+      {kind === "spaces" && (
+        <div class="sdk-filter" role="group" aria-label="SDK">
+          <span>SDK</span>
+          {SDKS.map(([k, label]) => <button key={k} aria-pressed={sdk === k} onClick={() => { setSdk(k); setN(25); }}>{label}</button>)}
+        </div>
+      )}
       {!lb ? <div class="skeleton" /> : (
         <>
           <div class="table-scroll">
@@ -246,7 +264,16 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
                 {kind === "datasets" ? (
                   <tr><th>Dataset</th><th>Last 4 weeks</th><th>This week</th><th>Change</th><th>30 days</th><th>{board === "used_by_models" ? "Models trained on it" : "All time"}</th></tr>
                 ) : (
-                  <tr><th>Space</th><th>Last 4 weeks</th><th>Likes this week</th><th>30 days</th><th>Likes</th><th>SDK</th></tr>
+                  <tr>
+                    <th>Space</th><th>Last 4 weeks</th>
+                    {SPACE_SORTS.map((c) => (
+                      <th key={c.key} aria-sort={board === c.key ? "descending" : undefined}>
+                        <button class="th-sort" aria-pressed={board === c.key} title={`Rank all Spaces by ${c.title}`}
+                          onClick={() => { setBoard(c.key); setN(25); }}>{c.label}{board === c.key ? " ▼" : ""}</button>
+                      </th>
+                    ))}
+                    <th>SDK</th>
+                  </tr>
                 )}
               </thead>
               <tbody>
@@ -258,6 +285,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
                         {kind === "spaces" && r.emoji ? `${r.emoji} ` : ""}{kind === "spaces" && r.title ? r.title : r.id}
                       </a>
                       <span class="sub" style={{ paddingLeft: "2.5em" }}>{kind === "spaces" ? r.id : taskLabel(r.pipeline_tag)}</span>
+                      {kind === "spaces" && r.short_description && <span class="sub desc" style={{ paddingLeft: "2.5em" }} title={r.short_description}>{r.short_description}</span>}
                     </td>
                     <td><Sparkline v={r.spark ?? []} color={kind === "spaces" ? "var(--c3)" : undefined} /></td>
                     {kind === "datasets" ? (
@@ -270,6 +298,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
                     ) : (
                       <>
                         <td><b>+{fmtFull(r.likes_7d)}</b></td>
+                        <td class={r.growth_7d == null ? "muted" : r.growth_7d >= 0 ? "up" : "down"}>{fmtPct(r.growth_7d)}</td>
                         <td>+{fmtFull(r.likes_30d)}</td>
                         <td>{fmt(r.likes)}</td>
                         <td class="muted">{r.sdk ?? "–"}</td>
@@ -280,6 +309,7 @@ function RepoBoards({ kind }: { kind: "datasets" | "spaces" }) {
               </tbody>
             </table>
           </div>
+          {!rows.length && <p class="chart-note">No {sdk ? `${SDKS.find(([k]) => k === sdk)![1]} ` : ""}Spaces in this ranking this week.</p>}
           {rows.length > n && <button class="btn" style={{ marginTop: 16 }} onClick={() => setN(n + 25)}>Show 25 more</button>}
         </>
       )}
