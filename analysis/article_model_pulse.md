@@ -4,12 +4,12 @@ Every model page on the Hub shows one number: downloads in the last 30 days. Tha
 
 [Model Pulse](https://huggingface.co/spaces/tardellirs/model-pulse) fills that gap. It rebuilds the day-by-day history of every model, dataset and Space on the Hub, back to July 2024, and publishes all of it as an [open dataset](https://huggingface.co/datasets/modelpulse/model-pulse-data).
 
-![Model Pulse comparing Llama-3.1-8B-Instruct, Qwen2.5-7B-Instruct and Qwen3-8B](article_images/01-compare-llama-qwen.png)
-*Rolling 30-day downloads since July 2024: Llama-3.1-8B-Instruct (blue) against Qwen2.5-7B-Instruct (orange) and Qwen3-8B (green). Straight stretches are gaps in the source data.*
+![The Llama-3.1-8B galaxy on Model Pulse: the family grows out of the base model, then search zooms into Hermes 3 and everything built on it](article_images/02-galaxy-llama-3.1-8b.gif)
+*The [Llama-3.1-8B galaxy](https://huggingface.co/spaces/tardellirs/model-pulse?model=meta-llama%2FLlama-3.1-8B&view=galaxy): 16,012 models built on it, and the family of Hermes 3 inside it.*
 
 ## TL;DR
 
-- **What it is:** daily download and like history for 1.62M models and 1.06M datasets, and like history for 104K Spaces, from 686 daily snapshots since 2024-07-29.
+- **What it is:** daily download and like history for 1.64M models and about 1.1M datasets, and like history for 100K+ Spaces, from 690 daily snapshots since 2024-07-29.
 - **What you can do with it:**
   - chart any model daily, weekly or all-time, and compare up to five;
   - see every quantization, fine-tune, adapter and merge built on a model, drawn as a galaxy;
@@ -20,6 +20,9 @@ Every model page on the Hub shows one number: downloads in the last 30 days. Tha
 
 ## What a single number hides
 
+![Model Pulse comparing Llama-3.1-8B-Instruct, Qwen2.5-7B-Instruct and Qwen3-8B](article_images/01-compare-llama-qwen.png)
+*Rolling 30-day downloads since July 2024: Llama-3.1-8B-Instruct (blue) against Qwen2.5-7B-Instruct (orange) and Qwen3-8B (green). Straight stretches are gaps in the source data.*
+
 Here are three things that only show up once you have the history. Each one comes from a feature of the app.
 
 ### 1. Nearly half of all downloads go to derivatives
@@ -28,15 +31,11 @@ In March 2025, 18% of the Hub's model downloads went to derivatives: models whos
 
 ![Share of monthly downloads going to derivatives](article_images/05-derivatives-share.png)
 
-That changes how you should read a model's reach. 6,358 models build on [Qwen3-8B](https://huggingface.co/spaces/tardellirs/model-pulse?model=Qwen/Qwen3-8B), directly or through other derivatives. Together they take 39% of the family's 16.5M downloads in the last 30 days. If you only look at the original repo, you miss more than a third of its use.
+That changes how you should read a model's reach. 6,393 models build on [Qwen3-8B](https://huggingface.co/spaces/tardellirs/model-pulse?model=Qwen/Qwen3-8B), directly or through other derivatives. Together they take 39% of the family's 15.8M downloads in the last 30 days. If you only look at the original repo, you miss more than a third of its use.
 
 On every model page, **Include derivatives** adds the whole family to the chart. **Galaxy** draws the family like a solar system: the base model in the center, one orbit per generation, one sector per kind of derivative, and planets sized by downloads.
 
-![The Llama-3.1-8B galaxy on Model Pulse](article_images/02-galaxy-llama-3.1-8b.png)
-
-The [Llama-3.1-8B galaxy](https://huggingface.co/spaces/tardellirs/model-pulse?model=meta-llama%2FLlama-3.1-8B&view=galaxy) holds 15,938 models. Open the galaxy of a fine-tune and it shows up inside its base model's galaxy, highlighted with everything built on it, so even a small fine-tune gets context. [Hermes 3](https://huggingface.co/spaces/tardellirs/model-pulse?model=NousResearch%2FHermes-3-Llama-3.1-8B&view=galaxy) is one of the 926 direct fine-tunes of Llama-3.1-8B, and 1,108 models build on it in turn: 544 quantizations, 287 merges, 221 adapters and 56 fine-tunes.
-
-![Hermes-3-Llama-3.1-8B highlighted inside the Llama-3.1-8B galaxy](article_images/03-galaxy-hermes-3-focus.png)
+The [Llama-3.1-8B galaxy](https://huggingface.co/spaces/tardellirs/model-pulse?model=meta-llama%2FLlama-3.1-8B&view=galaxy) holds 16,012 models. Open the galaxy of a fine-tune and it shows up inside its base model's galaxy, highlighted with everything built on it (that's the animation at the top), so even a small fine-tune gets context. [Hermes 3](https://huggingface.co/spaces/tardellirs/model-pulse?model=NousResearch%2FHermes-3-Llama-3.1-8B&view=galaxy) is one of the 932 direct fine-tunes of Llama-3.1-8B, and about 1,100 models build on it in turn, most of them quantizations, merges and adapters.
 
 ### 2. Launches don't fade, they plateau
 
@@ -61,9 +60,9 @@ This one comes with caveats, which are in [What the numbers can't tell you](#wha
 - milestones, such as the day a model crossed a million downloads;
 - the family toggle, the Spaces that use the model, and a comparison of up to five models on one chart.
 
-Authors can also add a live badge to their model card. It updates daily.
+Authors can also add a live badge to their model or dataset card (monthly downloads, all-time downloads or likes). It updates daily.
 
-**Dataset and Space pages.** Datasets get the same charts, plus the models that list them as training data. 636 models list FineWeb. The Hub doesn't publish visits for Spaces, so Space pages follow likes instead.
+**Dataset and Space pages.** Datasets get the same charts, plus the models that list them as training data. 641 models list FineWeb. The Hub doesn't publish visits for Spaces, so Space pages follow likes instead.
 
 **Rankings.** The weekly rankings for models are:
 - most downloaded;
@@ -73,7 +72,7 @@ Authors can also add a live badge to their model card. It updates daily.
 - biggest families;
 - top organizations.
 
-Datasets and Spaces have their own. Models whose week came mostly from a single day are left out of the growth rankings, so one burst of CI downloads doesn't top the list.
+Datasets have the same boards. Click a column header (▼) to re-sort by 30-day downloads, all-time downloads or likes. Spaces are ranked by likes: this week, this month, **Rising** (fastest-growing likes against the three weeks before), trending and most liked, with an SDK filter (Gradio, Docker, static, Streamlit) and each Space's short description. Models whose week came mostly from a single day are left out of the growth rankings, so one burst of CI downloads doesn't top the list.
 
 **Galaxy.** Every derivative of a base model, drawn as an orrery. You can search inside a galaxy, hide kinds of derivatives, and download the picture.
 
@@ -84,8 +83,10 @@ Datasets and Spaces have their own. Models whose week came mostly from a single 
 - where you rank among the Hub's publishers;
 - the "ripple effect": models other people built on yours, and how much they're downloaded.
 
-![Four cards from Qwen's Model Pulse Wrapped](article_images/04-wrapped-qwen.png)
-*Four of the seven cards in [Qwen's Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?author=Qwen&view=wrapped). 95,275 models by other people build on Qwen's.*
+Dataset publishers get their own Wrapped too (a Models / Datasets switch at the top): downloads over the year, what the data is used for by task, the models other people trained on it, and where you rank among dataset publishers.
+
+![Qwen's Model Pulse Wrapped, card by card](article_images/04-wrapped-qwen.gif)
+*Six of the seven cards in [Qwen's Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?author=Qwen&view=wrapped). 96,755 models by other people build on Qwen's.*
 
 **Report.** [What 19 months of daily downloads say about the Hub](https://modelpulse.ifsp.dev/report) covers more findings:
 - the Hub serves about 103M model downloads a day, up from 61M a year earlier;
@@ -102,7 +103,7 @@ Datasets and Spaces have their own. Models whose week came mostly from a single 
 
 **Daily downloads.** The all-time counter exists from 2025-02-27. From then on, a day's downloads are the difference between two snapshots, which makes them exact. Before that date only the rolling 30-day count exists, so the charts show that instead, and monthly figures are estimated from it.
 
-**Which repos.** A model or dataset is tracked once it has 10+ downloads in 30 days, 50+ all-time downloads, or a like. That covers 1.62M of the Hub's models and nearly all of their downloads. A Space is tracked once it has a like.
+**Which repos.** A model or dataset is tracked once it has 10+ downloads in 30 days, 50+ all-time downloads, or a like. That covers 1.64M of the Hub's models and nearly all of their downloads. A Space is tracked once it has a like.
 
 **Cleaning.** The Hub's counters are noisy in a few known ways. The rules below make the daily series reliable without changing any totals:
 - **Missing snapshots:** the days without a snapshot share the next one's average.
@@ -163,7 +164,7 @@ It is updated daily and licensed Apache 2.0, like its source.
 - **Corrections and ideas:** the Space and the dataset have Community tabs. Several fixes already came from readers. Thanks to [@dipankarsarkar](https://huggingface.co/dipankarsarkar), whose questions under the launch posts fixed three data issues and led to the size analysis above.
 - **If it's useful, a like helps.** The Hub lists the most-liked Spaces on each model page, so a like keeps download history one click away for everyone.
 
-Thanks to [@cfahlgren1](https://huggingface.co/cfahlgren1) for hub-stats, without which none of this would exist. If you follow papers more than models, the sister project [Paper Pulse](https://huggingface.co/spaces/tardellirs/paper-pulse) does the same for Daily Papers upvotes.
+Thanks to [@cfahlgren1](https://huggingface.co/cfahlgren1) for hub-stats, without which none of this would exist. If you follow papers more than models, the sister project [Paper Pulse](https://huggingface.co/spaces/tardellirs/paper-pulse) does the same for Daily Papers: each paper's day-by-day upvotes, and, from Model Pulse's data, the models on the Hub that cite it and how much they're downloaded.
 
 ```bibtex
 @misc{stekel2026modelpulse,
