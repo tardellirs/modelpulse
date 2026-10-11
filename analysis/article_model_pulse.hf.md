@@ -162,7 +162,7 @@ It is updated daily and licensed Apache 2.0, like its source.
 ## Try it, and tell me what's wrong
 
 - **Look up a model, dataset or author:** [huggingface.co/spaces/tardellirs/model-pulse](https://huggingface.co/spaces/tardellirs/model-pulse).
-- **Corrections and ideas:** the Space and the dataset have Community tabs. Several fixes already came from readers. Thanks to [@dipankarsarkar](https://huggingface.co/dipankarsarkar), whose questions under the launch posts fixed three data issues and led to the size analysis above. Ideas too: [@darkc0de](https://huggingface.co/darkc0de) asked for datasets and Spaces, and [@juiceb0xc0de](https://huggingface.co/juiceb0xc0de) for a dataset Wrapped. Both are in the app now.
+- **Corrections and ideas:** the Space and the dataset have Community tabs. Several fixes already came from readers. Thanks to [@dipankarsarkar](https://huggingface.co/dipankarsarkar), whose questions under the launch posts fixed three data issues and led to the size analysis above. Ideas too: [@darkc0de](https://huggingface.co/darkc0de) suggested datasets and Spaces, and [@juiceb0xc0de](https://huggingface.co/juiceb0xc0de) a dataset Wrapped. Both are in the app now. Thank you both!
 - **If it's useful, a like helps.** The Hub lists the most-liked Spaces on each model page, so a like keeps download history one click away for everyone.
 
 Thanks to [@cfahlgren1](https://huggingface.co/cfahlgren1) for hub-stats, without which none of this would exist. If you follow papers more than models, the sister project [Paper Pulse](https://huggingface.co/spaces/tardellirs/paper-pulse) does the same for Daily Papers: each paper's day-by-day upvotes, and, from Model Pulse's data, the models on the Hub that cite it and how much they're downloaded.
