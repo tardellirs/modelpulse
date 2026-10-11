@@ -18,6 +18,8 @@ LINK_CAP = int(os.environ.get("LINK_CAP", "5000"))
 DATASET_LINK_CAP = int(os.environ.get("DATASET_LINK_CAP", "5000"))
 # the Hub rejects a README over about 1.02 MB ("request entity too large"), whatever the caps say
 README_MAX = int(os.environ.get("README_MAX", "1000000"))
+# datasets always listed on the card (so Model Pulse shows under their "Spaces using"), whatever their downloads
+PINNED_DATASETS = ["FineEnvs/openai-math"] + [d for d in os.environ.get("PINNED_DATASETS", "").split(",") if d]
 
 
 def refresher(current_sha, on_new):
@@ -75,6 +77,7 @@ class Linker:
         # datasets: the most downloaded, so Model Pulse also shows up under "Spaces using this dataset"
         old_ds = list(meta.get("datasets") or [])
         ds = (self.datasets() or [])[:DATASET_LINK_CAP] if self.datasets else old_ds
+        ds = PINNED_DATASETS + [d for d in ds if d not in PINNED_DATASETS]
         ds_changed = bool(ds) and set(ds) != set(old_ds)
         if not new and not ds_changed:
             return 0
@@ -95,7 +98,7 @@ class Linker:
         if len(out.encode()) > README_MAX:
             # least downloaded first, models and datasets alike; trending and ranked models always stay
             pool = sorted([(self.popularity(m) or 0, "models", m) for m in meta["models"] if m not in protected]
-                          + [(self.ds_popularity(d) or 0, "datasets", d) for d in meta.get("datasets", [])])
+                          + [(self.ds_popularity(d) or 0, "datasets", d) for d in meta.get("datasets", []) if d not in PINNED_DATASETS])
             per = len(out.encode()) / max(1, len(meta["models"]) + len(meta.get("datasets", [])))
             k = 0
             while len(out.encode()) > README_MAX and k < len(pool):
