@@ -89,6 +89,8 @@ Dataset publishers get their own Wrapped too (a Models / Datasets switch at the 
 
 *[sentence-transformers' Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?author=sentence-transformers&view=wrapped), card by card: 3.8B downloads in the last 12 months, the #1 model publisher among 51,650, and 3,205 models by other people built on its own.*
 
+Datasets and Spaces came to Model Pulse from a suggestion by [@darkc0de](https://huggingface.co/darkc0de), and the dataset Wrapped from one by [@juiceb0xc0de](https://huggingface.co/juiceb0xc0de). Thank you both!
+
 **Report.** [What 19 months of daily downloads say about the Hub](https://modelpulse.ifsp.dev/report) covers more findings:
 - the Hub serves about 103M model downloads a day, up from 61M a year earlier;
 - Qwen's share of LLM downloads rose and then settled;
