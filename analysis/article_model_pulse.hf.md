@@ -89,8 +89,6 @@ Dataset publishers get their own Wrapped too (a Models / Datasets switch at the 
 
 *[sentence-transformers' Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?author=sentence-transformers&view=wrapped), card by card: 3.8B downloads in the last 12 months, the #1 model publisher among 51,650, and 3,205 models by other people built on its own.*
 
-Datasets and Spaces came to Model Pulse from a suggestion by [@darkc0de](https://huggingface.co/darkc0de), and the dataset Wrapped from one by [@juiceb0xc0de](https://huggingface.co/juiceb0xc0de). Thank you both!
-
 **Report.** [What 19 months of daily downloads say about the Hub](https://modelpulse.ifsp.dev/report) covers more findings:
 - the Hub serves about 103M model downloads a day, up from 61M a year earlier;
 - Qwen's share of LLM downloads rose and then settled;
@@ -164,7 +162,7 @@ It is updated daily and licensed Apache 2.0, like its source.
 ## Try it, and tell me what's wrong
 
 - **Look up a model, dataset or author:** [huggingface.co/spaces/tardellirs/model-pulse](https://huggingface.co/spaces/tardellirs/model-pulse).
-- **Corrections and ideas:** the Space and the dataset have Community tabs. Several fixes already came from readers. Thanks to [@dipankarsarkar](https://huggingface.co/dipankarsarkar), whose questions under the launch posts fixed three data issues and led to the size analysis above.
+- **Corrections and ideas:** the Space and the dataset have Community tabs. Several fixes already came from readers. Thanks to [@dipankarsarkar](https://huggingface.co/dipankarsarkar), whose questions under the launch posts fixed three data issues and led to the size analysis above. Ideas too: [@darkc0de](https://huggingface.co/darkc0de) asked for datasets and Spaces, and [@juiceb0xc0de](https://huggingface.co/juiceb0xc0de) for a dataset Wrapped. Both are in the app now.
 - **If it's useful, a like helps.** The Hub lists the most-liked Spaces on each model page, so a like keeps download history one click away for everyone.
 
 Thanks to [@cfahlgren1](https://huggingface.co/cfahlgren1) for hub-stats, without which none of this would exist. If you follow papers more than models, the sister project [Paper Pulse](https://huggingface.co/spaces/tardellirs/paper-pulse) does the same for Daily Papers: each paper's day-by-day upvotes, and, from Model Pulse's data, the models on the Hub that cite it and how much they're downloaded.
