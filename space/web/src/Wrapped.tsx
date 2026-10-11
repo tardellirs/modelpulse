@@ -130,7 +130,7 @@ function slides(d: WrappedData, active: number) {
         <>
           <div class="w-kicker">Model Pulse Wrapped{isDs(d) && <span class="w-edition">datasets</span>}</div>
           <div class="w-logo"><Logo size={88} /></div>
-          <h2 class="w-title"><span class="w-name">{d.author}</span><br />on the Hub</h2>
+          <h2 class="w-title"><span class="w-name" style={nameFit(d.author)}>{d.author}</span><br />on the Hub</h2>
           <p class="w-sub">{isDs(d) ? "Your datasets' last 12 months" : "Your last 12 months"}, in {WORDS[count] ?? count} cards.</p>
           <p class="w-mono">{period(d)}</p>
         </>
@@ -390,6 +390,9 @@ function Entry({ initial }: { initial?: string }) {
   );
 }
 
+// long names (sentence-transformers) stay on one line in the title box, set smaller instead of breaking at the hyphen
+const nameFit = (name: string) => (name.length > 12 ? { fontSize: `${Math.max(0.5, 12 / name.length).toFixed(2)}em` } : undefined);
+
 export function Wrapped({ author, kind }: { author?: string; kind?: Kind }) {
   const [d, setD] = useState<WrappedData | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -465,7 +468,7 @@ export function Wrapped({ author, kind }: { author?: string; kind?: Kind }) {
         ) : (
           <div class="w-card tone-paper w-summary" key="summary">
             <div class="w-kicker">{period(d)}</div>
-            <h2 class="w-title sm"><span class="w-name">{d.author}</span></h2>
+            <h2 class="w-title sm"><span class="w-name" style={nameFit(d.author)}>{d.author}</span></h2>
             <div class="w-grid">
               <div class="t blue"><span>downloads</span><b>{fmt(d.downloads)}</b></div>
               <div class="t"><span>#1 {noun(d, 1)}</span><b class="s">{d.top_model ? short(d.top_model.id) : "–"}</b></div>

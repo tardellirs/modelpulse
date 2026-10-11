@@ -406,7 +406,7 @@ main { min-height: calc(100vh - 72px); }
 .w-logo svg { filter: drop-shadow(5px 5px 0 var(--ink)); }
 .w-title { font: 600 clamp(2.2rem, 7vw, 3.4rem)/1.02 var(--font-display); letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .w-title.sm { font-size: clamp(1.7rem, 5vw, 2.3rem); }
-.w-name { background: var(--surface); color: var(--ink); padding: 0 .16em; border-radius: 10px; box-decoration-break: clone; -webkit-box-decoration-break: clone; border: 3px solid var(--ink); }
+.w-name { white-space: nowrap; background: var(--surface); color: var(--ink); padding: 0 .16em; border-radius: 10px; box-decoration-break: clone; -webkit-box-decoration-break: clone; border: 3px solid var(--ink); }
 .tone-paper .w-name { background: var(--mark); }
 .w-model { font: 600 clamp(1.5rem, 5vw, 2.1rem)/1.15 var(--font-display); overflow-wrap: anywhere; }
 .w-model span { background: var(--mark); padding: 0 .18em; border-radius: 8px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
