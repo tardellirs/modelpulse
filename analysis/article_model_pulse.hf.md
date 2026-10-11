@@ -85,9 +85,9 @@ Datasets have the same boards. Click a column header (▼) to re-sort by 30-day 
 
 Dataset publishers get their own Wrapped too (a Models / Datasets switch at the top): downloads over the year, what the data is used for by task, the models other people trained on it, and where you rank among dataset publishers.
 
-<p align="center"><img src="https://cdn-uploads.huggingface.co/production/uploads/687570c1602bdfd2d11cba3d/kv6ZWq5GnocwStyZYMJ1b.gif" alt="Qwen's Model Pulse Wrapped, card by card" width="440"></p>
+<p align="center"><img src="https://cdn-uploads.huggingface.co/production/uploads/687570c1602bdfd2d11cba3d/mWCx01r9biKbEqFpjGEzk.gif" alt="Typing sentence-transformers into Model Pulse Wrapped, then the cards one by one" width="440"></p>
 
-*Six of the seven cards in [Qwen's Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?author=Qwen&view=wrapped). 96,755 models by other people build on Qwen's.*
+*[sentence-transformers' Wrapped](https://huggingface.co/spaces/tardellirs/model-pulse?author=sentence-transformers&view=wrapped), card by card: 3.8B downloads in the last 12 months, the #1 model publisher among 51,650, and 3,205 models by other people built on its own.*
 
 **Report.** [What 19 months of daily downloads say about the Hub](https://modelpulse.ifsp.dev/report) covers more findings:
 - the Hub serves about 103M model downloads a day, up from 61M a year earlier;
