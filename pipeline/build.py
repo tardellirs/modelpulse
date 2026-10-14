@@ -118,7 +118,8 @@ def at_or_before(series_last, ref_day, max_back=10):
 def peak_share(recent, w1):
     """Share of a repo's downloads this week that came in its single biggest step between snapshots (a CI job or a
     bot pulling one repo for a day shows up as a share near 1)."""
-    wk = (recent.join(w1.select("id", "d7"), on="id", how="left")
+    ref = w1.select("id", "d7")
+    wk = (recent.join(ref.lazy() if isinstance(recent, pl.LazyFrame) else ref, on="id", how="left")
           .filter(pl.col("d7").is_null() | (pl.col("day") >= pl.col("d7"))).sort("id", "day")
           .with_columns((pl.col("dl_all") - pl.col("dl_all").shift(1).over("id")).clip(0).alias("step"))
           .group_by("id").agg(pl.col("step").max().alias("peak"), pl.col("step").sum().alias("gain"), pl.col("step").count().alias("steps")))
@@ -137,15 +138,16 @@ def steady(df, share=SPIKY, min_steps=0):
 def derived(days, meta, first=None):
     last = days[-1][0]
     skip = [dt.date.fromisoformat(d) for d in SKIP]
+    # lazy: 40 days of every model no longer fit in memory at once, so each piece reads only the days it needs
     recent = scan_series().filter((pl.col("day") >= last - dt.timedelta(days=40))
-                                  & (~pl.col("day").is_in(skip) | (pl.col("day") == last))).collect()
-    now = recent.filter(pl.col("day") == last).select("id", "dl30", "dl_all", "likes")
+                                  & (~pl.col("day").is_in(skip) | (pl.col("day") == last)))
+    now = recent.filter(pl.col("day") == last).select("id", "dl30", "dl_all", "likes").collect()
     # the reference snapshots can be more than 7, 14, 28 days back (skipped stall days, missing days): every change
     # is turned into a rate per 7 days over the days it really spans
-    w1 = at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("dl_all").alias("all_7"), pl.col("likes").alias("likes_7"), pl.col("day").alias("d7"))
-    w2 = at_or_before(recent, last - dt.timedelta(days=14)).select("id", pl.col("dl_all").alias("all_14"), pl.col("day").alias("d14"))
-    w4 = at_or_before(recent, last - dt.timedelta(days=28)).select("id", pl.col("dl_all").alias("all_28"), pl.col("day").alias("d28"))
-    w31 = at_or_before(recent, last - dt.timedelta(days=31)).select("id", pl.col("dl_all").alias("all_31"))
+    w1 = at_or_before(recent, last - dt.timedelta(days=7)).select("id", pl.col("dl_all").alias("all_7"), pl.col("likes").alias("likes_7"), pl.col("day").alias("d7")).collect()
+    w2 = at_or_before(recent, last - dt.timedelta(days=14)).select("id", pl.col("dl_all").alias("all_14"), pl.col("day").alias("d14")).collect()
+    w4 = at_or_before(recent, last - dt.timedelta(days=28)).select("id", pl.col("dl_all").alias("all_28"), pl.col("day").alias("d28")).collect()
+    w31 = at_or_before(recent, last - dt.timedelta(days=31)).select("id", pl.col("dl_all").alias("all_31")).collect()
     if first is None:
         first = scan_series().group_by("id").agg(pl.col("day").min().alias("first_seen")).collect(engine="streaming")
 
@@ -173,7 +175,8 @@ def derived(days, meta, first=None):
          .with_columns(
              # growth vs the average of the three weeks before, robust to one stalled or backlogged week
              pl.when(pl.col("dl_base7d") >= 100).then(pl.col("dl_7d") / pl.col("dl_base7d") - 1).alias("growth_7d"))
-         .join(peak_share(recent, w1), on="id", how="left")
+         # the week's steps start at d7, which is never more than 17 days back (at_or_before looks 10 days further)
+         .join(peak_share(recent.filter(pl.col("day") >= last - dt.timedelta(days=17)), w1).collect(), on="id", how="left")
          .drop("all_7", "all_14", "all_28", "all_31", "likes_7", "d7", "d14", "d28"))
     m = m.join(meta, on="id", how="left")
     m = m.with_columns(
