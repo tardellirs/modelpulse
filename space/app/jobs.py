@@ -1,4 +1,5 @@
 """Background jobs: pull new dataset versions, and link viewed models from the public Space's README."""
+import json
 import logging
 import os
 import threading
@@ -14,8 +15,12 @@ SITE_REPO = os.environ.get("SITE_REPO", "tardellirs/model-pulse")
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 REFRESH_EVERY = int(os.environ.get("REFRESH_EVERY", "3600"))
 LINK_EVERY = int(os.environ.get("LINK_EVERY", str(3 * 3600)))
-LINK_CAP = int(os.environ.get("LINK_CAP", "5000"))
-DATASET_LINK_CAP = int(os.environ.get("DATASET_LINK_CAP", "5000"))
+# a short card: models trending on the Hub, the most downloaded, and the ones people opened, up to LINK_CAP in all
+LINK_CAP = int(os.environ.get("LINK_CAP", "1000"))
+LINK_TOP = int(os.environ.get("LINK_TOP", "200"))
+DATASET_LINK_CAP = int(os.environ.get("DATASET_LINK_CAP", "100"))
+LINK_OPENED = os.environ.get("LINK_OPENED", os.path.expanduser("~/work/linked_opened.json"))
+BOT_UA = ("bot", "crawl", "spider", "slurp", "preview", "headless", "python-requests", "curl/", "wget")
 # the Hub rejects a README over about 1.02 MB ("request entity too large"), whatever the caps say
 README_MAX = int(os.environ.get("README_MAX", "1000000"))
 # datasets always listed on the card (so Model Pulse shows under their "Spaces using"), whatever their downloads
@@ -40,13 +45,18 @@ def refresher(current_sha, on_new):
         time.sleep(REFRESH_EVERY)
 
 
+def is_bot(user_agent: str | None) -> bool:
+    ua = (user_agent or "").lower()
+    return not ua or any(b in ua for b in BOT_UA)
+
+
 class Linker:
     """Keeps the public Space's README `models:` list current, so Model Pulse shows up under "Spaces using".
 
-    Each flush adds models people opened, plus automatic candidates (trending on the Hub, Model Pulse
-    rankings, most downloaded). Over LINK_CAP, protected models (trending, rankings) always stay and the
-    least downloaded of the rest are dropped. The README must also stay under README_MAX bytes: past it, the least
-    downloaded models and datasets go first, compared by monthly downloads.
+    The card lists the automatic candidates (trending on the Hub and the LINK_TOP most downloaded), which always stay,
+    plus the models people opened on the site (crawlers left out), kept in LINK_OPENED. Over LINK_CAP, the least
+    downloaded of the opened ones go first. Anything else on the card (old candidates) is dropped. The README must
+    also stay under README_MAX bytes: past it, the least downloaded models and datasets go first.
     """
 
     def __init__(self, exists, popularity, candidates, datasets=None, ds_popularity=None):
@@ -67,27 +77,35 @@ class Linker:
         with self.lock:
             opened, self.pending = self.pending, set()
         auto, protected = self.candidates()
-        batch = {m for m in opened if self.exists(m)} | set(auto)
+        protected = set(protected)
+        try:
+            kept = set(json.load(open(LINK_OPENED)))
+        except (OSError, ValueError):
+            kept = set()
+        kept = {m for m in kept | opened if self.exists(m)} - protected
+        room = max(0, LINK_CAP - len(protected))
+        if len(kept) > room:
+            kept = set(sorted(kept, key=lambda m: self.popularity(m) or 0, reverse=True)[:room])
+        tmp = LINK_OPENED + ".tmp"
+        os.makedirs(os.path.dirname(LINK_OPENED), exist_ok=True)
+        json.dump(sorted(kept), open(tmp, "w"))
+        os.replace(tmp, LINK_OPENED)
+        target = protected | kept
         path = hf_hub_download(SITE_REPO, "README.md", repo_type="space", force_download=True)
         original = open(path, encoding="utf-8").read()
         _, front, body = original.split("---", 2)
         meta = yaml.safe_load(front) or {}
-        models = list(meta.get("models") or [])
-        new = sorted(batch - set(models))
+        old = list(meta.get("models") or [])
+        new = sorted(target - set(old))
+        dropped = len(set(old) - target)
         # datasets: the most downloaded, so Model Pulse also shows up under "Spaces using this dataset"
         old_ds = list(meta.get("datasets") or [])
         ds = (self.datasets() or [])[:DATASET_LINK_CAP] if self.datasets else old_ds
         ds = PINNED_DATASETS + [d for d in ds if d not in PINNED_DATASETS]
         ds_changed = bool(ds) and set(ds) != set(old_ds)
-        if not new and not ds_changed:
+        if not new and not dropped and not ds_changed:
             return 0
-        models = models + new
-        dropped = 0
-        if len(models) > LINK_CAP:
-            rest = sorted((m for m in models if m not in protected), key=lambda m: self.popularity(m) or 0, reverse=True)
-            keep = set(protected) | set(rest[:max(0, LINK_CAP - len(protected & set(models)))])
-            dropped = len(models) - len(keep & set(models))
-            models = [m for m in models if m in keep]
+        models = [m for m in old if m in target] + new
         meta["models"] = models
         if ds:
             meta["datasets"] = ds

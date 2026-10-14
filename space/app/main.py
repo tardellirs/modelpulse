@@ -38,9 +38,9 @@ store = Store()
 repos = store.repos = Repos(store)
 wrapped = Wrapped(store, repos)
 def link_candidates():
-    ranked = {r["id"] for rows in store.leaderboards.values() if isinstance(rows, list) for r in rows if r.get("id")}
     trending = set(jobs.trending_models())
-    return store.top_ids(20_000) + sorted(ranked | trending), ranked | trending
+    top = store.top_ids(jobs.LINK_TOP)
+    return top + sorted(trending), set(top) | trending
 
 
 linker = jobs.Linker(lambda mid: store.model(mid) is not None,
@@ -120,12 +120,13 @@ def meta():
 
 
 @app.get("/api/model/{mid:path}")
-def model(mid: str):
+def model(mid: str, request: Request):
     m = store.model(mid) or (store.model(legacy_id("models", mid) or "") if "/" not in mid else None)
     if not m:
         raise HTTPException(404, f"{mid} is not tracked. Models appear once they reach 10 downloads in 30 days or get a like.")
     mid = m["id"]
-    linker.add(mid)
+    if not jobs.is_bot(request.headers.get("user-agent")):
+        linker.add(mid)
     out = {"model": clean(m), "series": store.series(mid), "children": [clean(c) for c in store.children(mid, 25)]}
     if (m.get("fam_members") or 0) >= 3:
         out["family"] = store.family_series(mid)
