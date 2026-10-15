@@ -16,8 +16,11 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 REFRESH_EVERY = int(os.environ.get("REFRESH_EVERY", "3600"))
 LINK_EVERY = int(os.environ.get("LINK_EVERY", str(3 * 3600)))
 # a short card: models trending on the Hub, the most downloaded, and the ones people opened, up to LINK_CAP in all
-LINK_CAP = int(os.environ.get("LINK_CAP", "1000"))
+LINK_CAP = int(os.environ.get("LINK_CAP", "2000"))
 LINK_TOP = int(os.environ.get("LINK_TOP", "200"))
+# the Hub links a Space only to the first 200 models of its card: the top trending take most of them, the most downloaded the rest
+HUB_LINKED = 200
+LINK_FRONT_TRENDING = int(os.environ.get("LINK_FRONT_TRENDING", "150"))
 DATASET_LINK_CAP = int(os.environ.get("DATASET_LINK_CAP", "100"))
 LINK_OPENED = os.environ.get("LINK_OPENED", os.path.expanduser("~/work/linked_opened.json"))
 BOT_UA = ("bot", "crawl", "spider", "slurp", "preview", "headless", "python-requests", "curl/", "wget")
@@ -55,14 +58,16 @@ class Linker:
 
     The card lists the automatic candidates (trending on the Hub and the LINK_TOP most downloaded), which always stay,
     plus the models people opened on the site (crawlers left out), kept in LINK_OPENED. Over LINK_CAP, the least
-    downloaded of the opened ones go first. Anything else on the card (old candidates) is dropped. The README must
-    also stay under README_MAX bytes: past it, the least downloaded models and datasets go first.
+    downloaded of the opened ones go first; under it, the next most downloaded fill the room. Anything else on the card
+    (old candidates) is dropped. The Hub only links the first HUB_LINKED models, so the card starts with the
+    candidates' `front`, in its order. The README must also stay under README_MAX bytes: past it, the least downloaded
+    models and datasets go first.
     """
 
     def __init__(self, exists, popularity, candidates, datasets=None, ds_popularity=None):
         self.exists = exists            # id -> bool, model is tracked
         self.popularity = popularity    # id -> monthly downloads
-        self.candidates = candidates    # () -> (ids to add, ids that must never be dropped)
+        self.candidates = candidates    # () -> (ids for the linked front, in order; ids never dropped; fillers, best first)
         self.datasets = datasets        # () -> dataset ids, most used first, for the card's `datasets:` list
         self.ds_popularity = ds_popularity or (lambda did: 0)  # id -> monthly downloads
         self.pending: set[str] = set()
@@ -76,7 +81,7 @@ class Linker:
     def flush(self):
         with self.lock:
             opened, self.pending = self.pending, set()
-        auto, protected = self.candidates()
+        front, protected, fill = self.candidates()
         protected = set(protected)
         try:
             kept = set(json.load(open(LINK_OPENED)))
@@ -91,10 +96,11 @@ class Linker:
         json.dump(sorted(kept), open(tmp, "w"))
         os.replace(tmp, LINK_OPENED)
         target = protected | kept
+        target |= set([m for m in fill if m not in target][:max(0, LINK_CAP - len(target))])
         path = hf_hub_download(SITE_REPO, "README.md", repo_type="space", force_download=True)
         original = open(path, encoding="utf-8").read()
-        _, front, body = original.split("---", 2)
-        meta = yaml.safe_load(front) or {}
+        _, header, body = original.split("---", 2)
+        meta = yaml.safe_load(header) or {}
         old = list(meta.get("models") or [])
         new = sorted(target - set(old))
         dropped = len(set(old) - target)
@@ -103,9 +109,10 @@ class Linker:
         ds = (self.datasets() or [])[:DATASET_LINK_CAP] if self.datasets else old_ds
         ds = PINNED_DATASETS + [d for d in ds if d not in PINNED_DATASETS]
         ds_changed = bool(ds) and set(ds) != set(old_ds)
-        if not new and not dropped and not ds_changed:
+        front = [m for m in dict.fromkeys(front) if m in target][:HUB_LINKED]
+        models = front + [m for m in old if m in target and m not in front] + [m for m in new if m not in front]
+        if not new and not dropped and not ds_changed and models[:HUB_LINKED] == old[:HUB_LINKED]:
             return 0
-        models = [m for m in old if m in target] + new
         meta["models"] = models
         if ds:
             meta["datasets"] = ds
@@ -131,7 +138,7 @@ class Linker:
         if out == original:  # the trim undid the change
             return 0
         self.api.upload_file(path_or_fileobj=out.encode(), path_in_repo="README.md", repo_id=SITE_REPO, repo_type="space",
-                             commit_message=f"Link {len(new)} models" + (f", drop {dropped}" if dropped else "") + (f", {len(ds)} datasets" if ds_changed else ""))
+                             commit_message=(f"Link {len(new)} models" if new or dropped or ds_changed else "Reorder linked models") + (f", drop {dropped}" if dropped else "") + (f", {len(ds)} datasets" if ds_changed else ""))
         log.info("linked %d models, dropped %d (%d total), datasets %d%s", len(new), dropped, len(models), len(ds), " (updated)" if ds_changed else "")
         return len(new)
 

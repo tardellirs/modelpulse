@@ -38,9 +38,10 @@ store = Store()
 repos = store.repos = Repos(store)
 wrapped = Wrapped(store, repos)
 def link_candidates():
-    trending = set(jobs.trending_models())
-    top = store.top_ids(jobs.LINK_TOP)
-    return top + sorted(trending), set(top) | trending
+    trending = jobs.trending_models()  # in trending order
+    top = store.top_ids(jobs.LINK_CAP)
+    front = trending[:jobs.LINK_FRONT_TRENDING] + [m for m in top if m not in trending[:jobs.LINK_FRONT_TRENDING]]
+    return front, set(top[:jobs.LINK_TOP]) | set(trending), top[jobs.LINK_TOP:]
 
 
 linker = jobs.Linker(lambda mid: store.model(mid) is not None,
