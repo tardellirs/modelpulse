@@ -239,9 +239,9 @@ class Pages:
         desc += f", with {full(fam)} derivatives" if fam else ""
         desc += ". Daily download history since July 2024, likes, rankings and model family."
 
-        kind = f"{size}{tsk}"
+        kind = f"{size}{tsk} model" if m.get("pipeline_tag") else f"{size}model"  # no task: "a model", not "a model model"
         article = "an" if re.match(r"(?i)[aeio]|8|11|18", kind) else "a"
-        facts = [f"<p><b>{e(mid)}</b> is {article} {e(kind)} model"
+        facts = [f"<p><b>{e(mid)}</b> is {article} {e(kind)}"
                  + (f" by {a('/author/' + quote(author, safe=''), author)}" if author else "") + ". "
                  f"In the last 30 days it was downloaded <b>{full(dl30)}</b> times ({full(dl7)} in the last 7 days)"
                  + (f", and <b>{full(dl_all)}</b> times in total" if dl_all else "") + ".</p>"]
