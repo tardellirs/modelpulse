@@ -27,7 +27,8 @@ BOT_UA = ("bot", "crawl", "spider", "slurp", "preview", "headless", "python-requ
 # the Hub rejects a README over about 1.02 MB ("request entity too large"), whatever the caps say
 README_MAX = int(os.environ.get("README_MAX", "1000000"))
 # datasets always listed on the card (so Model Pulse shows under their "Spaces using"), whatever their downloads
-PINNED_DATASETS = ["FineEnvs/openai-math"] + [d for d in os.environ.get("PINNED_DATASETS", "").split(",") if d]
+# the sources Model Pulse is built from come first
+PINNED_DATASETS = ["cfahlgren1/hub-stats", DATA_REPO, "FineEnvs/openai-math"] + [d for d in os.environ.get("PINNED_DATASETS", "").split(",") if d]
 
 
 def refresher(current_sha, on_new):
