@@ -10,3 +10,4 @@ site/index.html
 space/.deploy.env
 site/*.txt
 site/google*.html
+analysis/
