@@ -9,4 +9,4 @@ Runs at https://modelpulse.ifsp.dev as the `modelpulse-api` container (see `depl
 - `GET /api/health`: 200 while data is at most 3 days old, 503 otherwise
 - `GET /badge/{org}/{name}.svg?metric=month|all|likes&theme=light|dark`: README badge
 
-Background jobs (only when `HF_TOKEN` is set): hourly dataset refresh, hourly daily-update check, and the link bot that adds viewed models to the static Space's `models:` list every 3 hours.
+Background jobs (only when `HF_TOKEN` is set): hourly dataset refresh, hourly daily-update check, and a one-time card job: the static Space's README lists no models, and as datasets only the two sources Model Pulse is built from.

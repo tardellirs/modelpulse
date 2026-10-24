@@ -37,18 +37,6 @@ logging.basicConfig(level=logging.INFO)
 store = Store()
 repos = store.repos = Repos(store)
 wrapped = Wrapped(store, repos)
-def link_candidates():
-    trending = jobs.trending_models()  # in trending order
-    top = store.top_ids(jobs.LINK_CAP)
-    front = trending[:jobs.LINK_FRONT_TRENDING] + [m for m in top if m not in trending[:jobs.LINK_FRONT_TRENDING]]
-    return front, set(top[:jobs.LINK_TOP]) | set(trending), top[jobs.LINK_TOP:]
-
-
-linker = jobs.Linker(lambda mid: store.model(mid) is not None,
-                     lambda mid: (store.model(mid) or {}).get("dl30"),
-                     link_candidates,
-                     datasets=lambda: repos.top_ids("datasets", jobs.DATASET_LINK_CAP) if repos.ok else [],
-                     ds_popularity=lambda did: (repos.dataset(did) or {}).get("dl30") if repos.ok else 0)
 
 
 def reload_store():
@@ -80,7 +68,7 @@ def start_jobs():
         return
     sha = open(os.path.join(jobs.DATA_DIR, ".sha")).read().strip() if os.path.exists(os.path.join(jobs.DATA_DIR, ".sha")) else None
     threading.Thread(target=jobs.refresher, args=(sha, reload_store), daemon=True).start()
-    threading.Thread(target=linker.run, daemon=True).start()
+    threading.Thread(target=jobs.card_sources, daemon=True).start()
     if os.environ.get("RUN_DAILY", "1") == "1":
         threading.Thread(target=jobs.updater, args=(os.path.expanduser("~/work"),), daemon=True).start()
 
@@ -126,8 +114,6 @@ def model(mid: str, request: Request):
     if not m:
         raise HTTPException(404, f"{mid} is not tracked. Models appear once they reach 10 downloads in 30 days or get a like.")
     mid = m["id"]
-    if not jobs.is_bot(request.headers.get("user-agent")):
-        linker.add(mid)
     out = {"model": clean(m), "series": store.series(mid), "children": [clean(c) for c in store.children(mid, 25)]}
     if (m.get("fam_members") or 0) >= 3:
         out["family"] = store.family_series(mid)
