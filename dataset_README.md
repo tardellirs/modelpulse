@@ -217,11 +217,13 @@ The data is rebuilt from the daily snapshots of [cfahlgren1/hub-stats](https://h
 
 ### How the Hub counts a download
 
-Measured in October 2026 with test repos, together with [Dipankar Sarkar](https://huggingface.co/dipankarsarkar) ([thread](https://huggingface.co/posts/tardellirs/570535147315877)):
+Measured in October 2026 on dataset repos, together with [Dipankar Sarkar](https://huggingface.co/dipankarsarkar) ([thread](https://huggingface.co/posts/tardellirs/570535147315877)):
 
-- A download is a request to a file's `/resolve/` URL, counted once per address per 5-minute clock bucket: HEAD or GET, from every client we tried, with a token, a browser session or neither.
+- A download is a request to a file's `/resolve/` URL, counted once per address per 5-minute clock bucket (:00, :05 and so on, not a sliding window): HEAD or GET, from every client we tried, with a token, a browser session or neither.
 - A 404 for a missing file in a repo you can see counts. A logged-in 403 at a gate doesn't, and neither do metadata calls (`/api/...`).
 - The 30-day counter updates once a day, from requests up to about 08:00 UTC. Later requests show up in the next day's update.
+
+Models follow a different rule, which we did not test: per the [Hub docs](https://huggingface.co/docs/hub/models-download-stats), only requests to a library's query files count (`config.json` by default, every `.gguf` file), and every request to them counts.
 
 ### Daily downloads
 
