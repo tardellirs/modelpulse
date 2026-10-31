@@ -215,6 +215,14 @@ The data is rebuilt from the daily snapshots of [cfahlgren1/hub-stats](https://h
 - A **Space** is tracked once it has at least one like.
 - Download counts follow the Hub's [download counting rules](https://huggingface.co/docs/hub/models-download-stats). The Hub occasionally books delayed downloads on a single day.
 
+### How the Hub counts a download
+
+Measured in October 2026 with test repos, together with [Dipankar Sarkar](https://huggingface.co/dipankarsarkar) ([thread](https://huggingface.co/posts/tardellirs/570535147315877)):
+
+- A download is a request to a file's `/resolve/` URL, counted once per address per 5-minute clock bucket: HEAD or GET, from every client we tried, with a token, a browser session or neither.
+- A 404 for a missing file in a repo you can see counts. A logged-in 403 at a gate doesn't, and neither do metadata calls (`/api/...`).
+- The 30-day counter updates once a day, from requests up to about 08:00 UTC. Later requests show up in the next day's update.
+
 ### Daily downloads
 
 - `dl30` is the Hub's rolling 30-day count. `dl_all` (all-time downloads) only exists from **2025-02-27**, so exact daily downloads, computed as the difference of `dl_all` between snapshots, start on that date.
