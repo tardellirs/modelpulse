@@ -52,6 +52,25 @@ async def block_scraper_ranges(request, call_next):
     if any(ip in n for n in BLOCKED_NETS):
         return Response(status_code=403)
     return await call_next(request)
+
+
+class CloudflareClientIP:
+    """The site sits behind Cloudflare, and Traefik only lets Cloudflare's ranges in (cloudflare-only@file), so
+    CF-Connecting-IP is the visitor's address. Set it as the client before anything else reads it, the access log too."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            for k, v in scope["headers"]:
+                if k == b"cf-connecting-ip":
+                    scope["client"] = (v.decode("latin-1"), 0)
+                    break
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(CloudflareClientIP)
 logging.basicConfig(level=logging.INFO)
 store = Store()
 repos = store.repos = Repos(store)

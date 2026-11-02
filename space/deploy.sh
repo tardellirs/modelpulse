@@ -30,6 +30,7 @@ docker run -d --name modelpulse-api --restart unless-stopped \
   -l 'traefik.http.routers.modelpulse.rule=Host(`modelpulse.ifsp.dev`)' \
   -l traefik.http.routers.modelpulse.entrypoints=websecure \
   -l traefik.http.routers.modelpulse.tls.certresolver=le \
+  -l traefik.http.routers.modelpulse.middlewares=cloudflare-only@file \
   -l traefik.http.services.modelpulse.loadbalancer.server.port=7860 \
   modelpulse-api
 docker ps --filter name=modelpulse-api --format '{{.Names}} {{.Status}}'
