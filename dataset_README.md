@@ -223,7 +223,7 @@ Measured in October 2026 on dataset repos, together with [Dipankar Sarkar](https
 - A 404 for a missing file in a repo you can see counts. A logged-in 403 at a gate doesn't, and neither do metadata calls (`/api/...`).
 - The 30-day counter updates once a day, from requests up to about 08:00 UTC. Later requests show up in the next day's update.
 
-Models follow a different rule, which we did not test: per the [Hub docs](https://huggingface.co/docs/hub/models-download-stats), only requests to a library's query files count (`config.json` by default, every `.gguf` file), and every request to them counts.
+Models follow a different rule. Per the [Hub docs](https://huggingface.co/docs/hub/models-download-stats), only requests to a library's query files count (`config.json` by default, every `.gguf` file). We measured it in November 2026 on two private model repos, with `config.json` as the query file: every request counted, with no 5-minute merge, and a HEAD counted as much as a GET. With `huggingface_hub`, a first download is a HEAD plus a GET (2 downloads). After that, each cached load on a branch such as `main` sends one HEAD (1 more), while a cached load pinned to a commit hash sends nothing (0).
 
 ### Daily downloads
 
