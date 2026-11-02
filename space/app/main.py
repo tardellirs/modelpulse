@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import mimetypes
 import os
@@ -33,6 +34,24 @@ async def long_cache_for_hashed_assets(request, call_next):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
+
+# Cloud ranges a headless scraper walked every model from (Nov 2026: ~350 requests a minute, the API at its CPU cap,
+# and each page view counted as a new visitor in Analytics). No person browses from them.
+BLOCKED_NETS = [ipaddress.ip_network(n) for n in (
+    "43.160.0.0/12", "161.120.0.0/16",                  # Aceville Pte Ltd (Tencent Cloud, Singapore)
+    "47.74.0.0/15", "47.76.0.0/14", "47.80.0.0/13",     # Alibaba Cloud
+)]
+
+
+@app.middleware("http")
+async def block_scraper_ranges(request, call_next):
+    try:
+        ip = ipaddress.ip_address(request.client.host)
+    except (AttributeError, ValueError):
+        return await call_next(request)
+    if any(ip in n for n in BLOCKED_NETS):
+        return Response(status_code=403)
+    return await call_next(request)
 logging.basicConfig(level=logging.INFO)
 store = Store()
 repos = store.repos = Repos(store)
