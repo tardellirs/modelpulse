@@ -8,6 +8,7 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
+from datetime import date
 from urllib.parse import quote
 
 SITE = os.environ.get("SITE_ORIGIN", "https://modelpulse.ifsp.dev")
@@ -15,6 +16,49 @@ SPACE = "https://huggingface.co/spaces/tardellirs/model-pulse"
 DEFAULT_IMAGE = SPACE + "/resolve/main/thumbnail-v3.png"
 CREATOR = {"@type": "Person", "name": "Tardelli Stekel", "url": "https://huggingface.co/tardellirs"}
 e = html.escape
+
+# The pages search engines are asked to index, and the only ones in the sitemaps. A templated page for each of the
+# Hub's 1.7M models and 1.1M datasets reads as thin content at scale: Google dropped most of the site from its index on
+# 2026-10-22, three weeks after it had indexed 50k of them. The long tail stays reachable, marked noindex.
+NOTABLE = {
+    "models": "rank_dl30 <= 10000 OR likes >= 100 OR fam_members >= 20",
+    "datasets": "rank_dl30 <= 3000 OR likes >= 50",
+    "spaces": "likes >= 50",
+}
+AUTHOR_DL30 = 100_000  # an author page is indexed when their models were downloaded this often in 30 days
+GALAXY_MEMBERS = 50    # and a galaxy when this many models build on the base
+
+
+def notable_model(m) -> bool:
+    return (m.get("rank_dl30") or 10**9) <= 10_000 or (m.get("likes") or 0) >= 100 or (m.get("fam_members") or 0) >= 20
+
+
+def notable_dataset(d) -> bool:
+    return (d.get("rank_dl30") or 10**9) <= 3000 or (d.get("likes") or 0) >= 50
+
+
+def by_month(series, key: str, label: str, what: str) -> str:
+    """A repo's history as a table, one row per month (the value on its last tracked day, so a 30-day download count
+    there is about that month's downloads), and its best 30 days so far: what the Hub's own page doesn't show."""
+    ends, best = {}, None
+    for d, v in zip(series.get("day") or [], series.get(key) or []):
+        if v is None:
+            continue
+        ends[d[:7]] = (d, v)
+        if key == "dl30" and (best is None or v > best[1]):
+            best = (d, v)
+    months = list(ends.values())[-13:]
+    if len(months) < 2:
+        return ""
+    last = months[-1][0]
+    rows = "".join(f"<tr><td>{date.fromisoformat(d).strftime('%B %Y') if d != last else 'Up to ' + d}</td><td>{full(v)}</td>"
+                   + (f"<td>{v - p:+,}</td>" if key == "likes" else f"<td>{(v - p) / p:+.0%}</td>" if p else "<td>–</td>") + "</tr>"
+                   for (d, v), (_, p) in reversed(list(zip(months[1:], months[:-1]))))
+    out = (f"<h2>{e(label)}</h2><p>{e(what)}</p>"
+           f"<table><thead><tr><th>Month</th><th>{e(label.split(' ')[0])}</th><th>Change</th></tr></thead><tbody>{rows}</tbody></table>")
+    if best and best[1]:
+        out += f"<p>Its busiest 30 days so far ended on {best[0]}, with {full(best[1])} downloads.</p>"
+    return out
 
 def span(store):
     """First and last day of the data."""
@@ -262,12 +306,16 @@ class Pages:
         if kids:
             facts.append("<h2>Most downloaded derivatives</h2><ul>" + "".join(
                 f"<li>{a('/model/' + seg(c['id']), c['id'])} ({e(c['relation'] or 'derivative')}), {compact(c['dl30'])} downloads in 30 days</li>" for c in kids) + "</ul>")
+        notable = notable_model(m)
+        if notable:
+            facts.append(by_month(store.series(mid), "dl30", "Downloads by month",
+                                  "Downloads in the 30 days up to the end of each month, and the change from the month before."))
         facts.append(f"<p>{a('https://huggingface.co/' + mid, 'Open ' + mid + ' on Hugging Face')}</p>")
         crumb = [("Model Pulse", "/")] + ([(author, f"/author/{quote(author, safe='')}")] if author else []) + [(name, path)]
         body = (f'<nav>{" / ".join(a(p, n) for n, p in crumb[:-1])}</nav>'
                 f"<h1>{e(mid)} download history</h1>" + "".join(facts))
         return Page(f"{mid} downloads: daily history and stats · Model Pulse", desc, path, body,
-                    image=f"{SITE}/og/model/{seg(mid)}.png", ld=[crumbs(*crumb)])
+                    image=f"{SITE}/og/model/{seg(mid)}.png", ld=[crumbs(*crumb)], noindex=not notable)
 
     def dataset(self, store, rid: str) -> Page:
         repos = getattr(store, "repos", None)
@@ -302,10 +350,14 @@ class Pages:
         if spaces["count"]:
             body.append(f"<h2>Spaces using {e(name)}</h2><ul>" + "".join(
                 f"<li>{a('/space/' + seg(s['id']), s.get('title') or s['id'])} {full(s.get('likes'))} likes</li>" for s in spaces["top"]) + "</ul>")
+        notable = notable_dataset(d)
+        if notable:
+            body.append(by_month(repos.dataset_series(rid), "dl30", "Downloads by month",
+                                 "Downloads in the 30 days up to the end of each month, and the change from the month before."))
         body.append(f"<p>{a('https://huggingface.co/datasets/' + rid, 'Open ' + rid + ' on Hugging Face')}</p>")
         crumb = [("Model Pulse", "/")] + ([(author, f"/author/{quote(author, safe='')}")] if author else []) + [(name, path)]
         return Page(f"{rid} downloads: daily history and stats · Model Pulse", desc, path, "".join(body),
-                    image=f"{SITE}/og/dataset/{seg(rid)}.png", ld=[crumbs(*crumb)])
+                    image=f"{SITE}/og/dataset/{seg(rid)}.png", ld=[crumbs(*crumb)], noindex=not notable)
 
     def space(self, store, rid: str) -> Page:
         repos = getattr(store, "repos", None)
@@ -331,10 +383,14 @@ class Pages:
             body.append("<h2>What it uses</h2><ul>" + "".join(
                 f"<li>{a('/model/' + seg(m['id']), m['id'])} (model)</li>" for m in uses["models"]) + "".join(
                 f"<li>{a('/dataset/' + seg(x['id']), x['id'])} (dataset)</li>" for x in uses["datasets"]) + "</ul>")
+        notable = (s.get("likes") or 0) >= 50
+        if notable:
+            body.append(by_month(repos.space_series(rid), "likes", "Likes by month",
+                                 "Total likes at the end of each month, and the change from the month before."))
         body.append(f"<p>{a('https://huggingface.co/spaces/' + rid, 'Open ' + rid + ' on Hugging Face')}</p>")
         crumb = [("Model Pulse", "/")] + ([(author, f"/author/{quote(author, safe='')}")] if author else []) + [(title, path)]
         return Page(f"{title}: likes over time · {rid} · Model Pulse", desc, path, "".join(body),
-                    image=f"{SITE}/og/space/{seg(rid)}.png", ld=[crumbs(*crumb)])
+                    image=f"{SITE}/og/space/{seg(rid)}.png", ld=[crumbs(*crumb)], noindex=not notable)
 
     def author(self, store, name: str) -> Page:
         repos = getattr(store, "repos", None)
@@ -372,7 +428,7 @@ class Pages:
         return Page(f"{author} on Hugging Face: downloads and rankings · Model Pulse",
                     f"Download history for the {what} by {author} on the Hugging Face Hub. Top: {top}.",
                     path, body, image=f"{SITE}/og/author/{quote(author, safe='')}.png" if s["models"] else DEFAULT_IMAGE,
-                    ld=[crumbs(("Model Pulse", "/"), (author, path))])
+                    ld=[crumbs(("Model Pulse", "/"), (author, path))], noindex=s["dl30"] < AUTHOR_DL30)
 
     def galaxies(self, store) -> Page:
         gs = store.galaxies(40)
@@ -402,7 +458,7 @@ class Pages:
         return Page(f"{mid} galaxy: {full(fam)} models built on it · Model Pulse",
                     f"Every model built on {mid}: {full(m.get('n_quantized'))} quantizations, {full(m.get('n_finetune'))} fine-tunes, "
                     f"{full(m.get('n_adapter'))} adapters and {full(m.get('n_merge'))} merges, drawn as a galaxy and sized by downloads.",
-                    path, body, image=f"{SITE}/og/galaxy/{seg(mid)}.png" if fam else f"{SITE}/og/model/{seg(mid)}.png", noindex=fam < 20,
+                    path, body, image=f"{SITE}/og/galaxy/{seg(mid)}.png" if fam else f"{SITE}/og/model/{seg(mid)}.png", noindex=fam < GALAXY_MEMBERS,
                     ld=[crumbs(("Model Pulse", "/"), ("Galaxies", "/galaxy"), (mid, path))])
 
     def wrapped(self, author: str | None, kind: str = "models") -> Page:
@@ -472,34 +528,35 @@ Every page states its figures in plain text: downloads in the last 30 days, the 
 
     PER_FILE = 25_000
 
-    def sitemap_index(self, store, n_models: int) -> str:
+    def sitemap_index(self, store) -> str:
         last = span(store)[1]
+        n_models = len(store.notable_ids(NOTABLE["models"]))
         files = ["static", "authors", "galaxies"] + [f"models-{i + 1}" for i in range((n_models + self.PER_FILE - 1) // self.PER_FILE)]
         if getattr(store, "repos", None) and store.repos.ok:
-            files += ["datasets-1", "datasets-2", "spaces-1", "spaces-2"]
+            files += ["datasets-1", "spaces-1"]
         items = "".join(f"<sitemap><loc>{SITE}/sitemaps/{f}.xml</loc><lastmod>{last}</lastmod></sitemap>" for f in files)
         return f'<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{items}</sitemapindex>'
 
-    def sitemap(self, store, name: str, n_models: int) -> str | None:
+    def sitemap(self, store, name: str) -> str | None:
         last = span(store)[1]
         if name == "static":
             paths = ["/", "/galaxy", "/wrapped", "/report"]
         elif name == "authors":
-            paths = [f"/author/{quote(x, safe='')}" for x in store.sitemap_authors(20_000)]
+            paths = [f"/author/{quote(x, safe='')}" for x in store.sitemap_authors(AUTHOR_DL30)]
         elif name == "galaxies":
-            paths = [f"/galaxy/{seg(x)}" for x in store.sitemap_galaxies(10_000)]
+            paths = [f"/galaxy/{seg(x)}" for x in store.sitemap_galaxies(GALAXY_MEMBERS)]
         elif m := re.fullmatch(r"(datasets|spaces)-(\d+)", name):
             repos = getattr(store, "repos", None)
             if not repos or not repos.ok:
                 return None
             k = int(m.group(2)) - 1
-            ids = repos.top_ids(m.group(1), 2 * self.PER_FILE)[k * self.PER_FILE:(k + 1) * self.PER_FILE]
+            ids = repos.notable_ids(m.group(1), NOTABLE[m.group(1)])[k * self.PER_FILE:(k + 1) * self.PER_FILE]
             if not ids:
                 return None
             paths = [f"/{m.group(1)[:-1]}/{seg(x)}" for x in ids]
         elif m := re.fullmatch(r"models-(\d+)", name):
             k = int(m.group(1)) - 1
-            ids = store.top_ids(n_models)[k * self.PER_FILE:(k + 1) * self.PER_FILE]
+            ids = store.notable_ids(NOTABLE["models"])[k * self.PER_FILE:(k + 1) * self.PER_FILE]
             if not ids:
                 return None
             paths = [f"/model/{seg(x)}" for x in ids]

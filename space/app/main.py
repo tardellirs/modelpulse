@@ -21,7 +21,6 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 mimetypes.add_type("font/woff2", ".woff2")
 mimetypes.add_type("font/woff", ".woff")
 mimetypes.add_type("image/webp", ".webp")
-SITEMAP_MODELS = 100_000
 
 app = FastAPI(title="Model Pulse", docs_url=None, redoc_url=None)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -523,12 +522,12 @@ def robots():
 
 @app.get("/sitemap.xml")
 def sitemap_index():
-    return Response(pages.sitemap_index(store, SITEMAP_MODELS), media_type="application/xml", headers={"Cache-Control": "public, max-age=21600"})
+    return Response(pages.sitemap_index(store), media_type="application/xml", headers={"Cache-Control": "public, max-age=21600"})
 
 
 @app.get("/sitemaps/{name}.xml")
 def sitemap(name: str):
-    xml = pages.sitemap(store, name, SITEMAP_MODELS)
+    xml = pages.sitemap(store, name)
     if xml is None:
         raise HTTPException(404, "No such sitemap")
     return Response(xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=21600"})

@@ -215,20 +215,21 @@ class Store:
     def top_models(self, n: int):
         return self._rows("SELECT id, pipeline_tag, dl30 FROM models ORDER BY dl30 DESC NULLS LAST LIMIT ?", [n])
 
-    def sitemap_authors(self, n: int):
+    def sitemap_authors(self, min_dl30: int):
         return [r[0] for r in self.con().execute(
-            "SELECT author FROM models GROUP BY author HAVING sum(dl30) >= 1000 ORDER BY sum(dl30) DESC LIMIT ?", [n]).fetchall()]
+            "SELECT author FROM models GROUP BY author HAVING sum(dl30) >= ? ORDER BY sum(dl30) DESC", [min_dl30]).fetchall()]
 
-    def sitemap_galaxies(self, n: int):
+    def sitemap_galaxies(self, min_members: int):
         return [r[0] for r in self.con().execute(
-            "SELECT id FROM models WHERE fam_members >= 20 ORDER BY fam_dl30 DESC NULLS LAST LIMIT ?", [n]).fetchall()]
+            "SELECT id FROM models WHERE fam_members >= ? ORDER BY fam_dl30 DESC NULLS LAST", [min_members]).fetchall()]
 
     def author_models(self, author: str, limit: int = 200):
         return self._rows("SELECT id, pipeline_tag, params, dl30, dl_all, dl_7d, growth_7d, likes FROM models "
                           "WHERE author = ? ORDER BY dl30 DESC NULLS LAST LIMIT ?", [author, limit])
 
-    def top_ids(self, n: int):
-        return [r[0] for r in self.con().execute("SELECT id FROM models ORDER BY dl30 DESC NULLS LAST LIMIT ?", [n]).fetchall()]
+    def notable_ids(self, where: str):
+        """The models a sitemap lists (seo.NOTABLE), most downloaded first."""
+        return [r[0] for r in self.con().execute(f"SELECT id FROM models WHERE {where} ORDER BY dl30 DESC NULLS LAST").fetchall()]
 
     def search(self, q: str, limit: int = 12):
         return ranked_search(self, "search_ix", ["id", "pipeline_tag", "dl30"], "dl30", q, limit)

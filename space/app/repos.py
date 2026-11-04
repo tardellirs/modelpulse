@@ -152,9 +152,10 @@ class Repos:
             [author, author, author, author]).fetchone()
         return {"datasets": ds, "spaces": sp, "totals": {"datasets": t[0], "datasets_dl30": t[1], "spaces": t[2], "spaces_likes": t[3]}}
 
-    def top_ids(self, kind: str, n: int):
+    def notable_ids(self, kind: str, where: str):
+        """The datasets or Spaces a sitemap lists (seo.NOTABLE), most used first."""
         table, col = ("datasets", "dl30") if kind == "datasets" else ("spaces", "likes")
-        return [r[0] for r in self.s.con().execute(f"SELECT id FROM {table} ORDER BY {col} DESC NULLS LAST LIMIT ?", [n]).fetchall()]
+        return [r[0] for r in self.s.con().execute(f"SELECT id FROM {table} WHERE {where} ORDER BY {col} DESC NULLS LAST").fetchall()]
 
 
 # Spaces rankings, computed live from the spaces table so they can be filtered by SDK. The likes this week against
